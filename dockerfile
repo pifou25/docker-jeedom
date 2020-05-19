@@ -1,6 +1,6 @@
 FROM debian:9
 
-LABEL version="jeedom v4-buster-1.0"
+LABEL version="jeedom v4-stretch-1.0"
 
 ENV SHELL_ROOT_PASSWORD password
 ENV MYSQL_ROOT_PASSWD mysql-password

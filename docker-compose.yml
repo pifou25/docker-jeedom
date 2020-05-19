@@ -20,16 +20,16 @@ services:
              default:
                 ipv4_address: 192.168.1.243
         volumes:
-             - "/volume1/docker/jeedom-v4/html/:/var/www/html"
-        devices:
-             - "/dev/ttyUSB0"
-             - "/dev/ttyUSB1"
-             - "/dev/ttyACM0"
+             - "~/Documents/jeedom_core/core/:/var/www/html"
+        # devices:
+        #     - "/dev/ttyUSB0"
+        #     - "/dev/ttyUSB1"
+        #     - "/dev/ttyACM0"
         restart: unless-stopped
         environment:
              - TZ=Europe/Paris
-             - PUID=1032
-             - PGID=101
+             - PUID=1000
+             - PGID=1000
              - SYSTEMD_IGNORE_CHROOT=yes
              - SHELL_ROOT_PASSWORD=password
              - MYSQL_ROOT_PASSWD=mysql-password
