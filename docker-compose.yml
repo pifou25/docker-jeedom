@@ -6,9 +6,24 @@ networks:
              name: mymacvlan
 
 services:
+  # traefik for docker containers management
+  traefik:
+    image: traefik:1.5
+    command: --web --docker --logLevel=DEBUG
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "$PWD/traefik.toml:/traefik.toml"
+
     jeedom:
         container_name: jeedom-v4
         build : ./
+        labels:
+          - "traefik.port=80"
+          - "traefik.backend=jeedom1"
+          - "traefik.frontend.rule=Host:jeedom1.nico.si"
         privileged: false
         pid: "host"
         cap_add:
