@@ -19,7 +19,6 @@ RUN apt-get update && apt-get install -y \
 	python3 \
 	libzip-dev zip \
 	sudo && \
-	
     # add php extension
     docker-php-ext-install pdo pdo_mysql zip && \
 	# add the jeedom cron task
