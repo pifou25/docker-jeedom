@@ -43,7 +43,7 @@ RUN apt-get update && apt-get install -y \
 # Reduce image size
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY --from build-stage /app/ /var/www/html/
+COPY --chown=www-data:www-data --from=build-stage /app/ /var/www/html/
 
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
