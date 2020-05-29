@@ -1,33 +1,34 @@
-FROM debian:9
+# php7.3 + apache + debian 10 buster jeedom
+FROM php:7.3-apache
 
-LABEL version="jeedom v4-stretch-1.0"
-
-ENV SHELL_ROOT_PASSWORD password
-ENV MYSQL_ROOT_PASSWD mysql-password
+LABEL version="jeedom v4-buster"
 
 # Installation des paquets
 # 	ccze : couleur pour les logs
 # 	wget : téléchargement
-# 	openssh-server : serveur ssh
+#   libzip-dev zip: pour l'extension php zip
+#   sudo : pour les droits sudo de jeedom
 
 RUN apt-get update && apt-get install -y \
 	apt-utils \
 	wget \
 	ntp \
-	openssh-server \
 	locales \
 	ccze \
-	nano
-
-
-# Serveur SSH
-RUN mkdir /var/run/sshd
-RUN echo "root:${SHELL_ROOT_PASSWORD}" | chpasswd && \
-	sed -ri 's/^#?PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-	sed -ri 's/^#?Port 22/Port 22/' /etc/ssh/sshd_config
-RUN sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
+	cron \
+	python3 \
+	libzip-dev zip \
+	sudo && \
+# add php extension
+    docker-php-ext-install pdo pdo_mysql zip && \
+# add the jeedom cron task
+	echo "* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null" > /etc/cron.d/jeedom && \
+# add sudo for www-data
+    echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers && \
+# Reduce image size
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Initialisation 
-ADD install/OS_specific/Docker/init.sh /root/init.sh
-RUN chmod +x /root/init.sh
-CMD ["sh", "/root/init.sh"]
+# ADD install/OS_specific/Docker/init.sh /root/init.sh
+# RUN chmod +x /root/init.sh
+# CMD ["sh", "/root/init.sh"]
