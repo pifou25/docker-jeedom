@@ -19,10 +19,12 @@ RUN apt-get update && apt-get install -y \
 	python3 \
 	libzip-dev zip \
 	sudo && \
-	
     # add php extension
     docker-php-ext-install pdo pdo_mysql zip && \
 	# add the jeedom cron task
 	echo "* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null" > /etc/cron.d/jeedom && \
     # add sudo for www-data
-    echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
+    echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers && \
+    # Reduce image size
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
