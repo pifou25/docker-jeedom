@@ -1,3 +1,16 @@
+# download jeedom source from github
+FROM alpine AS build-stage
+
+RUN apk update && apk add --no-cache git && \
+   git clone https://github.com/jeedom/core.git -b master /app && \
+   mv /app/core/config/common.config.sample.php /app/core/config/common.config.php && \
+   sed -ri -e 's!#HOST#!db!g' /app/core/config/common.config.php  && \
+   sed -ri -e 's!#PORT#!3306!g' /app/core/config/common.config.php  && \
+   sed -ri -e 's!#DBNAME#!jeedom!g' /app/core/config/common.config.php  && \
+   sed -ri -e 's!#USERNAME#!jeedom!g' /app/core/config/common.config.php  && \
+   sed -ri -e 's!#PASSWORD#!jeedom!g' /app/core/config/common.config.php
+
+
 # php7.3 + apache + debian 10 buster jeedom
 FROM php:7.3-apache
 
@@ -30,19 +43,9 @@ RUN apt-get update && apt-get install -y \
 # Reduce image size
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-USER www-data:www-data
-VOLUME /var/www/html
+COPY --from build-stage /app/ /var/www/html/
 
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
 # RUN chmod +x /root/init.sh
 # CMD ["sh", "/root/init.sh"]
-
-RUN git clone https://github.com/jeedom/core.git -b master /var/www/html && \ 
-   mv /var/www/html/core/config/common.config.sample.php /var/www/html/core/config/common.config.php && \
-   sed -ri -e 's!#HOST#!db!g' /var/www/html/core/config/common.config.php  && \
-   sed -ri -e 's!#PORT#!3306!g' /var/www/html/core/config/common.config.php  && \
-   sed -ri -e 's!#DBNAME#!jeedom!g' /var/www/html/core/config/common.config.php  && \
-   sed -ri -e 's!#USERNAME#!jeedom!g' /var/www/html/core/config/common.config.php  && \
-   sed -ri -e 's!#PASSWORD#!jeedom!g' /var/www/html/core/config/common.config.php
-
