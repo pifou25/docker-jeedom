@@ -9,8 +9,6 @@ LABEL version="jeedom v4-buster"
 #   libzip-dev zip: pour l'extension php zip
 #   sudo          : pour les droits sudo de jeedom
 #   python*       : pour certains plugins
-#   duplicity     : 0.7.18 (buster) mais 0.7.19 requise pendant l'init web
-#   systemctl gettext librsync-dev : pendant l'init web
 
 RUN apt-get update && apt-get install -y \
 	apt-utils \
@@ -21,10 +19,7 @@ RUN apt-get update && apt-get install -y \
 	cron \
 	python3 python-dev python3-pip python-virtualenv \
 	libzip-dev zip \
-	duplicity \
-	systemd \
-	gettext \
-	librsync-dev \
+	git \
 	sudo && \
 # add php extension
     docker-php-ext-install pdo pdo_mysql zip && \
@@ -42,3 +37,12 @@ VOLUME /var/www/html
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
 # RUN chmod +x /root/init.sh
 # CMD ["sh", "/root/init.sh"]
+
+RUN git clone https://github.com/jeedom/core.git -b master /var/www/html && \ 
+   mv /var/www/html/core/config/common.config.sample.php /var/www/html/core/config/common.config.php && \
+   sed -ri -e 's!#HOST#!db!g' /var/www/html/core/config/common.config.php  && \
+   sed -ri -e 's!#PORT#!3306!g' /var/www/html/core/config/common.config.php  && \
+   sed -ri -e 's!#DBNAME#!jeedom!g' /var/www/html/core/config/common.config.php  && \
+   sed -ri -e 's!#USERNAME#!jeedom!g' /var/www/html/core/config/common.config.php  && \
+   sed -ri -e 's!#PASSWORD#!jeedom!g' /var/www/html/core/config/common.config.php
+
