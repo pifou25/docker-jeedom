@@ -4,10 +4,13 @@ FROM php:7.3-apache
 LABEL version="jeedom v4-buster"
 
 # Installation des paquets
-# 	ccze : couleur pour les logs
-# 	wget : téléchargement
+# 	ccze          : couleur pour les logs
+# 	wget          : téléchargement
 #   libzip-dev zip: pour l'extension php zip
-#   sudo : pour les droits sudo de jeedom
+#   sudo          : pour les droits sudo de jeedom
+#   python*       : pour certains plugins
+#   duplicity     : 0.7.18 (buster) mais 0.7.19 requise pendant l'init web
+#   systemctl gettext librsync-dev : pendant l'init web
 
 RUN apt-get update && apt-get install -y \
 	apt-utils \
@@ -16,8 +19,12 @@ RUN apt-get update && apt-get install -y \
 	locales \
 	ccze \
 	cron \
-	python3 \
+	python3 python-dev python3-pip python-virtualenv \
 	libzip-dev zip \
+	duplicity \
+	systemd \
+	gettext \
+	librsync-dev \
 	sudo && \
 # add php extension
     docker-php-ext-install pdo pdo_mysql zip && \
@@ -27,6 +34,9 @@ RUN apt-get update && apt-get install -y \
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers && \
 # Reduce image size
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+USER www-data:www-data
+VOLUME /var/www/html
 
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
