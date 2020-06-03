@@ -1,5 +1,5 @@
 # download jeedom source from github
-FROM alpine AS build-stage
+FROM alpine AS jeedom-src
 
 RUN apk update && apk add --no-cache git && \
    git clone https://github.com/jeedom/core.git -b master /app && \
@@ -43,7 +43,7 @@ RUN apt-get update && apt-get install -y \
 # Reduce image size
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY --chown=www-data:www-data --from=build-stage /app/ /var/www/html/
+COPY --chown=www-data:www-data --from=jeedom-src /app/ /var/www/html/
 
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
