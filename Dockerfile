@@ -35,6 +35,7 @@ RUN apt-get update && apt-get install -y \
 	python3 python-dev python3-pip python-virtualenv \
 	libzip-dev zip \
 	git \
+	systemd gettext duplicity librsync-dev \
 	sudo && \
 # add php extension
     docker-php-ext-install pdo pdo_mysql zip && \
