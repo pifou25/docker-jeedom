@@ -2,13 +2,15 @@
 FROM alpine AS jeedom-src
 
 RUN apk update && apk add --no-cache git && \
-   git clone https://github.com/jeedom/core.git -b master /app && \
-   mv /app/core/config/common.config.sample.php /app/core/config/common.config.php && \
-   sed -ri -e 's!#HOST#!db!g' /app/core/config/common.config.php  && \
-   sed -ri -e 's!#PORT#!3306!g' /app/core/config/common.config.php  && \
-   sed -ri -e 's!#DBNAME#!jeedom!g' /app/core/config/common.config.php  && \
-   sed -ri -e 's!#USERNAME#!jeedom!g' /app/core/config/common.config.php  && \
-   sed -ri -e 's!#PASSWORD#!jeedom!g' /app/core/config/common.config.php
+   git clone https://github.com/jeedom/core.git -b master /app
+
+#   && \
+#   mv /app/core/config/common.config.sample.php /app/core/config/common.config.php && \
+#   sed -ri -e 's!#HOST#!db!g' /app/core/config/common.config.php  && \
+#   sed -ri -e 's!#PORT#!3306!g' /app/core/config/common.config.php  && \
+#   sed -ri -e 's!#DBNAME#!jeedom!g' /app/core/config/common.config.php  && \
+#   sed -ri -e 's!#USERNAME#!jeedom!g' /app/core/config/common.config.php  && \
+#   sed -ri -e 's!#PASSWORD#!jeedom!g' /app/core/config/common.config.php
 
 
 # php7.3 + apache + debian 10 buster jeedom
