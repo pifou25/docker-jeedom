@@ -24,6 +24,7 @@ LABEL version="jeedom v4-buster"
 #   libzip-dev zip: pour l'extension php zip
 #   sudo          : pour les droits sudo de jeedom
 #   python*       : pour certains plugins
+#   mariadb-client: pour backup et restauration
 
 RUN apt-get update && apt-get install -y \
 	apt-utils \
@@ -35,6 +36,7 @@ RUN apt-get update && apt-get install -y \
 	python3 python-dev python3-pip python-virtualenv \
 	libzip-dev zip \
 	git \
+	mariadb-client \
 	systemd gettext duplicity librsync-dev \
 	sudo && \
 # add php extension
