@@ -14,7 +14,7 @@ docker build -t certbot .
 
 ## run
 ```
-docker run -it --rm -v /etc/letsencrypt:/etc/letsencrypt -e DOMAIN_NAME=buzut.fr certbot
+docker run --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v "$PWD/certbot":/app -e DOMAIN_NAME=buzut.fr pifou25/certbot
 ```
 
 ## renew
