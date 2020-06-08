@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y \
 	locales \
 	ccze \
 	cron \
-	python3 python-dev python3-pip python-virtualenv \
+	python python-pip python3 python-dev python3-pip python-virtualenv \
 	libzip-dev zip \
 	git \
 	mariadb-client \
@@ -44,9 +44,10 @@ RUN apt-get update && apt-get install -y \
 # add the jeedom cron task
 	echo "* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null" > /etc/cron.d/jeedom && \
 # add sudo for www-data
-    echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers && \
-# Reduce image size
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
+
+# Reduce image size : inutile car jeedom a besoin d'ajouter des dépendances
+#    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --chown=www-data:www-data --from=jeedom-src /app/ /var/www/html/
 
