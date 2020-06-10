@@ -23,7 +23,7 @@ RUN apk update && apk add --no-cache git && \
 # buster = debian 10 (les DIY)
 FROM php:7.3-apache-buster
 
-LABEL version="jeedom for debian ${os_version}"
+LABEL version="jeedom for debian buster"
 
 # Installation des paquets
 # 	ccze          : couleur pour les logs
