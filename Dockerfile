@@ -21,10 +21,7 @@ RUN apk update && apk add --no-cache git && \
 # choix de la version debian:
 # stretch = debian 9 (les box smart & co)
 # buster = debian 10 (les DIY)
-ARG os_version=buster
-
-# php7.3 + apache + debian (X) jeedom
-FROM php:7.3-apache-${os_version}
+FROM php:7.3-apache-buster
 
 LABEL version="jeedom for debian ${os_version}"
 
