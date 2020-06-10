@@ -1,8 +1,14 @@
 # download jeedom source from github
 FROM alpine AS jeedom-src
 
+# choix de la version jeedom:
+# master = 3.xx (valeur par défaut)
+# V4-stable
+# alpha = v4.1
+ARG jeedom_version master
+
 RUN apk update && apk add --no-cache git && \
-   git clone https://github.com/jeedom/core.git -b master /app
+   git clone https://github.com/jeedom/core.git -b ${jeedom_version} /app
 
 #   && \
 #   mv /app/core/config/common.config.sample.php /app/core/config/common.config.php && \
@@ -12,11 +18,15 @@ RUN apk update && apk add --no-cache git && \
 #   sed -ri -e 's!#USERNAME#!jeedom!g' /app/core/config/common.config.php  && \
 #   sed -ri -e 's!#PASSWORD#!jeedom!g' /app/core/config/common.config.php
 
+# choix de la version debian:
+# stretch = debian 9 (les box smart & co)
+# buster = debian 10 (les DIY)
+ARG os_version = buster
 
-# php7.3 + apache + debian 10 buster jeedom
-FROM php:7.3-apache
+# php7.3 + apache + debian (X) jeedom
+FROM php:7.3-apache-${os_version}
 
-LABEL version="jeedom v4-buster"
+LABEL version="jeedom for debian ${os_version}"
 
 # Installation des paquets
 # 	ccze          : couleur pour les logs
