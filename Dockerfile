@@ -5,7 +5,7 @@ FROM alpine AS jeedom-src
 # master = 3.xx (valeur par défaut)
 # V4-stable
 # alpha = v4.1
-ARG jeedom_version master
+ARG jeedom_version=master
 
 RUN apk update && apk add --no-cache git && \
    git clone https://github.com/jeedom/core.git -b ${jeedom_version} /app
@@ -21,7 +21,7 @@ RUN apk update && apk add --no-cache git && \
 # choix de la version debian:
 # stretch = debian 9 (les box smart & co)
 # buster = debian 10 (les DIY)
-ARG os_version = buster
+ARG os_version=buster
 
 # php7.3 + apache + debian (X) jeedom
 FROM php:7.3-apache-${os_version}
