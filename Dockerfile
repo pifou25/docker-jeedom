@@ -1,23 +1,3 @@
-# download jeedom source from github
-FROM alpine AS jeedom-src
-
-# choix de la version jeedom:
-# master = 3.xx (valeur par défaut)
-# V4-stable
-# alpha = v4.1
-ARG jeedom_version=master
-
-RUN apk update && apk add --no-cache git && \
-   git clone https://github.com/jeedom/core.git -b ${jeedom_version} /app
-
-#   && \
-#   mv /app/core/config/common.config.sample.php /app/core/config/common.config.php && \
-#   sed -ri -e 's!#HOST#!db!g' /app/core/config/common.config.php  && \
-#   sed -ri -e 's!#PORT#!3306!g' /app/core/config/common.config.php  && \
-#   sed -ri -e 's!#DBNAME#!jeedom!g' /app/core/config/common.config.php  && \
-#   sed -ri -e 's!#USERNAME#!jeedom!g' /app/core/config/common.config.php  && \
-#   sed -ri -e 's!#PASSWORD#!jeedom!g' /app/core/config/common.config.php
-
 # choix de la version debian:
 # stretch = debian 9 (les box smart & co)
 # buster = debian 10 (les DIY)
@@ -44,7 +24,7 @@ RUN apt-get update && apt-get install -y \
 	libzip-dev zip \
 	git \
 	mariadb-client \
-	systemd gettext duplicity librsync-dev \
+	systemd gettext librsync-dev \
 	sudo && \
 # add php extension
     docker-php-ext-install pdo pdo_mysql zip && \
@@ -53,12 +33,36 @@ RUN apt-get update && apt-get install -y \
 # add sudo for www-data
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
-# Reduce image size : inutile car jeedom a besoin d'ajouter des dépendances
-#    apt-get clean && rm -rf /var/lib/apt/lists/*
+# add manually duplicity v0.7.19 from jeedom image
+RUN python -m pip install future fasteners && \
+    wget https://images.jeedom.com/resources/duplicity/duplicity.tar.gz -O /tmp/duplicity.tar.gz && \
+    tar xvf /tmp/duplicity.tar.gz && \
+	cd /tmp/duplicity-0.7.19 && \
+	python setup.py install 2>&1 >> /dev/null && \
+	rm -rf /tmp/duplicity.tar.gz && \
+	rm -rf duplicity-0.7.19
+	
+USER www-data:www-data
 
-COPY --chown=www-data:www-data --from=jeedom-src /app/ /var/www/html/
+# choix de la version jeedom:
+# master = 3.xx (valeur par défaut)
+# V4-stable
+# alpha = v4.1
+ARG jeedom_version=master
+RUN git clone https://github.com/jeedom/core.git -b ${jeedom_version} /var/www/html
+
+USER root
 
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
 # RUN chmod +x /root/init.sh
 # CMD ["sh", "/root/init.sh"]
+
+
+#   prepare db config file:
+#   mv /app/core/config/common.config.sample.php /app/core/config/common.config.php && \
+#   sed -ri -e 's!#HOST#!db!g' /app/core/config/common.config.php  && \
+#   sed -ri -e 's!#PORT#!3306!g' /app/core/config/common.config.php  && \
+#   sed -ri -e 's!#DBNAME#!jeedom!g' /app/core/config/common.config.php  && \
+#   sed -ri -e 's!#USERNAME#!jeedom!g' /app/core/config/common.config.php  && \
+#   sed -ri -e 's!#PASSWORD#!jeedom!g' /app/core/config/common.config.php
