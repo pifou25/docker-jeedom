@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y \
 # add manually duplicity v0.7.19 from jeedom image
 RUN python -m pip install future fasteners && \
     wget https://images.jeedom.com/resources/duplicity/duplicity.tar.gz -O /tmp/duplicity.tar.gz && \
-    tar xvf /tmp/duplicity.tar.gz && \
+    tar xvf /tmp/duplicity.tar.gz -C /tmp && \
 	cd /tmp/duplicity-0.7.19 && \
 	python setup.py install 2>&1 >> /dev/null && \
 	rm -rf /tmp/duplicity.tar.gz && \
