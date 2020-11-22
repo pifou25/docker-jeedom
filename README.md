@@ -1,4 +1,4 @@
-# docker-jeedom
+﻿# docker-jeedom
 Docker config pour Jeedom !
 
 ## Creer le réseau
@@ -21,6 +21,12 @@ subnet = réseau existant
 gateway = IP de la box
 
 ## Docker file: génération de l'image php-apache pour jeedom
+
+### Step 1: download jeedom depuis la source github
+
+le 1er build est mis en cache
+
+### Step 2: génération du serveur apache - PHP
 
 Dans le fichier dockerfile, choisir la version de php adéquate, par exemple 7.3
 ```

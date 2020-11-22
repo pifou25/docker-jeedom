@@ -1,9 +1,9 @@
-version: '2'
+﻿version: '2'
 
-networks:
-    default:
-        external:
-             name: mymacvlan
+#networks:
+#    default:
+#        external:
+#             name: local_net
 
 services:
   # traefik for docker containers management
@@ -18,7 +18,7 @@ services:
       - "$PWD/traefik.toml:/traefik.toml"
 
     jeedom:
-        container_name: jeedom1
+        container_name: jeedom
         build : ./
         labels:
             - "traefik.http.routers.api.rule=Host(`traefik.nico.si`)"
@@ -33,22 +33,27 @@ services:
              - SYS_PTRACE
         # tty: true
         hostname: jeedom
-        mac_address: a0:ca:ab:cd:ef:02
-        networks:
-             default:
-                ipv4_address: 192.168.1.243
-        volumes:
-             - "~/Documents/jeedom_core/core/:/var/www/html"
+        #mac_address: a0:ca:ab:cd:ef:02
+        #networks:
+        #     default:
+        #        ipv4_address: 192.168.1.11
         # devices:
         #     - "/dev/ttyUSB0"
         #     - "/dev/ttyUSB1"
         #     - "/dev/ttyACM0"
         restart: unless-stopped
-        environment:
-             - TZ=Europe/Paris
-             - PUID=1000
-             - PGID=1000
-             - SYSTEMD_IGNORE_CHROOT=yes
-             - SHELL_ROOT_PASSWORD=password
-             - MYSQL_ROOT_PASSWD=mysql-password
-             - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+        ports:
+            - "80:80"
+
+    db:
+        container_name: db
+        image: mariadb
+        restart: unless-stopped
+        env_file:
+            - ./.env
+
+    adminer:
+        container_name: adminer
+        image: adminer
+        ports:
+            - "8080:8080"
