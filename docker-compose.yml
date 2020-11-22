@@ -6,16 +6,16 @@
 #             name: local_net
 
 services:
-  # traefik for docker containers management
-  traefik:
-    image: traefik:1.5
-    command: --web --docker --logLevel=DEBUG
-    ports:
-      - "80:80"
-      - "8080:8080"
-    volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock"
-      - "$PWD/traefik.toml:/traefik.toml"
+    # traefik for docker containers management
+    traefik:
+        image: traefik:1.5
+        command: --web --docker --logLevel=DEBUG
+        ports:
+            - "80:80"
+            - "8080:8080"
+        volumes:
+            - "/var/run/docker.sock:/var/run/docker.sock"
+            - "$PWD/traefik.toml:/traefik.toml"
 
     jeedom:
         container_name: jeedom
