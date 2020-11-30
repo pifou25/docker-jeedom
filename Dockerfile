@@ -51,12 +51,6 @@ RUN chmod 0644 /etc/cron.d/jeedom
 
 # Apply cron job
 RUN crontab /etc/cron.d/jeedom
-
-# Create the log file to be able to run tail
-RUN touch /var/www/html/log/cron.log
-
-# Run the command on container startup
-CMD cron && tail -f /var/www/html/log/cron.log
 	
 USER www-data:www-data
 
@@ -64,10 +58,13 @@ USER www-data:www-data
 # master = 3.xx (valeur par défaut)
 # V4-stable
 # alpha = v4.1
-ARG jeedom_version=beta
+ARG jeedom_version=V4-stable
 RUN git clone https://github.com/pifou25/jeedom-core.git -b ${jeedom_version} /var/www/html && \
-   # move unwanted .htaccess for install
-   mv /var/www/html/install/.htaccess /var/www/html/install/old.htaccess
+   # Create the log file to be able to run tail
+   touch /var/www/html/log/cron.log
+
+# Run the command on container startup
+CMD cron && tail -f /var/www/html/log/cron.log
 
 USER root
 
