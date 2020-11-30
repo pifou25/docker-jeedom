@@ -48,10 +48,8 @@ USER www-data:www-data
 # master = 3.xx (valeur par défaut)
 # V4-stable
 # alpha = v4.1
-ARG jeedom_version=beta
-RUN git clone https://github.com/pifou25/jeedom-core.git -b ${jeedom_version} /var/www/html && \
-   # move unwanted .htaccess for install
-   mv /var/www/html/install/.htaccess /var/www/html/install/old.htaccess
+ARG jeedom_version=V4-stable
+RUN git clone https://github.com/jeedom/core.git -b ${jeedom_version} /var/www/html
 
 USER root
 
