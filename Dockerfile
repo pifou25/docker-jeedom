@@ -3,7 +3,7 @@
 # buster = debian 10 (les DIY)
 FROM php:7.3-apache-stretch
 
-LABEL version="jeedom for debian buster"
+LABEL version="jeedom for debian stretch"
 
 # Installation des paquets
 # 	ccze          : couleur pour les logs
@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y \
 # add php extension
     docker-php-ext-install pdo pdo_mysql zip && \
 # add the jeedom cron task
-	echo "* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null" > /etc/cron.d/jeedom && \
+#	echo "* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null" > /etc/cron.d/jeedom && \
 # add sudo for www-data
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
@@ -41,6 +41,22 @@ RUN python -m pip install future fasteners && \
 	python setup.py install 2>&1 >> /dev/null && \
 	rm -rf /tmp/duplicity.tar.gz && \
 	rm -rf duplicity-0.7.19
+
+
+# Copy hello-cron file to the cron.d directory
+COPY jeedom.cron.txt /etc/cron.d/jeedom
+
+# Give execution rights on the cron job
+RUN chmod 0644 /etc/cron.d/jeedom
+
+# Apply cron job
+RUN crontab /etc/cron.d/jeedom
+
+# Create the log file to be able to run tail
+RUN touch /var/www/html/log/cron.log
+
+# Run the command on container startup
+CMD cron && tail -f /var/www/html/log/cron.log
 	
 USER www-data:www-data
 
