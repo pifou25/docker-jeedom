@@ -6,28 +6,10 @@
 #             name: local_net
 
 services:
-    # traefik for docker containers management
-    traefik:
-        image: traefik:1.5
-        command: --web --docker --logLevel=DEBUG
-        ports:
-            - "80:80"
-            - "8080:8080"
-            - "8090:8090"
-        volumes:
-            - "/var/run/docker.sock:/var/run/docker.sock"
-            - "$PWD/traefik.toml:/traefik.toml"
 
     jeedom:
         container_name: jeedom
         build : ./
-        labels:
-            - "traefik.http.routers.api.rule=Host(`traefik.nico.si`)"
-            - "traefik.http.routers.api.service=api@internal"
-            - "traefik.http.routers.api.entrypoints=http"
-            - "traefik.http.routers.api.middlewares=auth"
-            - "traefik.http.middlewares.auth.basicauth.users=${HTPASSWD}"
-
         privileged: false
         pid: "host"
         cap_add:
