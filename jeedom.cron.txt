@@ -1,0 +1,2 @@
+* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null
+# empty line required for cron to be valid

@@ -1,0 +1,10 @@
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+  [entryPoints.https]
+  address = ":443"
+
+[api]
+
+[providers.docker]
+  endpoint = "unix:///var/run/docker.sock"
