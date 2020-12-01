@@ -27,16 +27,31 @@ services:
         restart: unless-stopped
         ports:
             - "80:80"
+        volumes:
+            - ./jeedom:/var/www/html
 
     db:
         container_name: db
         image: ghcr.io/linuxserver/mariadb
         restart: unless-stopped
-        env_file:
-            - ./.env
+        # env_file:
+        #     - ./.env
+        environment:
+          - PUID=1000
+          - PGID=1000
+          - MYSQL_ROOT_PASSWORD=admin
+          - TZ=Europe/Paris
+          - MYSQL_DATABASE=jeedom #optional
+          - MYSQL_USER=jeedom #optional
+          - MYSQL_PASSWORD=jeedom #optional
+          # - REMOTE_SQL=http://URL1/your.sql,https://URL2/your.sql #optional
+        volumes:
+            - ./db:/config
+        ports:
+            - 3306:3306
 
     adminer:
         container_name: adminer
         image: adminer
         ports:
-            - "8090:8080"
+            - "8080:8080"
