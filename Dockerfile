@@ -64,10 +64,12 @@ RUN git clone https://github.com/jeedom/core.git -b ${jeedom_version} /var/www/h
 # Create the log file to be able to run tail
 RUN touch /var/www/html/log/cron.log
 
+USER root
+
 # Run the command on container startup
 RUN cron && tail -f /var/www/html/log/cron.log
 
-USER root
+VOLUME /var/www/html
 
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
