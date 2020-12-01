@@ -59,12 +59,13 @@ USER www-data:www-data
 # V4-stable
 # alpha = v4.1
 ARG jeedom_version=V4-stable
-RUN git clone https://github.com/jeedom/core.git -b ${jeedom_version} /var/www/html && \
-   # Create the log file to be able to run tail
-   touch /var/www/html/log/cron.log
+RUN git clone https://github.com/jeedom/core.git -b ${jeedom_version} /var/www/html
+
+# Create the log file to be able to run tail
+RUN touch /var/www/html/log/cron.log
 
 # Run the command on container startup
-CMD cron && tail -f /var/www/html/log/cron.log
+RUN cron && tail -f /var/www/html/log/cron.log
 
 USER root
 
