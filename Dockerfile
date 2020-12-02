@@ -51,8 +51,6 @@ RUN chmod 0644 /etc/cron.d/jeedom
 
 # Apply cron job
 RUN crontab /etc/cron.d/jeedom
-
-VOLUME /var/www/html
 	
 USER www-data:www-data
 
@@ -81,6 +79,8 @@ USER root
 #   sed -ri -e 's!#DBNAME#!jeedom!g' /app/core/config/common.config.php  && \
 #   sed -ri -e 's!#USERNAME#!jeedom!g' /app/core/config/common.config.php  && \
 #   sed -ri -e 's!#PASSWORD#!jeedom!g' /app/core/config/common.config.php
+
+VOLUME /var/www/html
 
 # Run the command on container startup
 CMD (crond -l -f 8 & ) && apache2-foreground
