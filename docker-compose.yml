@@ -27,8 +27,6 @@ services:
         restart: unless-stopped
         ports:
             - "80:80"
-        volumes:
-            - ./jeedom:/var/www/html
 
     db:
         container_name: db

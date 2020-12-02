@@ -80,7 +80,5 @@ USER root
 #   sed -ri -e 's!#USERNAME#!jeedom!g' /app/core/config/common.config.php  && \
 #   sed -ri -e 's!#PASSWORD#!jeedom!g' /app/core/config/common.config.php
 
-VOLUME /var/www/html
-
 # Run the command on container startup
 CMD (crond -l -f 8 & ) && apache2-foreground
