@@ -51,6 +51,8 @@ RUN chmod 0644 /etc/cron.d/jeedom
 
 # Apply cron job
 RUN crontab /etc/cron.d/jeedom
+
+VOLUME /var/www/html
 	
 USER www-data:www-data
 
@@ -66,11 +68,6 @@ RUN touch /var/www/html/log/cron.log
 
 USER root
 
-# Run the command on container startup
-RUN cron # && tail -f /var/www/html/log/cron.log
-
-VOLUME /var/www/html
-
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
 # RUN chmod +x /root/init.sh
@@ -84,3 +81,6 @@ VOLUME /var/www/html
 #   sed -ri -e 's!#DBNAME#!jeedom!g' /app/core/config/common.config.php  && \
 #   sed -ri -e 's!#USERNAME#!jeedom!g' /app/core/config/common.config.php  && \
 #   sed -ri -e 's!#PASSWORD#!jeedom!g' /app/core/config/common.config.php
+
+# Run the command on container startup
+CMD (crond -l -f 8 & ) && apache2-foreground
