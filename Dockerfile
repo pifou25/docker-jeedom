@@ -67,7 +67,7 @@ RUN touch /var/www/html/log/cron.log
 USER root
 
 # Run the command on container startup
-RUN cron && tail -f /var/www/html/log/cron.log
+RUN cron # && tail -f /var/www/html/log/cron.log
 
 VOLUME /var/www/html
 
