@@ -1,7 +1,7 @@
 ﻿# choix de la version debian:
 # stretch = debian 9 (les box smart & co)
 # buster = debian 10 (les DIY)
-FROM php:7.3-apache-buster
+FROM php:5-apache-stretch
 
 LABEL version="jeedom for debian buster"
 
