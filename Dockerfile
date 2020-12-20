@@ -61,6 +61,9 @@ USER www-data:www-data
 ARG jeedom_version=beta
 RUN git clone https://github.com/jeedom/core.git -b ${jeedom_version} /var/www/html
 
+# for beta: remove anoying .htaccess
+RUN rm /var/www/html/install/.htaccess
+
 # Create the log file to be able to run tail
 RUN touch /var/www/html/log/cron.log
 
