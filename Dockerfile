@@ -71,6 +71,9 @@ USER root
 
 VOLUME  /var/www/html/backup
 
+# try restore backup if exist
+RUN php install/restore.php
+
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
 # RUN chmod +x /root/init.sh
