@@ -69,6 +69,8 @@ RUN touch /var/www/html/log/cron.log
 
 USER root
 
+VOLUME  /var/www/html/backup
+
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
 # RUN chmod +x /root/init.sh

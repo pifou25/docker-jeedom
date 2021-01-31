@@ -25,6 +25,8 @@ services:
         #     - "/dev/ttyUSB1"
         #     - "/dev/ttyACM0"
         restart: unless-stopped
+        volumes:
+          - ./backup:/var/www/html/backup
         ports:
             - "80:80"
 
