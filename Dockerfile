@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
 	locales \
 	ccze \
 	cron \
+	supervisor \
 	python python-pip python3 python-dev python3-pip python-virtualenv \
 	libzip-dev zip \
 	git \
@@ -64,8 +65,6 @@ ARG jeedom_version=V4-stable
 # choix du download direct
 RUN wget https://github.com/jeedom/core/archive/${jeedom_version}.zip -O /tmp/jeedom.zip
 RUN mkdir -p /var/www/html
-# RUN find /var/www/html ! -name 'index.html' -type f -exec rm -rf {} +
-# RUN rm -rf /root/core-*
 RUN unzip -q /tmp/jeedom.zip -d /root/
 RUN cp -R /root/core-*/* /var/www/html
 RUN cp -R /root/core-*/.[^.]* /var/www/html
@@ -74,6 +73,9 @@ RUN rm /tmp/jeedom.zip
 
 # for beta: remove anoying .htaccess
 RUN rm /var/www/html/install/.htaccess
+
+# use supervisor
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Create the log file to be able to run tail
 RUN touch /var/www/html/log/cron.log
@@ -101,4 +103,7 @@ VOLUME  /var/www/html/backup
 #   sed -ri -e 's!#PASSWORD#!jeedom!g' /app/core/config/common.config.php
 
 # Run the command on container startup
-CMD (crond -l -f 8 & ) && apache2-foreground
+# CMD (crond -l -f 8 & ) && apache2-foreground
+
+# run supervisor 
+CMD ["/usr/bin/supervisord"]
