@@ -51,8 +51,6 @@ RUN chmod 0644 /etc/cron.d/jeedom
 
 # Apply cron job
 RUN crontab /etc/cron.d/jeedom
-	
-USER www-data:www-data
 
 # choix de la version jeedom:
 # master = 3.xx (valeur par défaut)
@@ -80,7 +78,8 @@ RUN rm /var/www/html/install/.htaccess
 # Create the log file to be able to run tail
 RUN touch /var/www/html/log/cron.log
 
-USER root
+# USER www-data:www-data
+# USER root
 
 VOLUME  /var/www/html/backup
 
