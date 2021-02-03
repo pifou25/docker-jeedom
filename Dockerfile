@@ -58,8 +58,21 @@ USER www-data:www-data
 # master = 3.xx (valeur par défaut)
 # V4-stable
 # alpha = v4.1
-ARG jeedom_version=beta
-RUN git clone https://github.com/jeedom/core.git -b ${jeedom_version} /var/www/html
+ARG jeedom_version=V4-stable
+
+# choix de GIT CLONE
+# RUN git clone https://github.com/jeedom/core.git -b ${jeedom_version} /var/www/html
+
+# choix du download direct
+RUN wget https://github.com/jeedom/core/archive/${jeedom_version}.zip -O /tmp/jeedom.zip && \
+   mkdir -p /var/www/html && \
+   find /var/www/html ! -name 'index.html' -type f -exec rm -rf {} + && \
+   rm -rf /root/core-* && \
+   unzip -q /tmp/jeedom.zip -d /root/ && \
+   cp -R /root/core-*/* /var/www/html && \
+   cp -R /root/core-*/.[^.]* /var/www/html && \
+   rm -rf /root/core-* > /dev/null 2>&1 && \
+   rm /tmp/jeedom.zip
 
 # for beta: remove anoying .htaccess
 RUN rm /var/www/html/install/.htaccess
@@ -72,7 +85,7 @@ USER root
 VOLUME  /var/www/html/backup
 
 # try restore backup if exist
-RUN php install/restore.php
+# RUN php install/restore.php
 
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
