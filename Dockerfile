@@ -64,15 +64,15 @@ ARG jeedom_version=V4-stable
 # RUN git clone https://github.com/jeedom/core.git -b ${jeedom_version} /var/www/html
 
 # choix du download direct
-RUN wget https://github.com/jeedom/core/archive/${jeedom_version}.zip -O /tmp/jeedom.zip && \
-   mkdir -p /var/www/html && \
-   find /var/www/html ! -name 'index.html' -type f -exec rm -rf {} + && \
-   rm -rf /root/core-* && \
-   unzip -q /tmp/jeedom.zip -d /root/ && \
-   cp -R /root/core-*/* /var/www/html && \
-   cp -R /root/core-*/.[^.]* /var/www/html && \
-   rm -rf /root/core-* > /dev/null 2>&1 && \
-   rm /tmp/jeedom.zip
+RUN wget https://github.com/jeedom/core/archive/${jeedom_version}.zip -O /tmp/jeedom.zip
+RUN mkdir -p /var/www/html
+# RUN find /var/www/html ! -name 'index.html' -type f -exec rm -rf {} +
+# RUN rm -rf /root/core-*
+RUN unzip -q /tmp/jeedom.zip -d /root/
+RUN cp -R /root/core-*/* /var/www/html
+RUN cp -R /root/core-*/.[^.]* /var/www/html
+RUN rm -rf /root/core-* > /dev/null 2>&1
+RUN rm /tmp/jeedom.zip
 
 # for beta: remove anoying .htaccess
 RUN rm /var/www/html/install/.htaccess
