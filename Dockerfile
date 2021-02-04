@@ -72,7 +72,7 @@ RUN wget https://github.com/jeedom/core/archive/${jeedom_version}.zip -O /tmp/je
 RUN rm /var/www/html/install/.htaccess
 
 # use supervisor
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY supervisord.conf /etc/supervisor/supervisord.conf
 
 # Create the log file to be able to run tail
 RUN touch /var/www/html/log/cron.log
