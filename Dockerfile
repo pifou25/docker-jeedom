@@ -102,5 +102,10 @@ VOLUME  /var/www/html/backup
 # Run the command on container startup
 # CMD (crond -l -f 8 & ) && apache2-foreground
 
+#add motd
+COPY motd /etc/jmotd
+RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd && cat /etc/jmotd' \
+    >> /etc/bash.bashrc
+
 # run supervisor 
-CMD ["/usr/bin/supervisord"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
