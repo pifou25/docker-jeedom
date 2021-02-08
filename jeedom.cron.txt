@@ -1,2 +1,1 @@
-* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1
-# empty line required for cron to be valid
+* * * * *  php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1
