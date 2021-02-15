@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
 	locales \
 	ccze \
 	cron \
+	supervisor \
 	python python-pip python3 python-dev python3-pip python-virtualenv \
 	libzip-dev zip \
 	git \
@@ -29,7 +30,7 @@ RUN apt-get update && apt-get install -y \
 # add php extension
     docker-php-ext-install pdo pdo_mysql zip && \
 # add the jeedom cron task
-#	echo "* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null" > /etc/cron.d/jeedom && \
+	echo "* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null\n" > /etc/cron.d/jeedom && \
 # add sudo for www-data
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
@@ -43,28 +44,40 @@ RUN python -m pip install future fasteners && \
 	rm -rf duplicity-0.7.19
 
 
-# Copy hello-cron file to the cron.d directory
-COPY jeedom.cron.txt /etc/cron.d/jeedom
-
-# Give execution rights on the cron job
-RUN chmod 0644 /etc/cron.d/jeedom
-
 # Apply cron job
 RUN crontab /etc/cron.d/jeedom
-	
-USER www-data:www-data
 
 # choix de la version jeedom:
 # master = 3.xx (valeur par défaut)
 # V4-stable
 # alpha = v4.1
 ARG jeedom_version=V4-stable
-RUN git clone https://github.com/jeedom/core.git -b ${jeedom_version} /var/www/html
+
+# choix du download direct
+RUN wget https://github.com/jeedom/core/archive/${jeedom_version}.zip -O /tmp/jeedom.zip && \
+    mkdir -p /var/www/html && \
+    unzip -q /tmp/jeedom.zip -d /root/ && \
+    cp -R /root/core-*/* /var/www/html && \
+    cp -R /root/core-*/.[^.]* /var/www/html && \
+    rm -rf /root/core-* > /dev/null 2>&1 && \
+    rm /tmp/jeedom.zip
+
+# for beta: remove anoying .htaccess
+RUN rm /var/www/html/install/.htaccess
+
+# use supervisor
+COPY supervisord.conf /etc/supervisor/supervisord.conf
 
 # Create the log file to be able to run tail
 RUN touch /var/www/html/log/cron.log
 
-USER root
+# USER www-data:www-data
+# USER root
+
+VOLUME  /var/www/html/backup
+
+# try restore backup if exist
+# RUN php install/restore.php
 
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
@@ -81,4 +94,12 @@ USER root
 #   sed -ri -e 's!#PASSWORD#!jeedom!g' /app/core/config/common.config.php
 
 # Run the command on container startup
-CMD (crond -l -f 8 & ) && apache2-foreground
+# CMD (crond -l -f 8 & ) && apache2-foreground
+
+#add motd
+COPY motd /etc/jmotd
+RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd && cat /etc/jmotd' \
+    >> /etc/bash.bashrc
+
+# run supervisor 
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
