@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y \
 # add php extension
     docker-php-ext-install pdo pdo_mysql zip && \
 # add the jeedom cron task
-#	echo "* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null" > /etc/cron.d/jeedom && \
+	echo "* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null" > /etc/cron.d/jeedom && \
 # add sudo for www-data
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
@@ -42,29 +42,17 @@ RUN python -m pip install future fasteners && \
 	rm -rf /tmp/duplicity.tar.gz && \
 	rm -rf duplicity-0.7.19
 
-
-# Copy hello-cron file to the cron.d directory
-COPY jeedom.cron.txt /etc/cron.d/jeedom
-
 # Give execution rights on the cron job
 RUN chmod 0644 /etc/cron.d/jeedom
 
 # Apply cron job
 RUN crontab /etc/cron.d/jeedom
-	
-USER www-data:www-data
 
-# choix de la version jeedom:
-# master = 3.xx (valeur par défaut)
-# V4-stable
-# alpha = v4.1
-ARG jeedom_version=V4-stable
-RUN git clone https://github.com/jeedom/core.git -b ${jeedom_version} /var/www/html
+# volume for jeedom core github source	
+VOLUME /var/www/html
 
 # Create the log file to be able to run tail
 RUN touch /var/www/html/log/cron.log
-
-USER root
 
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
@@ -80,5 +68,5 @@ USER root
 #   sed -ri -e 's!#USERNAME#!jeedom!g' /app/core/config/common.config.php  && \
 #   sed -ri -e 's!#PASSWORD#!jeedom!g' /app/core/config/common.config.php
 
-# Run the command on container startup
-CMD (crond -l -f 8 & ) && apache2-foreground
+# Run the cron on foreground
+CMD ["cron", "-f"]
