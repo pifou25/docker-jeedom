@@ -1,10 +1,13 @@
 # see tuto https://buzut.net/certbot-challenge-dns-ovh-wildcard/
-FROM python:3.7-buster
+FROM python:3.9-buster
 
-RUN pip3 install --no-cache-dir certbot certbot-dns-ovh
+RUN apt update && apt upgrade -y
+RUN apt install build-essential libssl-dev libffi-dev python3-dev cargo -y
+RUN pip install --no-cache-dir certbot certbot-dns-ovh
 
 WORKDIR /app
 COPY .ovhapi .ovhapi
+RUN chmod 600 .ovhapi
 
 VOLUME /etc/letsencrypt
 VOLUME /var/log/letsencrypt
