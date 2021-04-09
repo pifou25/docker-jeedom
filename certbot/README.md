@@ -6,7 +6,18 @@ voir le tuto https://buzut.net/certbot-challenge-dns-ovh-wildcard/
 
 il faut avoir son nom de domaine chez OVH, utiliser un jocker (wildcard), ouvrir les accès
  à l'API OVH, générer un fichier `.ovhapi` dans ce répertoire avec les tocken de ces accès.
- 
+
+# Docker-Compose
+
+Dans le répertoire /certbot: valoriser la variable DOMAIN puis lancer docker-compose dans la même ligne:
+
+```
+DOMAIN=my.domaine.com docker-compose up
+```
+
+Dans une stack existante, lancer ce service périodiquement pour renouveler les certificats enregistrés dans le répertoire /letsencrypt
+
+# Docker
 ## build
 ```
 docker build -t certbot .
