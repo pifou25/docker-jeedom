@@ -1,7 +1,7 @@
 ﻿# choix de la version debian:
 # stretch = debian 9 (les box smart & co)
 # buster = debian 10 (les DIY)
-FROM php:7.3-apache-buster
+FROM php:7.3-fpm-buster
 
 LABEL version="jeedom for debian buster"
 
@@ -51,8 +51,12 @@ RUN crontab /etc/cron.d/jeedom
 # volume for jeedom core github source	
 VOLUME /var/www/html
 
+# volume for backup
+# VOLUME /var/www/html/backup
+
 # Create the log file to be able to run tail
-RUN touch /var/www/html/log/cron.log
+RUN mkdir /var/www/html/log && \
+    touch /var/www/html/log/cron.log
 
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
@@ -69,4 +73,4 @@ RUN touch /var/www/html/log/cron.log
 #   sed -ri -e 's!#PASSWORD#!jeedom!g' /app/core/config/common.config.php
 
 # Run the cron on foreground
-CMD ["cron", "-f"]
+# CMD ["cron", "-f"]

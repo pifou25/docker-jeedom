@@ -8,7 +8,7 @@
 services:
 
     jeedom:
-        container_name: jeedom
+        container_name: fpm-jeedom
         build : ./
         privileged: false
         pid: "host"
@@ -25,9 +25,21 @@ services:
         #     - "/dev/ttyUSB1"
         #     - "/dev/ttyACM0"
         restart: unless-stopped
-        ports:
-            - "80:80"
+        volumes:
+          - ../jeedom:/var/www/html
+          - ../backup:/var/www/html/backup
 
+    nginx:
+      image: nginx:alpine
+      container_name: nginx-jeedom
+      working_dir: /application
+      volumes:
+          - ../jeedom:/application
+          - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      ports:
+       - "80:80"
+      restart: unless-stopped
+        
     db:
         container_name: db
         image: ghcr.io/linuxserver/mariadb
