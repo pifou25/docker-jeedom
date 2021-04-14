@@ -42,7 +42,7 @@ services:
         - /var/run/docker.sock:/var/run/docker.sock
         - ofelia.ini:/etc/ofelia/config.ini
       depends_on:
-        - fpm-jeedom
+        - jeedom
 
     nginx:
       image: nginx:alpine
