@@ -11,7 +11,7 @@ services:
         container_name: installing
         build: ./app
         volumes:
-          - ../jeedom:/app
+          - ./jeedom:/app
           
     jeedom:
         container_name: fpm-jeedom
@@ -32,8 +32,10 @@ services:
         #     - "/dev/ttyACM0"
         restart: unless-stopped
         volumes:
-          - ../jeedom:/var/www/html
-          - ../backup:/var/www/html/backup
+          - ./jeedom:/var/www/html
+          - ./backup:/var/www/html/backup
+        depends_on:
+          - installing
 
     # Scheduler Service
     scheduler:
@@ -50,7 +52,7 @@ services:
       container_name: nginx-jeedom
       working_dir: /application
       volumes:
-          - ../jeedom:/application
+          - ./jeedom:/application/public
           - ./nginx.conf:/etc/nginx/conf.d/default.conf
       ports:
        - "80:80"

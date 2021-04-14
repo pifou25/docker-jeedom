@@ -49,10 +49,11 @@ RUN chmod 0644 /etc/cron.d/jeedom
 RUN crontab /etc/cron.d/jeedom
 
 # volume for jeedom core github source	
+WORKDIR /var/www/html
 VOLUME /var/www/html
 
 # volume for backup
-# VOLUME /var/www/html/backup
+VOLUME /var/www/html/backup
 
 # Create the log file to be able to run tail
 RUN mkdir /var/www/html/log && \
@@ -62,7 +63,6 @@ RUN mkdir /var/www/html/log && \
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
 # RUN chmod +x /root/init.sh
 # CMD ["sh", "/root/init.sh"]
-
 
 #   prepare db config file:
 #   mv /app/core/config/common.config.sample.php /app/core/config/common.config.php && \
