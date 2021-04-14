@@ -7,6 +7,12 @@
 
 services:
 
+    installing:
+        container_name: installing
+        build: ./app
+        volumes:
+          - ../jeedom:/app
+          
     jeedom:
         container_name: fpm-jeedom
         build : ./
