@@ -35,6 +35,15 @@ services:
           - ../jeedom:/var/www/html
           - ../backup:/var/www/html/backup
 
+    # Scheduler Service
+    scheduler:
+      image: mcuadros/ofelia:latest
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - ofelia.ini:/etc/ofelia/config.ini
+      depends_on:
+        - fpm-jeedom
+
     nginx:
       image: nginx:alpine
       container_name: nginx-jeedom
