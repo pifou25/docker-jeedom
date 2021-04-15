@@ -1,4 +1,4 @@
-﻿version: '2'
+version: '2'
 
 #networks:
 #    default:
@@ -34,6 +34,7 @@ services:
         volumes:
           - ./jeedom:/var/www/html
           - ./backup:/var/www/html/backup
+          - ./log.conf:/usr/local/etc/php-fpm.d/zz-log.conf
         depends_on:
           - installing
 
