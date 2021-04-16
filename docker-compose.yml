@@ -15,7 +15,7 @@ services:
           
     jeedom:
         container_name: fpm-jeedom
-        build: ./
+        build: ./php
         privileged: false
         pid: "host"
         cap_add:
@@ -34,7 +34,6 @@ services:
         volumes:
           - ./jeedom:/var/www/html
           - ./backup:/var/www/html/backup
-          - ./log.conf:/usr/local/etc/php-fpm.d/zz-log.conf
         depends_on:
           - installing
 
@@ -59,7 +58,7 @@ services:
        - "80:80"
       restart: unless-stopped
       # debug mode:
-      command: [nginx-debug, "-g", "daemon off;"]
+      # command: [nginx-debug, "-g", "daemon off;"]
         
     db:
         container_name: db
