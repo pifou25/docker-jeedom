@@ -48,7 +48,7 @@ services:
         - jeedom
 
     nginx:
-      image: nginx:alpine
+      image: nginx:1.19-alpine
       container_name: nginx-jeedom
       working_dir: /var/www/html
       volumes:
@@ -59,6 +59,10 @@ services:
       restart: unless-stopped
       # debug mode:
       # command: [nginx-debug, "-g", "daemon off;"]
+      healthcheck:
+        test: ["CMD-SHELL", "wget -O /dev/null http://localhost/here.html || exit 1"]
+        timeout: 10s
+      
         
     db:
         container_name: db
