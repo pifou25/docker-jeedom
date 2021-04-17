@@ -75,10 +75,15 @@ services:
           - PGID=1000
           - MYSQL_ROOT_PASSWORD=admin
           - TZ=Europe/Paris
+          - MYSQL_ALLOW_EMPTY_PASSWORD=yes
           - MYSQL_DATABASE=jeedom #optional
           - MYSQL_USER=jeedom #optional
           - MYSQL_PASSWORD=jeedom #optional
-          # - REMOTE_SQL=http://URL1/your.sql,https://URL2/your.sql #optional
+        healthcheck:
+            test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+            timeout: 20s
+            retries: 10
+        # - REMOTE_SQL=http://URL1/your.sql,https://URL2/your.sql #optional
         volumes:
             - ./db:/config
         ports:
