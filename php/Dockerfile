@@ -53,6 +53,10 @@ VOLUME /var/www/html/backup
 RUN mkdir /var/www/html/log && \
     touch /var/www/html/log/cron.log
 
+# Health check for the FPM server on port 9000.
+HEALTHCHECK --interval=30s --timeout=5s \
+        CMD REDIRECT_STATUS=true SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000
+
 # Initialisation 
 # ADD install/OS_specific/Docker/init.sh /root/init.sh
 # RUN chmod +x /root/init.sh
