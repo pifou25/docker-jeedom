@@ -36,6 +36,10 @@ services:
           - ./backup:/var/www/html/backup
         depends_on:
           - installing
+      healthcheck:
+        test: ["CMD-SHELL", "curl -so /tmp/status http://nginx-jeedom/status || exit 1"]
+        timeout: 10s
+
 
     # Scheduler Service
     scheduler:
@@ -46,6 +50,7 @@ services:
         - ./ofelia.ini:/etc/ofelia/config.ini
       depends_on:
         - jeedom
+
 
     nginx:
       image: nginx:alpine
@@ -62,8 +67,8 @@ services:
       healthcheck:
         test: ["CMD-SHELL", "curl -so /dev/null http://localhost/here.html || exit 1"]
         timeout: 10s
-      
-        
+
+
     db:
         container_name: db
         image: ghcr.io/linuxserver/mariadb
@@ -88,6 +93,7 @@ services:
             - ./db:/config
         ports:
             - 3306:3306
+
 
     adminer:
         container_name: adminer
