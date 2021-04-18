@@ -1,9 +1,7 @@
-version: '2'
+version: '2.1'
 
-#networks:
-#    default:
-#        external:
-#             name: local_net
+networks:
+  local_net:
 
 services:
 
@@ -36,9 +34,11 @@ services:
           - ./backup:/var/www/html/backup
         depends_on:
           - installing
-      healthcheck:
-        test: ["CMD-SHELL", "curl -so /tmp/status http://nginx-jeedom/status || exit 1"]
-        timeout: 10s
+        healthcheck:
+          test: ["CMD-SHELL", "curl -so /tmp/status http://nginx-jeedom/status || exit 1"]
+          timeout: 10s
+        networks:
+          - local_net
 
 
     # Scheduler Service
@@ -67,6 +67,8 @@ services:
       healthcheck:
         test: ["CMD-SHELL", "curl -so /dev/null http://localhost/here.html || exit 1"]
         timeout: 10s
+      networks:
+        - local_net
 
 
     db:
@@ -93,6 +95,8 @@ services:
             - ./db:/config
         ports:
             - 3306:3306
+        networks:
+            - local_net
 
 
     adminer:
