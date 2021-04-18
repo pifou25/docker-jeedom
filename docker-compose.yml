@@ -60,7 +60,7 @@ services:
       # debug mode:
       # command: [nginx-debug, "-g", "daemon off;"]
       healthcheck:
-        test: ["CMD-SHELL", "curl -so /dev/null http://localhost/ || exit 1"]
+        test: ["CMD-SHELL", "curl -so /dev/null http://localhost/here.html || exit 1"]
         timeout: 10s
       
         
