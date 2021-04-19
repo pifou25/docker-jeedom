@@ -1,4 +1,4 @@
-version: '2.1'
+version: '2.3'
 
 networks:
   local_net:
@@ -36,7 +36,10 @@ services:
           - installing
         healthcheck:
           test: ["CMD-SHELL", "curl -so /tmp/status http://nginx-jeedom/status || exit 1"]
-          timeout: 10s
+          interval: 1m30s
+          retries: 3
+          start_period: 40s
+          timeout: 20s
         networks:
           - local_net
 
@@ -66,7 +69,10 @@ services:
       # command: [nginx-debug, "-g", "daemon off;"]
       healthcheck:
         test: ["CMD-SHELL", "curl -so /dev/null http://localhost/here.html || exit 1"]
-        timeout: 10s
+        interval: 1m30s
+        retries: 3
+        start_period: 40s
+        timeout: 20s
       networks:
         - local_net
 
@@ -87,9 +93,11 @@ services:
           - MYSQL_USER=jeedom #optional
           - MYSQL_PASSWORD=jeedom #optional
         healthcheck:
-            test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-            timeout: 20s
-            retries: 10
+          test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+          interval: 1m30s
+          retries: 3
+          start_period: 40s
+          timeout: 20s
         # - REMOTE_SQL=http://URL1/your.sql,https://URL2/your.sql #optional
         volumes:
             - ./db:/config
