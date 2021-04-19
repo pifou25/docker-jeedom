@@ -10,6 +10,7 @@ services:
         build: ./app
         volumes:
           - ./jeedom:/app
+          - /etc/timezone:/etc/timezone:ro
           
     jeedom:
         container_name: fpm-jeedom
@@ -32,6 +33,7 @@ services:
         volumes:
           - ./jeedom:/var/www/html
           - ./backup:/var/www/html/backup
+          - /etc/timezone:/etc/timezone:ro
         depends_on:
           - installing
         healthcheck:
@@ -51,6 +53,7 @@ services:
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
         - ./ofelia.ini:/etc/ofelia/config.ini
+        - /etc/timezone:/etc/timezone:ro
       depends_on:
         - jeedom
 
@@ -62,6 +65,7 @@ services:
       volumes:
           - ./jeedom:/var/www/html
           - ./nginx.conf:/etc/nginx/conf.d/default.conf
+          - /etc/timezone:/etc/timezone:ro
       ports:
        - "80:80"
       restart: unless-stopped
@@ -101,6 +105,7 @@ services:
         # - REMOTE_SQL=http://URL1/your.sql,https://URL2/your.sql #optional
         volumes:
             - ./db:/config
+            - /etc/timezone:/etc/timezone:ro
         ports:
             - 3306:3306
         networks:
