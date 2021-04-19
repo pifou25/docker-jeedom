@@ -13,7 +13,7 @@ services:
           - /etc/timezone:/etc/timezone:ro
           
     jeedom:
-        container_name: fpm-jeedom
+        container_name: jeedom
         build: ./php
         privileged: false
         pid: "host"
@@ -37,7 +37,7 @@ services:
         depends_on:
           - installing
         healthcheck:
-          test: ["CMD-SHELL", "curl -so /tmp/status http://nginx-jeedom/status || exit 1"]
+          test: ["CMD-SHELL", "curl -so /tmp/status http://nginx/status || exit 1"]
           interval: 1m30s
           retries: 3
           start_period: 40s
@@ -60,7 +60,7 @@ services:
 
     nginx:
       image: nginx:alpine
-      container_name: nginx-jeedom
+      container_name: nginx
       working_dir: /var/www/html
       volumes:
           - ./jeedom:/var/www/html
