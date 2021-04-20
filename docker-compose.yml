@@ -5,103 +5,103 @@ networks:
 
 services:
 
-    installing:
-        container_name: installing
-        build: ./app
-        volumes:
-          - ./jeedom:/app
-          - /etc/timezone:/etc/timezone:ro
-          
-    jeedom:
-        container_name: jeedom
-        build: ./php
-        privileged: false
-        pid: "host"
-        cap_add:
-             - SYS_PTRACE
-        # tty: true
-        hostname: jeedom
-        #mac_address: a0:ca:ab:cd:ef:02
-        #networks:
-        #     default:
-        #        ipv4_address: 192.168.1.11
-        # devices:
-        #     - "/dev/ttyUSB0"
-        #     - "/dev/ttyUSB1"
-        #     - "/dev/ttyACM0"
-        restart: unless-stopped
-        volumes:
-          - ./jeedom:/var/www/html
-          - ./backup:/var/www/html/backup
-          - /etc/timezone:/etc/timezone:ro
-        depends_on:
-          - installing
-        healthcheck:
-          test: ["CMD-SHELL", "curl -so /tmp/status http://nginx/status || exit 1"]
-          interval: 1m30s
-          retries: 3
-          start_period: 40s
-          timeout: 20s
-        networks:
-          - local_net
-
-
-    # Scheduler Service
-    scheduler:
-      image: mcuadros/ofelia:latest
-      container_name: ofelia
+  installing:
+      container_name: installing
+      build: ./app
       volumes:
-        - /var/run/docker.sock:/var/run/docker.sock
-        - ./ofelia.ini:/etc/ofelia/config.ini
+        - ./jeedom:/app
+        - /etc/timezone:/etc/timezone:ro
+          
+  jeedom:
+      container_name: jeedom
+      build: ./php
+      privileged: false
+      pid: "host"
+      cap_add:
+           - SYS_PTRACE
+      # tty: true
+      hostname: jeedom
+      #mac_address: a0:ca:ab:cd:ef:02
+      #networks:
+      #     default:
+      #        ipv4_address: 192.168.1.11
+      # devices:
+      #     - "/dev/ttyUSB0"
+      #     - "/dev/ttyUSB1"
+      #     - "/dev/ttyACM0"
+      restart: unless-stopped
+      volumes:
+        - ./jeedom:/var/www/html
+        - ./backup:/var/www/html/backup
         - /etc/timezone:/etc/timezone:ro
       depends_on:
-        - jeedom
-
-
-    nginx:
-      image: nginx:alpine
-      container_name: nginx
-      working_dir: /var/www/html
-      volumes:
-          - ./jeedom:/var/www/html
-          - ./nginx.conf:/etc/nginx/conf.d/default.conf
-          - /etc/timezone:/etc/timezone:ro
-      # ports:
-      #  - "80:80"
-      restart: unless-stopped
-      # debug mode:
-      # command: [nginx-debug, "-g", "daemon off;"]
+        - installing
       healthcheck:
-        test: ["CMD-SHELL", "curl -so /dev/null http://localhost/here.html || exit 1"]
+        test: ["CMD-SHELL", "curl -so /tmp/status http://nginx/status || exit 1"]
         interval: 1m30s
         retries: 3
         start_period: 40s
         timeout: 20s
+      networks:
+        - local_net
+
+
+    # Scheduler Service
+  scheduler:
+    image: mcuadros/ofelia:latest
+    container_name: ofelia
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./ofelia.ini:/etc/ofelia/config.ini
+      - /etc/timezone:/etc/timezone:ro
+    depends_on:
+      - jeedom
+
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    working_dir: /var/www/html
+    volumes:
+        - ./jeedom:/var/www/html
+        - ./nginx.conf:/etc/nginx/conf.d/default.conf
+        - /etc/timezone:/etc/timezone:ro
+      # ports:
+      #  - "80:80"
+    restart: unless-stopped
+      # debug mode:
+      # command: [nginx-debug, "-g", "daemon off;"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -so /dev/null http://localhost/here.html || exit 1"]
+      interval: 1m30s
+      retries: 3
+      start_period: 40s
+      timeout: 20s
       # networks:
       #   - local_net
-      labels:
-        - "traefik.http.routers.nginx.rule=Host(`home.nico.si`)"
+    labels:
+      - "traefik.http.routers.nginx.rule=Host(`home.nico.si`)"
 
 
-    db:
-        container_name: db
-        image: ghcr.io/linuxserver/mariadb
-        restart: unless-stopped
+  db:
+    container_name: db
+    image: ghcr.io/linuxserver/mariadb
+    restart: unless-stopped
         # env_file:
         #     - ./.env
-        environment:
-          - PUID=1000
-          - PGID=1000
-          - MYSQL_ROOT_PASSWORD=admin
-          - TZ=Europe/Paris
-          - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-          - MYSQL_DATABASE=jeedom #optional
-          - MYSQL_USER=jeedom #optional
-          - MYSQL_PASSWORD=jeedom #optional
-        healthcheck:
-          test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-          interval: 1m30s
-          retries: 3
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MYSQL_ROOT_PASSWORD=admin
+      - TZ=Europe/Paris
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_DATABASE=jeedom #optional
+      - MYSQL_USER=jeedom #optional
+      - MYSQL_PASSWORD=jeedom #optional
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 1m30s
+      retries: 3
           start_period: 40s
           timeout: 20s
         # - REMOTE_SQL=http://URL1/your.sql,https://URL2/your.sql #optional
@@ -114,11 +114,24 @@ services:
             - local_net
 
 
-    adminer:
-        container_name: adminer
-        image: adminer
-        # ports:
-        #     - "8080:80"
-        labels:
-        - "traefik.http.routers.adminer.rule=Host(`db.nico.si`)"
+  adminer:
+    container_name: adminer
+    image: adminer
+      # ports:
+      #     - "8080:80"
+    labels:
+      - "traefik.http.routers.adminer.rule=Host(`db.nico.si`)"
 
+  reverse-proxy:
+    # The official v2 Traefik docker image
+    image: traefik:v2.4
+    # Enables the web UI and tells Traefik to listen to docker
+    command: --api.insecure=true --providers.docker
+    ports:
+      # The HTTP port
+      - "80:80"
+      # The Web UI (enabled by --api.insecure=true)
+      - "8080:8080"
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
