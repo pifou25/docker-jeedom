@@ -67,7 +67,7 @@ services:
           - ./nginx.conf:/etc/nginx/conf.d/default.conf
           - /etc/timezone:/etc/timezone:ro
       ports:
-       - "80:80"
+       - 80:80
       restart: unless-stopped
       # debug mode:
       # command: [nginx-debug, "-g", "daemon off;"]
@@ -79,7 +79,10 @@ services:
         timeout: 20s
       networks:
         - local_net
-
+      logging:
+        options:
+          max-size: "10m"
+          max-file: "3"
 
     db:
         container_name: db
@@ -116,4 +119,18 @@ services:
         container_name: adminer
         image: adminer
         ports:
-            - "8080:80"
+            - 8080:80
+
+    portainer:
+        container_name: portainer
+        image: portainer/portainer-ce
+        privileged: true
+        ports:
+            - 8000:8000
+            - 9000:9000
+        restart: unless-stopped
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - ./portainer:/data
+        networks:
+            - local_net
