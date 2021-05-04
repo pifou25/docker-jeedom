@@ -119,7 +119,7 @@ services:
         container_name: adminer
         image: adminer
         ports:
-            - 8080:80
+            - 8080:8080
 
     portainer:
         container_name: portainer
@@ -134,3 +134,34 @@ services:
             - ./portainer:/data
         networks:
             - local_net
+
+    zwave:
+      container_name: zwave
+      image: zwavejs/zwavejs2mqtt
+      ports:
+        - 3000:3000
+        - 8091:8091
+      devices:
+      #  - "/dev/ttyUSB0"
+      #  - "/dev/ttyUSB1"
+        - "/dev/ttyACM0"
+      volumes:
+        - ./zwave:/usr/src/app/store
+      networks:
+        - local_net
+
+
+    mqtt:
+      image: eclipse-mosquitto
+      container_name: mqtt
+      ports:
+        - 1883:1883 #Uniquement si besoin d'avoir le port exposé
+      restart: unless-stopped
+      healthcheck:
+        test: "mosquitto_sub -t '$$SYS/#' -C 1 | grep -v Error || exit 1"
+        interval: 5s
+        timeout: 5s
+        retries: 3
+      networks:
+        - local_net
+
