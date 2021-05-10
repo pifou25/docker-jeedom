@@ -1,7 +1,7 @@
 ﻿# choix de la version debian:
 # stretch = debian 9 (les box smart & co)
 # buster = debian 10 (les DIY)
-FROM php:5-apache-stretch
+FROM php:7.3-apache-buster
 
 LABEL version="jeedom for debian buster"
 
@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y \
 # add php extension
     docker-php-ext-install pdo pdo_mysql zip && \
 # add the jeedom cron task
-	echo "* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null\n" > /etc/cron.d/jeedom && \
+#	echo "* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null\n" > /etc/cron.d/jeedom && \
 # add sudo for www-data
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
@@ -45,7 +45,7 @@ RUN python -m pip install future fasteners && \
 
 
 # Apply cron job
-RUN crontab /etc/cron.d/jeedom
+# RUN crontab /etc/cron.d/jeedom
 
 # choix de la version jeedom:
 # master = 3.xx (valeur par défaut)
@@ -65,16 +65,10 @@ RUN wget https://github.com/jeedom/core/archive/${jeedom_version}.zip -O /tmp/je
 # for beta: remove anoying .htaccess
 RUN rm /var/www/html/install/.htaccess
 
-# use supervisor
-COPY supervisord.conf /etc/supervisor/supervisord.conf
-
 # Create the log file to be able to run tail
-RUN touch /var/www/html/log/cron.log
+# RUN touch /var/www/html/log/cron.log
 
-# USER www-data:www-data
-# USER root
-
-VOLUME  /var/www/html/backup
+VOLUME  /var/www/html
 
 # try restore backup if exist
 # RUN php install/restore.php
@@ -102,4 +96,4 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
     >> /etc/bash.bashrc
 
 # run supervisor 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+# CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]

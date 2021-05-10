@@ -26,7 +26,7 @@ services:
         #     - "/dev/ttyACM0"
         restart: unless-stopped
         volumes:
-          - ./backup:/var/www/html/backup
+          - ../jeedom:/var/www/html
         ports:
             - "80:80"
 
