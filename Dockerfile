@@ -15,6 +15,7 @@ LABEL version="jeedom for debian buster"
 
 RUN apt-get update && apt-get install -y \
 	apt-utils \
+	net-tools \
 	wget \
 	ntp \
 	locales \
