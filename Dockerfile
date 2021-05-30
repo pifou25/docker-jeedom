@@ -69,6 +69,10 @@ RUN rm /var/www/html/install/.htaccess
 # Create the log file to be able to run tail
 # RUN touch /var/www/html/log/cron.log
 
+# install composer for dependancies
+COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+RUN composer install
+
 VOLUME  /var/www/html
 
 # try restore backup if exist
