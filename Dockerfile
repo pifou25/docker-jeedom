@@ -1,7 +1,4 @@
-﻿# choix de la version debian:
-# stretch = debian 9 (les box smart & co)
-# buster = debian 10 (les DIY)
-FROM php:7.3-apache-buster
+﻿FROM php:7.3-apache-buster
 
 LABEL version="jeedom for debian buster"
 
@@ -50,18 +47,21 @@ RUN python -m pip install future fasteners && \
 
 # choix de la version jeedom:
 # master = 3.xx (valeur par défaut)
-# V4-stable
-# alpha = v4.1
-ARG jeedom_version=V4-stable
+# V4-stable = v4.1
+# alpha = v4.2
+ARG jeedom_version=composer
 
 # choix du download direct
-RUN wget https://github.com/jeedom/core/archive/${jeedom_version}.zip -O /tmp/jeedom.zip && \
-    mkdir -p /var/www/html && \
-    unzip -q /tmp/jeedom.zip -d /root/ && \
-    cp -R /root/core-*/* /var/www/html && \
-    cp -R /root/core-*/.[^.]* /var/www/html && \
-    rm -rf /root/core-* > /dev/null 2>&1 && \
-    rm /tmp/jeedom.zip
+# RUN wget https://github.com/jeedom/core/archive/${jeedom_version}.zip -O /tmp/jeedom.zip && \
+#    mkdir -p /var/www/html && \
+#    unzip -q /tmp/jeedom.zip -d /root/ && \
+#    cp -R /root/core-*/* /var/www/html && \
+#    cp -R /root/core-*/.[^.]* /var/www/html && \
+#    rm -rf /root/core-* > /dev/null 2>&1 && \
+#    rm /tmp/jeedom.zip
+
+WORKDIR /var/www/html
+RUN git clone https://github.com/pifou25/jeedom-core.git -b ${jeedom_version} /var/www/html
 
 # for beta: remove anoying .htaccess
 RUN rm /var/www/html/install/.htaccess
