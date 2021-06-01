@@ -61,7 +61,7 @@ ARG jeedom_version=composer
 #    rm /tmp/jeedom.zip
 
 WORKDIR /var/www/html
-RUN git clone https://github.com/pifou25/jeedom-core.git -b ${jeedom_version} /var/www/html
+RUN git clone https://github.com/pifou25/jeedom-core.git --single-branch --no-tags -b ${jeedom_version} /var/www/html
 
 # for beta: remove anoying .htaccess
 RUN rm /var/www/html/install/.htaccess
