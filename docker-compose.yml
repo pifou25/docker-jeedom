@@ -10,15 +10,16 @@ services:
         build: ./app
         volumes:
           - ./jeedom:/app
-          - /etc/timezone:/etc/timezone:ro
-          
+
     jeedom:
         container_name: jeedom
         build: ./php
         privileged: false
         pid: "host"
+        environment:
+          - TZ=Europe/Paris
         cap_add:
-             - SYS_PTRACE
+          - SYS_PTRACE
         # tty: true
         hostname: jeedom
         #mac_address: a0:ca:ab:cd:ef:02
@@ -33,7 +34,6 @@ services:
         volumes:
           - ./jeedom:/var/www/html
           - ./backup:/var/www/html/backup
-          - /etc/timezone:/etc/timezone:ro
         depends_on:
           - installing
         healthcheck:
@@ -53,7 +53,6 @@ services:
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
         - ./ofelia.ini:/etc/ofelia/config.ini
-        - /etc/timezone:/etc/timezone:ro
       depends_on:
         - jeedom
 
@@ -65,12 +64,13 @@ services:
       volumes:
           - ./jeedom:/var/www/html
           - ./nginx.conf:/etc/nginx/conf.d/default.conf
-          - /etc/timezone:/etc/timezone:ro
       ports:
        - 80:80
       restart: unless-stopped
       # debug mode:
       # command: [nginx-debug, "-g", "daemon off;"]
+      environment:
+        - TZ=Europe/Paris
       healthcheck:
         test: ["CMD-SHELL", "curl -so /dev/null http://localhost/here.html || exit 1"]
         interval: 1m30s
@@ -91,10 +91,10 @@ services:
         # env_file:
         #     - ./.env
         environment:
+          - TZ=Europe/Paris
           - PUID=1000
           - PGID=1000
           - MYSQL_ROOT_PASSWORD=admin
-          - TZ=Europe/Paris
           - MYSQL_ALLOW_EMPTY_PASSWORD=yes
           - MYSQL_DATABASE=jeedom #optional
           - MYSQL_USER=jeedom #optional
@@ -108,7 +108,6 @@ services:
         # - REMOTE_SQL=http://URL1/your.sql,https://URL2/your.sql #optional
         volumes:
             - ./db:/config
-            - /etc/timezone:/etc/timezone:ro
         ports:
             - 3306:3306
         networks:
@@ -125,6 +124,8 @@ services:
         container_name: portainer
         image: portainer/portainer-ce
         privileged: true
+        environment:
+          - TZ=Europe/Paris
         ports:
             - 8000:8000
             - 9000:9000
@@ -164,4 +165,3 @@ services:
         retries: 3
       networks:
         - local_net
-
