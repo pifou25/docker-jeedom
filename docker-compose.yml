@@ -16,6 +16,8 @@ services:
              - SYS_PTRACE
         # tty: true
         hostname: jeedom
+        environment:
+          - TZ=Europe/Paris
         #mac_address: a0:ca:ab:cd:ef:02
         #networks:
         #     default:
