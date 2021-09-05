@@ -48,7 +48,7 @@ services:
 
     # Scheduler Service
     scheduler:
-      image: mcuadros/ofelia:latest
+      image: ofelia
       container_name: ofelia
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
@@ -119,7 +119,7 @@ services:
         container_name: adminer
         image: adminer
         ports:
-            - 8080:8080
+          - 8080:8080
 
     portainer:
         container_name: portainer
