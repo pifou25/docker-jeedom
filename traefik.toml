@@ -1,6 +1,6 @@
 [entryPoints]
   [entryPoints.http]
-  address = ":80"
+  address = "0.0.0.0:80"
   [entryPoints.https]
   address = ":443"
 
