@@ -35,6 +35,7 @@ services:
         - ./backup:/var/www/html/backup
       depends_on:
         - installing
+        - db
       healthcheck:
         test: ["CMD-SHELL", "curl -so /dev/null http://localhost/here.html || exit 1"]
         interval: 1m30s
@@ -43,16 +44,15 @@ services:
         timeout: 20s
       networks:
         - local_net
-      ports:
-        - 8084:80
       labels:
         - "traefik.http.routers.jeedom.rule=Host(`home.nico.si`)"
-        - "traefik.http.services.jeedom.loadbalancer.server.port=8084"
 
 
   # Scheduler Service
   scheduler:
-    image: mcuadros/ofelia:latest
+    # image built from https://github.com/mcuadros/ofelia
+    image: ofelia
+    # image: mcuadros/ofelia:latest
     container_name: ofelia
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -61,6 +61,8 @@ services:
       - jeedom
     environment:
       - TZ=Europe/Paris
+    networks:
+      - local_net
 
 
   db:
@@ -84,7 +86,6 @@ services:
       retries: 3
       start_period: 40s
       timeout: 20s
-        # - REMOTE_SQL=http://URL1/your.sql,https://URL2/your.sql #optional
     volumes:
       - ./db:/config
       - /etc/timezone:/etc/timezone:ro
@@ -97,11 +98,9 @@ services:
   adminer:
     container_name: adminer
     image: adminer
-    ports:
-      - "8081:8080"
+    restart: unless-stopped
     labels:
       - "traefik.http.routers.adminer.rule=Host(`db.nico.si`)"
-      - "traefik.http.services.adminer.loadbalancer.server.port=8081"
     networks:
       - local_net
 
@@ -113,7 +112,7 @@ services:
     environment:
       - TZ=Europe/Paris
     ports:
-      - 8083:8000
+      - 8000:8000
       - 9000:9000
     restart: unless-stopped
     volumes:
@@ -123,9 +122,9 @@ services:
       - local_net
     labels:
       - "traefik.http.routers.portainer.rule=Host(`portainer.nico.si`)"
-      - "traefik.http.services.portainer.loadbalancer.server.port=8083"
-      # - "traefik.http.routers.portadm.rule=Host(`portadm.nico.si`)"
-      # - "traefik.http.services.portadm.loadbalancer.server.port=9000"
+      #- "traefik.http.services.portainer.loadbalancer.server.port=8000"
+      #- "traefik.http.routers.portadm.rule=Host(`portadm.nico.si`)"
+      - "traefik.http.services.portadm.loadbalancer.server.port=9000"
 
 
   homebridge:
@@ -138,14 +137,11 @@ services:
       - PGID=1000
       - PUID=1000
       - HOMEBRIDGE_CONFIG_UI=1
-      - HOMEBRIDGE_CONFIG_UI_PORT=8082
-    ports:
-      - 8082:8082
+      - HOMEBRIDGE_CONFIG_UI_PORT=8581
     volumes:
       - ./homebridge:/homebridge
     labels:
       - "traefik.http.routers.homebridge.rule=Host(`homebridge.nico.si`)"
-      - "traefik.http.services.homebridge.loadbalancer.server.port=8082"
     networks:
       - local_net
 
@@ -160,12 +156,50 @@ services:
       - local_net
 
 
+
+  zwave:
+    container_name: zwave
+    image: zwavejs/zwavejs2mqtt
+    ports:
+      - 3000:3000
+      - 8091:8091
+    devices:
+    #  - "/dev/ttyUSB0"
+    #  - "/dev/ttyUSB1"
+      - "/dev/ttyACM0"
+    volumes:
+      - ./zwave:/usr/src/app/store
+    depends_on:
+      - mqtt
+    networks:
+      - local_net
+    labels:
+      - "traefik.http.routers.zwave.rule=Host(`zwave.nico.si`)"
+
+
+  mqtt:
+    image: eclipse-mosquitto
+    container_name: mqtt
+    ports:
+      - 1883:1883 #Uniquement si besoin d'avoir le port exposé
+    restart: unless-stopped
+    healthcheck:
+      test: "mosquitto_sub -t '$$SYS/#' -C 1 | grep -v Error || exit 1"
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - local_net
+    labels:
+      - "traefik.http.routers.mqtt.rule=Host(`mqtt.nico.si`)"
+
+
   reverse-proxy:
     # The official v2 Traefik docker image
-    image: traefik:v2.4
+    image: traefik:v2.5
     container_name: traefik
     # Enables the web UI and tells Traefik to listen to docker
-    command: --api.insecure=true --providers.docker
+    command: --api.insecure=true --providers.docker --log.level=DEBUG
     environment:
       - TZ=Europe/Paris
     ports:
@@ -178,5 +212,51 @@ services:
     volumes:
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - local_net
+    # Dynamic Configuration
+    labels:
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.nico.si`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      # - "traefik.http.routers.dashboard.middlewares=auth"
+      # - "traefik.http.middlewares.auth.basicauth.users=test:$$apr1$$H6uskkkW$$IgXLP6ewTrSuBkTrqE8wj/,test2:$$apr1$$d9hr9HBB$$4HxwgUir3HP4EsggP/QNo0"
+
+
+  elasticsearch:
+    image: "docker.elastic.co/elasticsearch/elasticsearch:7.2.0"
+    restart: unless-stopped
+    environment:
+        - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+        - "discovery.type=single-node"
+    ports:
+        - "9200:9200"
+    volumes:
+        - ./elasticsearch:/usr/share/elasticsearch/data
+    networks:
+      - local_net
+
+
+  kibana:
+    image: "docker.elastic.co/kibana/kibana:7.2.0"
+    restart: unless-stopped
+    depends_on:
+      - filebeat
+      - elasticsearch
+    ports:
+        - "5601:5601"
+    labels:
+      - "traefik.http.routers.kibana.rule=Host(`kibana.nico.si`)"
+    networks:
+      - local_net
+
+
+  filebeat:
+    image: "docker.elastic.co/beats/filebeat:7.2.0"
+    restart: unless-stopped
+    user: root
+    volumes:
+        - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+        - /var/lib/docker:/var/lib/docker:ro
+        - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - local_net

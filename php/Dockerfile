@@ -3,7 +3,7 @@
 # buster = debian 10 (les DIY)
 FROM php:7.3-apache-buster
 
-LABEL version="jeedom for debian buster"
+LABEL com.jeedom.version="Jeedom v4.2 for Debian Buster + PHP7.3"
 
 # Installation des paquets
 # 	ccze          : couleur pour les logs

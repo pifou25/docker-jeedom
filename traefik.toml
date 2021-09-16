@@ -8,3 +8,21 @@
 
 [providers.docker]
   endpoint = "unix:///var/run/docker.sock"
+  watch = true
+
+[log]
+  level = "DEBUG"
+
+## Dynamic configuration
+[http.routers]
+  [http.routers.Router-1]
+    # won't listen to entry point web
+    entryPoints = ["http", "https"]
+    rule = "Host(`jeedom.nico.si`)"
+    service = "jeedomprod"
+
+## Dynamic configuration
+[http.services]
+  [http.services.jeedomprod.loadBalancer]
+    [[http.services.jeedomprod.loadBalancer.servers]]
+      url = "http://192.168.1.25:80"
