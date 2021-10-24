@@ -49,7 +49,7 @@ RUN python -m pip install future fasteners && \
 # master = 3.xx (valeur par défaut)
 # V4-stable = v4.1
 # alpha = v4.2
-ARG jeedom_version=composer
+ARG jeedom_version=beta
 
 # choix du download direct
 # RUN wget https://github.com/jeedom/core/archive/${jeedom_version}.zip -O /tmp/jeedom.zip && \
@@ -61,10 +61,14 @@ ARG jeedom_version=composer
 #    rm /tmp/jeedom.zip
 
 WORKDIR /var/www/html
-RUN git clone https://github.com/pifou25/jeedom-core.git --single-branch --no-tags -b ${jeedom_version} /var/www/html
+VOLUME  /var/www/html
+
+RUN git clone https://github.com/jeedom/core.git --single-branch --no-tags -b ${jeedom_version} /var/www/html
 
 # for beta: remove anoying .htaccess
 RUN rm /var/www/html/install/.htaccess
+# for beta: remove deny to the install directory
+RUN sed -i -r '/install/d' .htaccess
 
 # Create the log file to be able to run tail
 # RUN touch /var/www/html/log/cron.log
@@ -72,8 +76,6 @@ RUN rm /var/www/html/install/.htaccess
 # install composer for dependancies
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 RUN composer install
-
-VOLUME  /var/www/html
 
 # try restore backup if exist
 # RUN php install/restore.php
