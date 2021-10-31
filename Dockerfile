@@ -104,3 +104,8 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
 
 # run supervisor 
 # CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
+# install xdebug
+RUN pecl install redis-5.3.4 \
+	&& pecl install xdebug-3.0.4 \
+	&& docker-php-ext-enable redis xdebug
