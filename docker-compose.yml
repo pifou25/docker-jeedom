@@ -57,8 +57,9 @@ services:
     ports:
       - 3306:3306
 
-  adminer:
-    container_name: adminer
-    image: adminer
-    ports:
-        - "8080:8080"
+  phpmyadmin:
+    image: phpmyadmin
+    restart: unless-stopped
+    environment:
+      - PMA_HOST=db
+      - TZ=Europe/Paris

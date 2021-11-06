@@ -106,6 +106,18 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
 # CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
 # install xdebug
+# COPY php.ini /usr/local/etc/php/php.ini
 RUN pecl install redis-5.3.4 \
 	&& pecl install xdebug-3.0.4 \
 	&& docker-php-ext-enable redis xdebug
+
+# Add Xdebug to PHP configuration
+RUN echo "" >> /usr/local/etc/php/php.ini \
+ && echo "[xdebug]" >> /usr/local/etc/php/php.ini \
+ && echo "zend_extension = /usr/local/lib/php/extensions/no-debug-non-zts-20180731/xdebug.so" >> /usr/local/etc/php/php.ini \
+ && echo "xdebug.mode = debug,profile,trace" >> /usr/local/etc/php/php.ini \
+ && echo "xdebug.log = ""/var/www/html/xdebug""" >> /usr/local/etc/php/php.ini \
+ && echo "xdebug.start_with_request = yes" >> /usr/local/etc/php/php.ini \
+ && echo "xdebug.discover_client_host = 0" >> /usr/local/etc/php/php.ini \
+ && echo "xdebug.client_port = 9003" >> /usr/local/etc/php/php.ini \
+ && echo "xdebug.client_host=192.168.1.4" >> /usr/local/etc/php/php.ini
