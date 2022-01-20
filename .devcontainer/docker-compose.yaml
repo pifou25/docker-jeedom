@@ -43,7 +43,7 @@ services:
     volumes:
       - ../volumes/mariadb:/var/lib/mysql
     environment:
-      MYSQL_ROOT_PASSWORD: root_password
+      MARIADB_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: jeedom
       MYSQL_USER: jeedom
       MYSQL_PASSWORD: jeedom_password
