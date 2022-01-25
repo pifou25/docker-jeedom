@@ -49,7 +49,7 @@ RUN python -m pip install future fasteners && \
 # master = 3.xx (valeur par défaut)
 # V4-stable = v4.1
 # alpha = v4.2
-ARG jeedom_version=beta
+# ARG jeedom_version=beta
 
 # choix du download direct
 # RUN wget https://github.com/jeedom/core/archive/${jeedom_version}.zip -O /tmp/jeedom.zip && \
@@ -63,8 +63,6 @@ ARG jeedom_version=beta
 WORKDIR /var/www/html
 VOLUME  /var/www/html
 
-RUN git clone https://github.com/jeedom/core.git --single-branch --no-tags -b ${jeedom_version} /var/www/html
-
 # for beta: remove anoying .htaccess
 RUN rm /var/www/html/install/.htaccess
 # for beta: remove deny to the install directory
@@ -74,8 +72,8 @@ RUN sed -i -r '/install/d' .htaccess
 # RUN touch /var/www/html/log/cron.log
 
 # install composer for dependancies
-COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
-RUN composer install
+# COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+# RUN composer install
 
 # try restore backup if exist
 # RUN php install/restore.php
@@ -101,9 +99,6 @@ RUN composer install
 COPY motd /etc/jmotd
 RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd && cat /etc/jmotd' \
     >> /etc/bash.bashrc
-
-# run supervisor 
-# CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
 # install xdebug
 # COPY php.ini /usr/local/etc/php/php.ini

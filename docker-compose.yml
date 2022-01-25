@@ -15,31 +15,18 @@ services:
   jeedom:
     container_name: jeedom
     build : ./
-    privileged: false
-    pid: "host"
-    cap_add:
-      - SYS_PTRACE
-    # tty: true
     hostname: jeedom
     environment:
       - TZ=Europe/Paris
-    #mac_address: a0:ca:ab:cd:ef:02
-    #networks:
-    #     default:
-    #        ipv4_address: 192.168.1.11
-    # devices:
-    #     - "/dev/ttyUSB0"
-    #     - "/dev/ttyUSB1"
-    #     - "/dev/ttyACM0"
     restart: unless-stopped
     volumes:
-      - C:\Users\LENOVO\Documents\GitHub\jeedom-core:/var/www/html
+      - ./jeedom:/var/www/html
     ports:
       - "80:80"
 
   db:
     container_name: db
-    image: ghcr.io/linuxserver/mariadb
+    image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
     restart: unless-stopped
     # env_file:
     #     - ./.env
@@ -51,7 +38,6 @@ services:
       - MYSQL_DATABASE=jeedom #optional
       - MYSQL_USER=jeedom #optional
       - MYSQL_PASSWORD=jeedom #optional
-      # - REMOTE_SQL=http://URL1/your.sql,https://URL2/your.sql #optional
     volumes:
       - ./db:/config
     ports:
@@ -63,3 +49,5 @@ services:
     environment:
       - PMA_HOST=db
       - TZ=Europe/Paris
+    ports:
+      - 8080:80
