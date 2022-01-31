@@ -7,14 +7,9 @@
 
 services:
 
-  installing:
-    build: ./install/OS_specific/Docker
-    volumes:
-      - ./jeedom:/app
-
   jeedom:
-    container_name: jeedom
-    build : ./
+    container_name: jeedom_xdebug
+    build : ./build
     hostname: jeedom
     environment:
       - TZ=Europe/Paris

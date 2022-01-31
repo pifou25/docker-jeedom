@@ -1,1 +1,0 @@
-* * * * *  php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1
