@@ -53,25 +53,13 @@ RUN pecl install redis-5.3.4 \
 	&& pecl install xdebug-3.0.4 \
 	&& docker-php-ext-enable redis xdebug
 
-# COPY php.ini /usr/local/etc/php/php.ini
-RUN echo "[xdebug]\n \
-xdebug.client_host=host.docker.internal\n \
-xdebug.discover_client_host=true\n \
-xdebug.start_with_request=yes\n \
-xdebug.mode=develop,coverage,debug\n \
-xdebug.log=/var/www/html/log/xdebug\n \
-xdebug.log_level=7\n \
-xdebug.scream=1 # disable @ for php silent notice\n \
-xdebug.show_error_trace=1 # always show errors\n \
-xdebug.show_exception_trace=1\n \
-xdebug.start_upon_error=1\n \
-xdebug.client_port=9003\n" > /usr/local/etc/php/conf.d/xdebug.ini;
-RUN echo "zend_extension=$(find /usr/local/lib/php/extensions/ -name xdebug.so)" >> /usr/local/etc/php/conf.d/xdebug.ini;
+# RUN echo "zend_extension=$(find /usr/local/lib/php/extensions/ -name xdebug.so)" >> /usr/local/etc/php/conf.d/xdebug.ini;
+COPY xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 RUN cp /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini
 
 # Change uid and gid of apache to docker user uid/gid
-RUN usermod -u 1000 www-data \
-    && groupmod -g 1000 www-data
+# RUN usermod -u 1000 www-data \
+#    && groupmod -g 1000 www-data
 
 WORKDIR /var/www/html
 VOLUME  /var/www/html
