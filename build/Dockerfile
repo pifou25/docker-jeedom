@@ -58,8 +58,8 @@ COPY xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 RUN cp /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini
 
 # Change uid and gid of apache to docker user uid/gid
-# RUN usermod -u 1000 www-data \
-#    && groupmod -g 1000 www-data
+RUN usermod -u 1000 www-data \
+   && groupmod -g 1000 www-data
 
 WORKDIR /var/www/html
 VOLUME  /var/www/html

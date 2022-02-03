@@ -18,6 +18,10 @@ services:
       - ./jeedom:/var/www/html
     ports:
       - "80:80"
+    labels:
+      chadburn.enabled: "true"
+      chadburn.job-exec.jeedom-cron.schedule: "@every 1m"
+      chadburn.job-exec.jeedom-cron.command: "/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
 
   db:
     container_name: db
@@ -46,3 +50,12 @@ services:
       - TZ=Europe/Paris
     ports:
       - 8080:80
+
+  # Scheduler Service: mcuadros/ofelia or premoweb/chadburn
+  scheduler:
+    image: premoweb/chadburn
+    command: daemon
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - jeedom
