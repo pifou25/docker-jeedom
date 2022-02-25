@@ -2,3 +2,4 @@
 certbot/.ovhapi
 data/
 password
+*.gz
