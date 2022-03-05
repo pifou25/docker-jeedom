@@ -3,3 +3,4 @@ certbot/.ovhapi
 data/
 password
 *.gz
+volumes
