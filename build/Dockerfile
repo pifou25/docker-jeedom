@@ -25,8 +25,6 @@ RUN apt-get update && apt-get install -y \
 	sudo && \
 # add php extension
     docker-php-ext-install pdo pdo_mysql zip && \
-# add the jeedom cron task
-#	echo "* * * * *  /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null\n" > /etc/cron.d/jeedom && \
 # add sudo for www-data
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
@@ -65,6 +63,7 @@ WORKDIR /var/www/html
 VOLUME  /var/www/html
 
 # Initialisation 
-# ADD install/OS_specific/Docker/init.sh /root/init.sh
-# RUN chmod +x /root/init.sh
-# CMD ["sh", "/root/init.sh"]
+ADD init.sh /root/init.sh
+RUN chmod +x /root/init.sh
+ENTRYPOINT ["/root/init.sh"]
+

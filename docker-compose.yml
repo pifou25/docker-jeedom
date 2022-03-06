@@ -8,35 +8,39 @@
 services:
 
   jeedom:
-    container_name: jeedom_xdebug
     build : ./build
     hostname: jeedom
     environment:
-      - TZ=Europe/Paris
+      - MYSQL_JEEDOM_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_JEEDOM_USER=${MYSQL_USER}
+      - MYSQL_JEEDOM_PASSWD=${MYSQL_PASSWORD}
+      - JEEDOM_BRANCH=beta
+      - MYSQL_HOST=db1
+      - TZ=${TIME_ZONE}
     restart: unless-stopped
     volumes:
       - ./jeedom:/var/www/html
+      - ./backup:/tmp/backup
     ports:
       - "80:80"
     labels:
+      # label chadburn for the "cron" container
       chadburn.enabled: "true"
       chadburn.job-exec.jeedom-cron.schedule: "@every 1m"
       chadburn.job-exec.jeedom-cron.command: "/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
 
   db:
-    container_name: db
+    container_name: db1
     image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
     restart: unless-stopped
-    # env_file:
-    #     - ./.env
     environment:
       - PUID=1000
       - PGID=1000
-      - MYSQL_ROOT_PASSWORD=admin
-      - TZ=Europe/Paris
-      - MYSQL_DATABASE=jeedom #optional
-      - MYSQL_USER=jeedom #optional
-      - MYSQL_PASSWORD=jeedom #optional
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - TZ=${TIME_ZONE}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - ./db:/config
     ports:
