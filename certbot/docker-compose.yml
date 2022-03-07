@@ -1,0 +1,14 @@
+version: "3"
+services:
+  certbot:
+    image: certbot
+    environment:
+      DOMAIN: domain.com
+    volumes:
+      - ./letsencrypt:/etc/letsencrypt
+      - ./log:/var/log/letsencrypt
+      - ./.ovhapi:/app/.ovhapi
+    command: >-
+      certbot certonly --dns-ovh --dns-ovh-credentials .ovhapi
+      --non-interactive --agree-tos --email nicolas_gras@hotmail.com
+      -d example.nico.si --test-cert --dry-run -v

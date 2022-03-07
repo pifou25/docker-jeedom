@@ -32,8 +32,11 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
     sed -i "s/#HOST#/${MYSQL_HOST}/g" /var/www/html/core/config/common.config.php
     chmod 775 -R /var/www/html
     chown -R www-data:www-data /var/www/html
+    mkdir -p /tmp/jeedom
+    chmod 777 -R /tmp/jeedom
+    chown www-data:www-data -R /tmp/jeedom
 
-    if [ -d "/tmp/backup" && "$(ls -A /tmp/backup)" ]; then
+    if [ -d "/tmp/backup" ] && [ "$(ls -A /tmp/backup)" ]; then
        echo "${VERT}found a backup, try to restore...${NORMAL}"
        cp /tmp/backup/* /var/www/html/backup
        php /var/www/html/install/restore.php

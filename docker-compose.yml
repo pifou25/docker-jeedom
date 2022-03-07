@@ -15,7 +15,7 @@ services:
       - MYSQL_JEEDOM_USER=${MYSQL_USER}
       - MYSQL_JEEDOM_PASSWD=${MYSQL_PASSWORD}
       - JEEDOM_BRANCH=beta
-      - MYSQL_HOST=db1
+      - MYSQL_HOST=db
       - TZ=${TIME_ZONE}
     restart: unless-stopped
     volumes:
@@ -30,7 +30,7 @@ services:
       chadburn.job-exec.jeedom-cron.command: "/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
 
   db:
-    container_name: db1
+    container_name: db
     image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
     restart: unless-stopped
     environment:

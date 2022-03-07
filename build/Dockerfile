@@ -55,9 +55,12 @@ RUN pecl install redis-5.3.4 \
 COPY xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 RUN cp /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini
 
-# Change uid and gid of apache to docker user uid/gid
+# Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
-   && groupmod -g 1000 www-data
+   && groupmod -g 1000 www-data \
+   && mkdir -p /tmp/jeedom \
+   && chmod 777 -R /tmp/jeedom \
+   && chown www-data:www-data -R /tmp/jeedom
 
 WORKDIR /var/www/html
 VOLUME  /var/www/html
