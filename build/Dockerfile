@@ -41,10 +41,11 @@ RUN python -m pip install future fasteners && \
 # COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 # RUN composer install
 
-#add motd
+#add motd - link sh to bash for Docker Desktop
 COPY motd /etc/jmotd
 RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd && cat /etc/jmotd' \
-    >> /etc/bash.bashrc
+    >> /etc/bash.bashrc && \
+	ln -sf /bin/bash /bin/sh
 
 # install xdebug
 RUN pecl install redis-5.3.4 \
