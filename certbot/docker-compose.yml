@@ -7,7 +7,8 @@ services:
     volumes:
       - ./letsencrypt:/etc/letsencrypt
       - ./log:/var/log/letsencrypt
+      - ./.ovhapi:/app/.ovhapi
     command: >-
       certbot certonly --dns-ovh --dns-ovh-credentials .ovhapi
-      --non-interactive --agree-tos --email nicolas_gras@hotmail.com
-      -d $DOMAIN --test-cert --dry-run
+      --non-interactive --agree-tos --email email@example.com
+      -d subdomain.example.com --test-cert --dry-run -v

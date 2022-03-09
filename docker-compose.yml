@@ -5,163 +5,59 @@ networks:
 
 services:
 
-    installing:
-        container_name: installing
-        build: ./app
-        volumes:
-          - ./jeedom:/app
+  jeedom:
+    build : ./build
+    hostname: jeedom
+    environment:
+      - MYSQL_JEEDOM_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_JEEDOM_USER=${MYSQL_USER}
+      - MYSQL_JEEDOM_PASSWD=${MYSQL_PASSWORD}
+      - JEEDOM_BRANCH=beta
+      - MYSQL_HOST=db
+      - TZ=${TIME_ZONE}
+    restart: unless-stopped
+    volumes:
+      - ./jeedom:/var/www/html
+      - ./backup:/tmp/backup
+    ports:
+      - "80:80"
+    labels:
+      # label chadburn for the "cron" container
+      chadburn.enabled: "true"
+      chadburn.job-exec.jeedom-cron.schedule: "@every 1m"
+      chadburn.job-exec.jeedom-cron.command: "/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
 
-    jeedom:
-        container_name: jeedom
-        build: ./php
-        privileged: false
-        pid: "host"
-        environment:
-          - TZ=Europe/Paris
-        cap_add:
-          - SYS_PTRACE
-        # tty: true
-        hostname: jeedom
-        #mac_address: a0:ca:ab:cd:ef:02
-        #networks:
-        #     default:
-        #        ipv4_address: 192.168.1.11
-        # devices:
-        #     - "/dev/ttyUSB0"
-        #     - "/dev/ttyUSB1"
-        #     - "/dev/ttyACM0"
-        restart: unless-stopped
-        volumes:
-          - ./jeedom:/var/www/html
-          - ./backup:/var/www/html/backup
-        depends_on:
-          - installing
-        healthcheck:
-          test: ["CMD-SHELL", "curl -so /tmp/status http://nginx/status || exit 1"]
-          interval: 1m30s
-          retries: 3
-          start_period: 40s
-          timeout: 20s
-        networks:
-          - local_net
+  db:
+    container_name: db
+    image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - TZ=${TIME_ZONE}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - ./db:/config
+    ports:
+      - 3306:3306
 
+  phpmyadmin:
+    image: phpmyadmin
+    restart: unless-stopped
+    environment:
+      - PMA_HOST=db
+      - TZ=Europe/Paris
+    ports:
+      - 8080:80
 
-    # Scheduler Service
-    scheduler:
-      image: ofelia
-      container_name: ofelia
-      volumes:
-        - /var/run/docker.sock:/var/run/docker.sock
-        - ./ofelia.ini:/etc/ofelia/config.ini
-      depends_on:
-        - jeedom
-
-
-    nginx:
-      image: nginx:alpine
-      container_name: nginx
-      working_dir: /var/www/html
-      volumes:
-          - ./jeedom:/var/www/html
-          - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      ports:
-       - 80:80
-      restart: unless-stopped
-      # debug mode:
-      # command: [nginx-debug, "-g", "daemon off;"]
-      environment:
-        - TZ=Europe/Paris
-      healthcheck:
-        test: ["CMD-SHELL", "curl -so /dev/null http://localhost/here.html || exit 1"]
-        interval: 1m30s
-        retries: 3
-        start_period: 40s
-        timeout: 20s
-      networks:
-        - local_net
-      logging:
-        options:
-          max-size: "10m"
-          max-file: "3"
-
-    db:
-        container_name: db
-        image: ghcr.io/linuxserver/mariadb
-        restart: unless-stopped
-        # env_file:
-        #     - ./.env
-        environment:
-          - TZ=Europe/Paris
-          - PUID=1000
-          - PGID=1000
-          - MYSQL_ROOT_PASSWORD=admin
-          - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-          - MYSQL_DATABASE=jeedom #optional
-          - MYSQL_USER=jeedom #optional
-          - MYSQL_PASSWORD=jeedom #optional
-        healthcheck:
-          test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-          interval: 1m30s
-          retries: 3
-          start_period: 40s
-          timeout: 20s
-        # - REMOTE_SQL=http://URL1/your.sql,https://URL2/your.sql #optional
-        volumes:
-            - ./db:/config
-        ports:
-            - 3306:3306
-        networks:
-            - local_net
-
-
-    adminer:
-        container_name: adminer
-        image: adminer
-        ports:
-          - 8080:8080
-
-    portainer:
-        container_name: portainer
-        image: portainer/portainer-ce
-        privileged: true
-        environment:
-          - TZ=Europe/Paris
-        ports:
-            - 8000:8000
-            - 9000:9000
-        restart: unless-stopped
-        volumes:
-            - /var/run/docker.sock:/var/run/docker.sock
-            - ./portainer:/data
-        networks:
-            - local_net
-
-    zwave:
-      container_name: zwave
-      image: zwavejs/zwavejs2mqtt
-      ports:
-        - 3000:3000
-        - 8091:8091
-      devices:
-      #  - "/dev/ttyUSB0"
-      #  - "/dev/ttyUSB1"
-        - "/dev/ttyACM0"
-      volumes:
-        - ./zwave:/usr/src/app/store
-      networks:
-        - local_net
-
-
-    mqtt:
-      image: eclipse-mosquitto
-      container_name: mqtt
-      ports:
-        - 1883:1883 #Uniquement si besoin d'avoir le port exposé
-      restart: unless-stopped
-      healthcheck:
-        test: "mosquitto_sub -t '$$SYS/#' -C 1 | grep -v Error || exit 1"
-        interval: 5s
-        timeout: 5s
-        retries: 3
-      networks:
-        - local_net
+  # Scheduler Service: mcuadros/ofelia or premoweb/chadburn
+  scheduler:
+    image: premoweb/chadburn
+    command: daemon
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - jeedom
