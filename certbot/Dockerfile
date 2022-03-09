@@ -1,18 +1,22 @@
 # see tuto https://buzut.net/certbot-challenge-dns-ovh-wildcard/
-FROM python:3.7-buster
+FROM python:3.9-buster
 
+RUN apt update && apt upgrade -y
+RUN apt install build-essential libssl-dev libffi-dev python3-dev cargo -y
 RUN pip install --no-cache-dir certbot certbot-dns-ovh
 
 WORKDIR /app
+COPY .ovhapi .ovhapi
+RUN chmod 600 .ovhapi
 
 VOLUME /etc/letsencrypt
-VOLUME /app
+VOLUME /var/log/letsencrypt
 
-# changer cette valeur au run
-ENV DOMAIN_NAME buzut.fr
+# first run should create certificates with all certbot parameters, python syntax :
+# certbot certonly --dns-ovh --dns-ovh-credentials .ovhapi -n --agree-tos -m em@il -d domain.com
+# default command is just for renew certificats
+CMD ["certbot", "renew"]
 
-CMD certbot certonly --dns-ovh --dns-ovh-credentials /app/.ovhapi -d $DOMAIN_NAME -d *.$DOMAIN_NAME
-
-# build and run:
+# build and run, full docker syntax:
 # docker build -t certbot .
-# docker run --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v "$PWD/certbot":/app -e DOMAIN_NAME=buzut.fr pifou25/certbot
+# docker run -it --name certbot -v ${PWD}/letsencrypt:/etc/letsencrypt -v ${PWD)/log:/var/log/letsencrypt certbot certbot certonly --dns-ovh --dns-ovh-credentials .ovhapi --non-interactive --agree-tos --email mon@email.fr -d port.nico.si
