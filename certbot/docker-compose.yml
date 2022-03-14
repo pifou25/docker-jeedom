@@ -1,7 +1,7 @@
 version: "3"
 services:
   certbot:
-    image: certbot
+    build: .
     environment:
       DOMAIN: domain.com
     volumes:
@@ -10,5 +10,5 @@ services:
       - ./.ovhapi:/app/.ovhapi
     command: >-
       certbot certonly --dns-ovh --dns-ovh-credentials .ovhapi
-      --non-interactive --agree-tos --email nicolas_gras@hotmail.com
-      -d example.nico.si --test-cert --dry-run -v
+      --non-interactive --agree-tos --email email@example.com
+      -d subdomain.example.com --test-cert --dry-run -v

@@ -1,9 +1,7 @@
-﻿version: '2'
+version: '2.3'
 
-#networks:
-#    default:
-#        external:
-#             name: local_net
+networks:
+  local_net:
 
 services:
 
