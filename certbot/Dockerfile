@@ -15,4 +15,4 @@ CMD certbot certonly --dns-ovh --dns-ovh-credentials /app/.ovhapi -d $DOMAIN_NAM
 
 # build and run:
 # docker build -t certbot .
-# docker run --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v "$PWD/certbot":/app -e DOMAIN_NAME=buzut.fr pifou25/certbot
+# docker run --name certbot -v /etc/letsencrypt:/etc/letsencrypt -v "$PWD/certbot":/app -e DOMAIN_NAME=example.nico.si certbot

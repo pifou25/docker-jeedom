@@ -9,7 +9,19 @@ BLANCLAIR="\\033[1;08m"
 JAUNE="\\033[1;33m"
 CYAN="\\033[1;36m"
 
-echo "${ROUGE}starting jeedom ${JEEDOM_BRANCH} ${NORMAL}"
+log_error() {
+  echo "${ROUGE}$@${NORMAL}"
+}
+
+mysql_sql() {
+  echo "$@" | mysql -uroot
+  if [ $? -ne 0 ]; then
+    log_error "Ne peut exécuter $@ dans MySQL - Annulation"
+    exit 1
+  fi
+}
+
+log_error "starting jeedom ${JEEDOM_BRANCH}"
 cd /var/www/html
 
 if [ ! -f "/var/www/html/index.php" ]; then
@@ -19,7 +31,7 @@ fi
 
 if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
     if [ ! -f "/var/www/html/core/config/common.config.sample.php" ]; then
-      echo "${ROUGE}Can not install jeedom (no config.sample file)${NORMAL}"
+      log_error "Can not install jeedom (no config.sample file)"
       exit 1
     fi
 
@@ -41,10 +53,18 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
        cp /tmp/backup/* /var/www/html/backup
        php /var/www/html/install/restore.php
     else
+
+      echo "${JAUNE}Création de la database SQL ${MYSQL_JEEDOM_DATABASE}...${NORMAL}"
+      mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'localhost';"
+      mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'localhost' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
+      mysql_sql "DROP DATABASE IF EXISTS ${MYSQL_JEEDOM_DATABASE};"
+      mysql_sql "CREATE DATABASE ${MYSQL_JEEDOM_DATABASE};"
+      mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'localhost';"
+
        echo "${VERT}jeedom clean install${NORMAL}"
        php /var/www/html/install/install.php mode=force
        if [ $? -ne 0 ]; then
-         echo "${ROUGE}can not install jeedom (error in install.php, see log)${NORMAL}"
+         log_error "Can not install jeedom (error in install.php, see log)"
          exit 1
        fi
     fi
