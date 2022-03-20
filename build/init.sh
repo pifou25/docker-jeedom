@@ -48,25 +48,24 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
     chmod 777 -R /tmp/jeedom
     chown www-data:www-data -R /tmp/jeedom
 
+    echo "${JAUNE}Création de la database SQL ${MYSQL_JEEDOM_DATABASE}...${NORMAL}"
+    mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'localhost';"
+    mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'localhost' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
+    mysql_sql "DROP DATABASE IF EXISTS ${MYSQL_JEEDOM_DATABASE};"
+    mysql_sql "CREATE DATABASE ${MYSQL_JEEDOM_DATABASE};"
+    mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'localhost';"
+
+    echo "${VERT}jeedom clean install${NORMAL}"
+    php /var/www/html/install/install.php mode=force
+    if [ $? -ne 0 ]; then
+      log_error "Can not install jeedom (error in install.php, see log)"
+      exit 1
+    fi
+
     if [ -d "/tmp/backup" ] && [ "$(ls -A /tmp/backup)" ]; then
        echo "${VERT}found a backup, try to restore...${NORMAL}"
        cp /tmp/backup/* /var/www/html/backup
        php /var/www/html/install/restore.php
-    else
-
-      echo "${JAUNE}Création de la database SQL ${MYSQL_JEEDOM_DATABASE}...${NORMAL}"
-      mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'localhost';"
-      mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'localhost' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
-      mysql_sql "DROP DATABASE IF EXISTS ${MYSQL_JEEDOM_DATABASE};"
-      mysql_sql "CREATE DATABASE ${MYSQL_JEEDOM_DATABASE};"
-      mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'localhost';"
-
-       echo "${VERT}jeedom clean install${NORMAL}"
-       php /var/www/html/install/install.php mode=force
-       if [ $? -ne 0 ]; then
-         log_error "Can not install jeedom (error in install.php, see log)"
-         exit 1
-       fi
     fi
     echo "${VERT}successfull new installation !${NORMAL}"
 fi
