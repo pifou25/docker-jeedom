@@ -1,6 +1,7 @@
 ﻿.env
 certbot/.ovhapi
 data/
+jeedom/
 password
 *.gz
 volumes
