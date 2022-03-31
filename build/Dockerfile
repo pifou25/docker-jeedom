@@ -22,11 +22,18 @@ RUN apt-get update && apt-get install -y \
 	git \
 	mariadb-client \
 	gettext librsync-dev \
-	sudo && \
+	sudo \
+	libssh2-1 libssh2-1-dev
+
 # add php extension
-    docker-php-ext-install pdo pdo_mysql zip && \
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+RUN install-php-extensions\
+   bcmath calendar imap intl ldap \
+    mbstring mysqli pcntl pdo_mysql \
+    soap sockets xmlrpc zip gd opcache
+
 # add sudo for www-data
-    echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
+RUN echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
 # add manually duplicity v0.7.19 from jeedom image
 RUN python -m pip install future fasteners && \

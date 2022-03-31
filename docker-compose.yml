@@ -41,8 +41,14 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - ./db:/config
+      - ./sql:/backup
     ports:
       - 3306:3306
+    labels:
+      # label chadburn for the "cron" container
+      chadburn.enabled: "true"
+      chadburn.job-exec.jeedom-backup.schedule: "@every 1d"
+      chadburn.job-exec.jeedom-backup.command: "mysqldump -d${MYSQL_DATABASE} -u${MYSQL_USER} -p\"${MYSQL_PASSWORD}\"' > /backup/jeedom.sql"
 
   phpmyadmin:
     image: phpmyadmin

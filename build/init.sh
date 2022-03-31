@@ -70,4 +70,8 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
     echo "${VERT}successfull new installation !${NORMAL}"
 fi
 
+# start at daemon
+atd
+
+# start apache
 exec apache2-foreground
