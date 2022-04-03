@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
 	ccze \
 	python python-pip python3 python-dev python3-pip python-virtualenv \
 	libzip-dev zip \
-	git \
+	git iproute2 \
 	mariadb-client \
 	gettext librsync-dev \
 	sudo \

@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
   apt-get update && \
   apt-get install -y \
     ntp ca-certificates unzip libzip-dev zip \
-    curl sudo cron locate tar telnet \
+    curl sudo cron locate tar telnet iproute2 \
     wget logrotate fail2ban dos2unix ntpdate htop iotop vim iftop smbclient \
     git python python-pip python3 python3-pip \
     libexpat1 ssl-cert apt-transport-https xvfb cutycapt xauth \
