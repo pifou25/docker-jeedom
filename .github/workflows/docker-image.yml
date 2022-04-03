@@ -21,7 +21,8 @@ jobs:
       run: |
         docker login -u $DOCKER_USER -p $DOCKER_PASSWORD 
     - name: Build the Docker image
-      run: docker build standalone --file standalone/Dockerfile --tag pifou25/jeedom:full$(date +%s)
+      run: docker build standalone --file standalone/Dockerfile --tag pifou25/jeedom:full
       
     - name: Docker Push
-      run: docker push pifou25/jeedom
+      run: docker push ${{secrets.DOCKER_USER}}/jeedom:full
+      
