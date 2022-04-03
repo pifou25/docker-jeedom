@@ -1,0 +1,118 @@
+# syntax=docker/dockerfile:1.3-labs
+FROM jgoerzen/debian-base-apache-php:buster
+
+LABEL com.jeedom.version="Jeedom v4.2 for Debian Buster + PHP7.3"
+
+# Installation des paquets
+# 	ccze          : couleur pour les logs
+# 	wget          : téléchargement
+#   libzip-dev zip: pour l'extension php zip
+#   sudo          : pour les droits sudo de jeedom
+#   python*       : pour certains plugins
+#   mariadb-client: pour backup et restauration
+
+
+RUN apt-get update && apt-get install -y \
+	apt-utils \
+	wget \
+	ntp \
+	locales \
+	ccze \
+	python python-pip python3 python-dev python3-pip python-virtualenv \
+	libzip-dev zip \
+	git \
+	mariadb-client mariadb-common mariadb-server \
+	gettext librsync-dev \
+	sudo
+# add php extension
+# RUN docker-php-ext-install pdo pdo_mysql zip
+# add sudo for www-data
+RUN echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
+
+RUN mv /var/www/html /var/www/oldhtml
+
+RUN git clone https://github.com/jeedom/core.git --single-branch --no-tags -b beta /var/www/html
+
+WORKDIR /var/www/html
+VOLUME  /var/www/html
+
+# for beta: remove anoying .htaccess
+RUN rm /var/www/html/install/.htaccess
+# for beta: remove deny to the install directory
+RUN sed -i -r '/install/d' .htaccess
+
+
+# prepare db config file:
+RUN cp /var/www/html/core/config/common.config.sample.php /var/www/html/core/config/common.config.php && \
+  sed -ri -e 's!#HOST#!localhost!g' /var/www/html/core/config/common.config.php  && \
+  sed -ri -e 's!#PORT#!3306!g' /var/www/html/core/config/common.config.php  && \
+  sed -ri -e 's!#DBNAME#!jeedom!g' /var/www/html/core/config/common.config.php  && \
+  sed -ri -e 's!#USERNAME#!jeedom!g' /var/www/html/core/config/common.config.php  && \
+  sed -ri -e 's!#PASSWORD#!jeedom!g' /var/www/html/core/config/common.config.php
+
+# jeedom customization
+COPY <<EOF /etc/mysql/conf.d/jeedom_my.cnf
+[mysqld]
+skip-name-resolve
+key_buffer_size = 16M
+thread_cache_size = 16
+tmp_table_size = 48M
+max_heap_table_size = 48M
+query_cache_type =1
+query_cache_size = 32M
+query_cache_limit = 2M
+query_cache_min_res_unit=3K
+innodb_flush_method = O_DIRECT
+innodb_flush_log_at_trx_commit = 2
+innodb_log_file_size = 32M
+innodb_large_prefix = on
+EOF
+
+COPY <<EOF /etc/apache2/conf-available/security.conf
+<Directory /var/www/html>
+Options -Indexes -ExecCGI -FollowSymLinks
+AllowOverride All
+</Directory>
+
+<IfModule mod_headers.c>
+Header set X-Content-Type-Options "nosniff"
+Header set X-Frame-Options "DENY"
+Header set X-XSS-Protection "1; mode=block"
+Header unset X-Powered-By
+Header set Referrer-Policy: strict-origin-when-cross-origin
+Header set Permissions-Policy "accelerometer=(),battery=(),fullscreen=(self),geolocation=(), camera=(),ambient-light-sensor=(self), autoplay=(self)"
+Header set Content-Security-Policy "default-src 'self';script-src-attr 'self' 'unsafe-inline' 'unsafe-eval';script-src 'self' 'unsafe-inline' 'unsafe-eval';script-src-elem 'self' 'unsafe-inline' 'unsafe-eval';img-src 'self' *.jeedom.com data:;style-src 'self' 'unsafe-inline';style-src-attr 'self' 'unsafe-inline';"
+</IfModule>
+EOF
+
+COPY <<EOF /etc/apache2/sites-available/000-default.conf
+<VirtualHost *:80>
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html
+        ErrorLog /var/www/html/log/http.error
+</VirtualHost>
+
+# vim: syntax=apache ts=4 sw=4 sts=4 sr noet
+EOF
+
+COPY <<EOF /etc/systemd/system/apache2.service.d/override.conf
+[Service] 
+PrivateTmp=no
+Restart=always
+RestartSec=10
+EOF
+
+RUN rm /etc/apache2/conf-enabled/security.conf > /dev/null 2>&1 && \
+  ln -s /etc/apache2/conf-available/security.conf /etc/apache2/conf-enabled/ && \
+  rm /etc/apache2/sites-enabled/000-default.conf > /dev/null 2>&1 && \
+  ln -s /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-enabled/ && \
+  rm /etc/apache2/conf-available/other-vhosts-access-log.conf > /dev/null 2>&1 && \
+  rm /etc/apache2/conf-enabled/other-vhosts-access-log.conf > /dev/null 2>&1
+
+COPY <<EOF /etc/systemd/system/apache2.service.d/override.conf
+[Service]
+PrivateTmp=no
+Restart=always
+RestartSec=10
+EOF
+

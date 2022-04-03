@@ -1,0 +1,14 @@
+[mysqld]
+skip-name-resolve
+key_buffer_size = 16M
+thread_cache_size = 16
+tmp_table_size = 48M
+max_heap_table_size = 48M
+query_cache_type =1
+query_cache_size = 32M
+query_cache_limit = 2M
+query_cache_min_res_unit=3K
+innodb_flush_method = O_DIRECT
+innodb_flush_log_at_trx_commit = 2
+innodb_log_file_size = 32M
+innodb_large_prefix = on
