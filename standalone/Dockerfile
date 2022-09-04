@@ -2,12 +2,11 @@ FROM php:7.3-apache-buster
 
 LABEL com.jeedom.version="Jeedom v4.2 for Debian Buster + PHP7.3"
 
-ENV JEEDOM_BRANCH=beta
 ENV MYSQL_JEEDOM_DATABASE=jeedom
 ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_JEEDOM_PASSWD
 # ENV MYSQL_ROOT_PASSWORD
-ENV MYSQL_HOST=db
+ENV MYSQL_HOST=localhost
 ENV JEEDOM_BRANCH=beta
 ENV WEBSERVER_HOME=/var/www/html
 
@@ -22,7 +21,7 @@ RUN apt-get update && apt-get install -y \
     git python python-pip python3 python3-pip \
     libexpat1 ssl-cert apt-transport-https xvfb cutycapt xauth \
     at mariadb-client mariadb-common mariadb-server \
-    libsox-fmt-mp3 sox libttspico-utils  \
+    libsox-fmt-mp3 sox libttspico-utils supervisor \
     espeak nmap ffmpeg usbutils && \
   apt-get -y remove brltty net-tools librsync-dev
 
@@ -33,16 +32,16 @@ RUN install-php-extensions\
     mbstring mysqli pcntl pdo_mysql \
     soap sockets xmlrpc zip gd opcache ssh2
 
+RUN mkdir -p /var/log/supervisor
+
 # customization
-COPY mariadb.service.d /lib/systemd/system/mariadb.service.d
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY jeedom_my.cnf /etc/mysql/conf.d/jeedom_my.cnf
 COPY apache_security /etc/apache2/conf-available/security.conf
 COPY apache_remoteip /etc/apache2/conf-available/remoteip.conf
 COPY apache_default /etc/apache2/sites-available/000-default.conf
 COPY fail2ban.jeedom.conf /etc/fail2ban/jail.d/jeedom.conf
 COPY php.ini /usr/local/etc/php/php.ini
-COPY apache2.override.conf /etc/systemd/system/apache2.service.d/override.conf
-COPY fail2ban.override.conf /lib/systemd/system/fail2ban.service.d/override.conf
 
 RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available/security.conf && \
     sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available/remoteip.conf && \
@@ -91,5 +90,6 @@ VOLUME /var/lib/mysql
 # Initialisation 
 COPY init.sh /root/init.sh
 RUN chmod +x /root/init.sh
-ENTRYPOINT ["/root/init.sh"]
 
+# ENTRYPOINT ["/root/init.sh"]
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

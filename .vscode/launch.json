@@ -5,6 +5,31 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Module",
+            "type": "python",
+            "request": "launch",
+            "module": "wideq",
+            "justMyCode": true
+        },
+
+        {
+            "name": "Python: Attacher",
+            "type": "python",
+            "request": "attach",
+            "module": "wideq",
+            "listen": {
+                "host": "localhost",
+                "port": 5678
+            },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}/jeedom",
+                    "remoteRoot": "."
+                }
+            ],
+            "justMyCode": true
+        },
+        {
             "name": "Listen for Xdebug",
             "type": "php",
             "request": "launch",
