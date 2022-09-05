@@ -1,4 +1,4 @@
-version: '2.3'
+version: '3.8'
 
 networks:
   local_net:
@@ -9,9 +9,9 @@ services:
     build : ./build
     hostname: jeedom
     environment:
-      - MYSQL_JEEDOM_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_JEEDOM_USER=${MYSQL_USER}
-      - MYSQL_JEEDOM_PASSWD=${MYSQL_PASSWORD}
+      - MYSQL_JEEDOM_DATABASE=${MYSQL_DATABASE-jeedom}
+      - MYSQL_JEEDOM_USER=${MYSQL_USER:-jeedom}
+      - MYSQL_JEEDOM_PASSWD=${MYSQL_PASSWORD:?required}
       - JEEDOM_BRANCH=beta
       - MYSQL_HOST=db
       - TZ=${TIME_ZONE}
@@ -36,9 +36,9 @@ services:
       - PGID=1000
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - TZ=${TIME_ZONE}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE-jeedom}
+      - MYSQL_USER=${MYSQL_USER:-jeedom}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:?required}
     volumes:
       - ./db:/config
       - ./sql:/backup
@@ -48,7 +48,7 @@ services:
       # label chadburn for the "cron" container
       chadburn.enabled: "true"
       chadburn.job-exec.jeedom-backup.schedule: "@every 1d"
-      chadburn.job-exec.jeedom-backup.command: "mysqldump -d${MYSQL_DATABASE} -u${MYSQL_USER} -p\"${MYSQL_PASSWORD}\"' > /backup/jeedom.sql"
+      chadburn.job-exec.jeedom-backup.command: "mysqldump -d${MYSQL_DATABASE-jeedom} -u${MYSQL_USER:-jeedom} -p\"${MYSQL_PASSWORD:?required}\"' > /backup/jeedom.sql"
 
   phpmyadmin:
     image: phpmyadmin
