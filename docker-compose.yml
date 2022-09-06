@@ -1,4 +1,4 @@
-version: '2.3'
+# version: '2.3'
 
 
 services:
@@ -19,6 +19,8 @@ services:
     volumes:
       - ./data/nginx:/data
       - ./data/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - db
 
 
   db:
@@ -39,10 +41,10 @@ services:
   jeedom:
     build: ./php
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_JEEDOM_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_JEEDOM_USER=${MYSQL_USER}
-      - MYSQL_JEEDOM_PASSWD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:?required value}
+      - MYSQL_JEEDOM_DATABASE=${MYSQL_DATABASE:-jeedom}
+      - MYSQL_JEEDOM_USER=${MYSQL_USER:-jeedom}
+      - MYSQL_JEEDOM_PASSWD=${MYSQL_PASSWORD:?required value}
       - JEEDOM_BRANCH=beta
       - MYSQL_HOST=db
       - TZ=${TIME_ZONE}
@@ -62,11 +64,15 @@ services:
       chadburn.enabled: "true"
       chadburn.job-exec.jeedom-cron.schedule: "@every 1m"
       chadburn.job-exec.jeedom-cron.command: "/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
+    depends_on:
+      - db
 
 
   # Scheduler Service: mcuadros/ofelia or premoweb/chadburn
   scheduler:
     image: premoweb/chadburn
+    environment:
+      - TZ=${TIME_ZONE}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -75,13 +81,15 @@ services:
 
   phpmyadmin:
     image: phpmyadmin:5.0
+    depends_on:
+      - db
 
 
   portainer:
     image: portainer/portainer-ce
     privileged: true
     environment:
-      - TZ=Europe/Paris
+      - TZ=${TIME_ZONE}
     ports:
         - 8000:8000
         - 9000:9000
@@ -96,6 +104,8 @@ services:
     ports:
       - 3000:3000
       - 8091:8091
+    environment:
+      - TZ=${TIME_ZONE}
     devices:
     #  - "/dev/ttyUSB0"
     #  - "/dev/ttyUSB1"
@@ -103,12 +113,16 @@ services:
     volumes:
       - ./data/zwave:/usr/src/app/store
     restart: unless-stopped
+    depends_on:
+      - mqtt
 
 
   mqtt:
     image: eclipse-mosquitto
     ports:
       - 1883:1883 #Uniquement si besoin d'avoir le port exposé
+    environment:
+      - TZ=${TIME_ZONE}
     volumes:
       - ./mosquitto:/mosquitto/config
       - ./data/mosquitto/log:/mosquitto/log
