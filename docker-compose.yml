@@ -4,23 +4,31 @@
 services:
 
   nginx:
-    image: jc21/nginx-proxy-manager:2.8.1
+    image: jc21/nginx-proxy-manager:latest
     restart: unless-stopped
     ports:
       - '80:80'
-      - '81:81'
+      - '81:81' # admin access
       - '443:443'
     environment:
       DB_MYSQL_HOST: "db"
       DB_MYSQL_PORT: 3306
-      DB_MYSQL_USER: "npm"
-      DB_MYSQL_PASSWORD: "npm"
-      DB_MYSQL_NAME: "npm"
+      DB_MYSQL_USER: "${MYSQL_NPM_USER}"
+      DB_MYSQL_PASSWORD: "${MYSQL_NPM_PASSWORD}"
+      DB_MYSQL_NAME: "${MYSQL_NPM_USER}"
     volumes:
       - ./data/nginx:/data
       - ./data/letsencrypt:/etc/letsencrypt
     depends_on:
       - db
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+    healthcheck:
+      test: ["CMD", "/bin/check-health"]
+      interval: 1m
+      timeout: 3s
 
 
   db:
@@ -29,13 +37,17 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 1m30s
       retries: 3
       start_period: 40s
       timeout: 20s
     volumes:
       - ./data/mysql:/var/lib/mysql
+      # sh scripts for db initialization
+      - ./init.db/script:/scripts/pre-init.d
+      # sql or sql.tar.gz init data
+      - ./init.db/sql:/docker-entrypoint-initdb.d
 
 
   jeedom:
@@ -64,6 +76,8 @@ services:
       chadburn.enabled: "true"
       chadburn.job-exec.jeedom-cron.schedule: "@every 1m"
       chadburn.job-exec.jeedom-cron.command: "/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
+      # label for watchtower: don't check
+      com.centurylinklabs.watchtower.enable: false
     depends_on:
       - db
 
@@ -77,12 +91,21 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - jeedom
+    command: --config=/config/config.ini
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
 
 
   phpmyadmin:
     image: phpmyadmin:5.0
     depends_on:
       - db
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
 
 
   portainer:
@@ -128,3 +151,12 @@ services:
       - ./data/mosquitto/log:/mosquitto/log
       - ./data/mosquitto/data:/mosquitto/data
     restart: unless-stopped
+
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+      # - /root/.docker/config.json:/config.json
+    command: --schedule "0 55 3 * * *"
