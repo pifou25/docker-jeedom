@@ -5,23 +5,31 @@
 services:
 
   nginx:
-    image: jc21/nginx-proxy-manager:2.8.1
+    image: jc21/nginx-proxy-manager:latest
     restart: unless-stopped
     ports:
       - '80:80'
-      - '81:81'
+      - '81:81' # admin access
       - '443:443'
     environment:
       DB_MYSQL_HOST: "db"
       DB_MYSQL_PORT: 3306
-      DB_MYSQL_USER: "npm"
-      DB_MYSQL_PASSWORD: "npm"
-      DB_MYSQL_NAME: "npm"
+      DB_MYSQL_USER: "${MYSQL_NPM_USER}"
+      DB_MYSQL_PASSWORD: "${MYSQL_NPM_PASSWORD}"
+      DB_MYSQL_NAME: "${MYSQL_NPM_USER}"
     volumes:
       - ./data/nginx:/data
       - ./data/letsencrypt:/etc/letsencrypt
     depends_on:
       - db
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+    healthcheck:
+      test: ["CMD", "/bin/check-health"]
+      interval: 1m
+      timeout: 3s
 
 
   db:

@@ -1,16 +1,17 @@
 # see tuto https://buzut.net/certbot-challenge-dns-ovh-wildcard/
-FROM python:3.9-buster
+FROM python:3-buster
 
-RUN apt update && apt upgrade -y
+RUN apt update && apt upgrade -y && apt install python3-pip -y
 RUN apt install build-essential libssl-dev libffi-dev python3-dev cargo -y
+RUN python -m pip install --upgrade pip
 RUN pip install --no-cache-dir certbot certbot-dns-ovh
 
 WORKDIR /app
-COPY .ovhapi .ovhapi
-RUN chmod 600 .ovhapi
+# COPY .ovhapi .ovhapi
+# RUN chmod 600 .ovhapi
 
 VOLUME /etc/letsencrypt
-VOLUME /var/log/letsencrypt
+# VOLUME /var/log/letsencrypt
 
 # first run should create certificates with all certbot parameters, python syntax :
 # certbot certonly --dns-ovh --dns-ovh-credentials .ovhapi -n --agree-tos -m mon@email.fr -d domain.com
