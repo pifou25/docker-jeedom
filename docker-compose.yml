@@ -164,6 +164,18 @@ services:
         max-size: "10m"
         max-file: "1"
     restart: unless-stopped
+    depends_on:
+      - mqtt
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+
+
+  mqtt:
+    image: eclipse-mosquitto
+    ports:
+      - 1883:1883 #Uniquement si besoin d'avoir le port exposé
     environment:
       - TZ=Europe/Paris
     ports:
