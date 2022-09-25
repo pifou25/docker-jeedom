@@ -80,6 +80,11 @@ services:
       com.centurylinklabs.watchtower.enable: false
     depends_on:
       - db
+      - scheduler
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
 
 
   # Scheduler Service: mcuadros/ofelia or premoweb/chadburn
@@ -89,8 +94,6 @@ services:
       - TZ=${TIME_ZONE}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    depends_on:
-      - jeedom
     command: --config=/config/config.ini
     logging:
       options:
@@ -138,6 +141,10 @@ services:
     restart: unless-stopped
     depends_on:
       - mqtt
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
 
 
   mqtt:
