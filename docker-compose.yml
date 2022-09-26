@@ -94,7 +94,7 @@ services:
       - TZ=${TIME_ZONE}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --config=/config/config.ini
+    # command: --config=/config/config.ini
     logging:
       options:
         max-size: "10m"
@@ -167,3 +167,13 @@ services:
       - /etc/localtime:/etc/localtime:ro
       # - /root/.docker/config.json:/config.json
     command: --schedule "0 55 3 * * *"
+
+
+  bitwarden:
+    image: vaultwarden/server
+    volumes:
+      - ./data/vaultwarden:/data
+    environment:
+      - DATABASE_URL=mysql://${MYSQL_VAULT_USER}:${MYSQL_VAULT_PASSWORD}@db/${MYSQL_VAULT_USER}
+    depends_on:
+      - db
