@@ -126,10 +126,10 @@ services:
 
 
   zwave:
-    image: zwavejs/zwavejs2mqtt
+    image: zwavejs/zwave-js-ui # former zwavejs/zwavejs2mqtt
     ports:
-      - 3000:3000
-      - 8091:8091
+      - 3000:3000 # Z-Wave JS websocket server
+      - 8091:8091 # Web Interface
     environment:
       - TZ=${TIME_ZONE}
     devices:
