@@ -167,7 +167,7 @@ services:
     depends_on:
       - mqtt
     healthcheck: # check if both mqtt and zwave client are connected
-      test: ["CMD-SHELL", "curl localhost:8091/health/zwave -H "Accept: text/plain""]
+      test: ["CMD-SHELL", "curl localhost:8091/health/zwave -H \"Accept: text/plain\""]
       interval: 2m30s
       retries: 3
       start_period: 40s
