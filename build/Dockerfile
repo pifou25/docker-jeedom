@@ -1,6 +1,14 @@
 ﻿FROM php:7.3-apache-buster
 
-LABEL version="jeedom with xdebug for development"
+ENV JEEDOM_BRANCH=beta
+ENV MYSQL_JEEDOM_DATABASE=jeedom
+ENV MYSQL_JEEDOM_USER=jeedom
+# ENV MYSQL_JEEDOM_PASSWD
+# ENV MYSQL_ROOT_PASSWORD
+ENV MYSQL_HOST=db
+ENV JEEDOM_BRANCH=beta
+
+LABEL version="Jeedom with XDebug for Docker"
 
 # Installation des paquets
 # 	ccze          : couleur pour les logs
@@ -22,18 +30,17 @@ RUN apt-get update && apt-get install -y \
 	git iproute2 \
 	mariadb-client \
 	gettext librsync-dev \
-	sudo \
+	sudo at ntpdate nmap apt-transport-https ffmpeg smbclient \
+	software-properties-common ssl-cert \
 	libssh2-1 libssh2-1-dev
+
 
 # add php extension
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 RUN install-php-extensions\
    bcmath calendar imap intl ldap \
     mbstring mysqli pcntl pdo_mysql \
-    soap sockets xmlrpc zip gd opcache
-
-# add sudo for www-data
-RUN echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
+    soap sockets xmlrpc zip gd opcache ssh2
 
 # add manually duplicity v0.7.19 from jeedom image
 RUN python -m pip install future fasteners && \
@@ -52,7 +59,9 @@ RUN python -m pip install future fasteners && \
 COPY motd /etc/jmotd
 RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd && cat /etc/jmotd' \
     >> /etc/bash.bashrc && \
-	ln -sf /bin/bash /bin/sh
+    ln -sf /bin/bash /bin/sh && \
+    # add sudo for www-data
+    echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
 # install xdebug
 RUN pecl install redis-5.3.4 \

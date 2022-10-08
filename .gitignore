@@ -5,3 +5,4 @@ backup
 jeedom
 certbot/log
 certbot/letsencrypt
+data/

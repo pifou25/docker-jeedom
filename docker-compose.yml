@@ -5,27 +5,6 @@ networks:
 
 services:
 
-  jeedom:
-    build : ./build
-    hostname: jeedom
-    environment:
-      - MYSQL_JEEDOM_DATABASE=${MYSQL_DATABASE-jeedom}
-      - MYSQL_JEEDOM_USER=${MYSQL_USER:-jeedom}
-      - MYSQL_JEEDOM_PASSWD=${MYSQL_PASSWORD:?required}
-      - JEEDOM_BRANCH=beta
-      - MYSQL_HOST=db
-      - TZ=${TIME_ZONE}
-    restart: unless-stopped
-    volumes:
-      - ./jeedom:/var/www/html
-      - ./backup:/tmp/backup
-    ports:
-      - "80:80"
-    labels:
-      # label chadburn for the "cron" container
-      chadburn.enabled: "true"
-      chadburn.job-exec.jeedom-cron.schedule: "@every 1m"
-      chadburn.job-exec.jeedom-cron.command: "/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
 
   db:
     container_name: db
@@ -39,6 +18,12 @@ services:
       - MYSQL_DATABASE=${MYSQL_DATABASE-jeedom}
       - MYSQL_USER=${MYSQL_USER:-jeedom}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD:?required}
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 1m30s
+      retries: 3
+      start_period: 40s
+      timeout: 20s
     volumes:
       - ./db:/config
       - ./sql:/backup
@@ -50,8 +35,68 @@ services:
       chadburn.job-exec.jeedom-backup.schedule: "@every 1d"
       chadburn.job-exec.jeedom-backup.command: "mysqldump -d${MYSQL_DATABASE-jeedom} -u${MYSQL_USER:-jeedom} -p\"${MYSQL_PASSWORD:?required}\"' > /backup/jeedom.sql"
 
+  jeedom:
+    build : ./build
+    hostname: jeedom
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:?required value}
+      - MYSQL_JEEDOM_DATABASE=${MYSQL_DATABASE:-jeedom}
+      - MYSQL_JEEDOM_USER=${MYSQL_USER:-jeedom}
+      - MYSQL_JEEDOM_PASSWD=${MYSQL_PASSWORD:?required value}
+      - JEEDOM_BRANCH=beta
+      - MYSQL_HOST=db
+      - TZ=${TIME_ZONE}
+    hostname: jeedom
+    restart: unless-stopped
+    volumes:
+      - ./jeedom:/var/www/html
+      - ./backup:/tmp/backup
+    healthcheck:
+      test: ["CMD-SHELL", "curl -so /tmp/status http://localhost/here.html || exit 1"]
+      interval: 1m30s
+      retries: 3
+      start_period: 40s
+      timeout: 20s
+    ports:
+      - "80:80"
+    labels:
+      # label chadburn for the "cron" container
+      chadburn.enabled: "true"
+      chadburn.job-exec.jeedom-cron.schedule: "@every 1m"
+      chadburn.job-exec.jeedom-cron.command: "/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
+      # label for watchtower: don't check
+      com.centurylinklabs.watchtower.enable: false
+    depends_on:
+      - db
+      - scheduler
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+
+
+  # Scheduler Service: mcuadros/ofelia or premoweb/chadburn
+  scheduler:
+    image: premoweb/chadburn
+    environment:
+      - TZ=${TIME_ZONE}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    # command: --config=/config/config.ini
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+
+
   phpmyadmin:
     image: phpmyadmin
+    depends_on:
+      - db
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
     restart: unless-stopped
     environment:
       - PMA_HOST=db
@@ -59,11 +104,3 @@ services:
     ports:
       - 8080:80
 
-  # Scheduler Service: mcuadros/ofelia or premoweb/chadburn
-  scheduler:
-    image: premoweb/chadburn
-    command: daemon
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    depends_on:
-      - jeedom
