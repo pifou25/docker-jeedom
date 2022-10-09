@@ -4,8 +4,6 @@ networks:
   local_net:
 
 services:
-
-
   db:
     container_name: db
     image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
@@ -25,8 +23,8 @@ services:
       start_period: 40s
       timeout: 20s
     volumes:
-      - ./db:/config
-      - ./sql:/backup
+      - ../volumes/db:/config
+      - ../volumes/sql:/tmp/backup
     ports:
       - 3306:3306
     labels:
@@ -34,6 +32,7 @@ services:
       chadburn.enabled: "true"
       chadburn.job-exec.jeedom-backup.schedule: "@every 1d"
       chadburn.job-exec.jeedom-backup.command: "mysqldump -d${MYSQL_DATABASE-jeedom} -u${MYSQL_USER:-jeedom} -p\"${MYSQL_PASSWORD:?required}\"' > /backup/jeedom.sql"
+
 
   jeedom:
     build : ./build
@@ -46,11 +45,10 @@ services:
       - JEEDOM_BRANCH=beta
       - MYSQL_HOST=db
       - TZ=${TIME_ZONE}
-    hostname: jeedom
     restart: unless-stopped
     volumes:
-      - ./jeedom:/var/www/html
-      - ./backup:/tmp/backup
+      - ../volumes/jeedom:/var/www/html
+      - ../volumes/backup:/tmp/backup
     healthcheck:
       test: ["CMD-SHELL", "curl -so /tmp/status http://localhost/here.html || exit 1"]
       interval: 1m30s

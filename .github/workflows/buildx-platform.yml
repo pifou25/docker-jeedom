@@ -19,6 +19,7 @@ jobs:
         uses: docker/setup-qemu-action@v2
       -
         name: Set up Docker Buildx
+        id: buildx
         # https://github.com/marketplace/actions/docker-setup-buildx
         # set up a multi-platform builder for Docker containers
         uses: docker/setup-buildx-action@v2
@@ -45,7 +46,8 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: standalone
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm64/v8
+          # platforms: linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/amd64/v4,linux/386
           push: true
           tags: ${{ secrets.DOCKER_USER }}/jeedom:full
       -
@@ -53,6 +55,6 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: build
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm64/v8
           push: true
           tags: ${{ secrets.DOCKER_USER }}/jeedom:xdebug
