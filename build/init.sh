@@ -77,7 +77,7 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
     mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'%' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
     mysql_sql "DROP DATABASE IF EXISTS ${MYSQL_JEEDOM_DATABASE};"
     mysql_sql "CREATE DATABASE ${MYSQL_JEEDOM_DATABASE};"
-    mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'localhost';"
+    mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'%';"
 
     log_info "jeedom clean install"
     php /var/www/html/install/install.php mode=force

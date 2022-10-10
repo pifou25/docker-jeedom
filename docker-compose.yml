@@ -1,7 +1,8 @@
 version: '3.8'
 
 networks:
-  local_net:
+  default:
+    name: jeedom_network
 
 services:
   db:
@@ -14,8 +15,8 @@ services:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - TZ=${TIME_ZONE}
       - MYSQL_DATABASE=${MYSQL_DATABASE-jeedom}
-      - MYSQL_USER=${MYSQL_USER:-jeedom}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:?required}
+      - MYSQL_USER=${MYSQL_JEEDOM_USER:-jeedom}
+      - MYSQL_PASSWD=${MYSQL_JEEDOM_PASSWD:?required}
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 1m30s
@@ -23,15 +24,17 @@ services:
       start_period: 40s
       timeout: 20s
     volumes:
-      - ../volumes/db:/config
-      - ../volumes/sql:/tmp/backup
+      # database filesystem
+      - ../volumes/db:/var/lib/mysql
+      # directory for init sql and scripts
+      - ../volumes/sql:/docker-entrypoint-initdb.d
     ports:
       - 3306:3306
     labels:
       # label chadburn for the "cron" container
       chadburn.enabled: "true"
       chadburn.job-exec.jeedom-backup.schedule: "@every 1d"
-      chadburn.job-exec.jeedom-backup.command: "mysqldump -d${MYSQL_DATABASE-jeedom} -u${MYSQL_USER:-jeedom} -p\"${MYSQL_PASSWORD:?required}\"' > /backup/jeedom.sql"
+      chadburn.job-exec.jeedom-backup.command: "mysqldump -d${MYSQL_DATABASE-jeedom} -u${MYSQL_JEEDOM_USER:-jeedom} -p\"${MYSQL_JEEDOM_PASSWD:?required}\"' > /backup/jeedom.sql"
 
 
   jeedom:
@@ -40,8 +43,8 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:?required value}
       - MYSQL_JEEDOM_DATABASE=${MYSQL_DATABASE:-jeedom}
-      - MYSQL_JEEDOM_USER=${MYSQL_USER:-jeedom}
-      - MYSQL_JEEDOM_PASSWD=${MYSQL_PASSWORD:?required value}
+      - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
+      - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:?required value}
       - JEEDOM_BRANCH=beta
       - MYSQL_HOST=db
       - TZ=${TIME_ZONE}
@@ -87,8 +90,8 @@ services:
         max-file: "1"
 
 
-  phpmyadmin:
-    image: phpmyadmin
+  adminer:
+    image: adminer
     depends_on:
       - db
     logging:
@@ -97,8 +100,7 @@ services:
         max-file: "1"
     restart: unless-stopped
     environment:
-      - PMA_HOST=db
       - TZ=Europe/Paris
     ports:
-      - 8080:80
+      - 8080:8080
 
