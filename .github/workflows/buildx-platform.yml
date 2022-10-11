@@ -49,7 +49,10 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           # platforms: linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/amd64/v4,linux/386 - ,linux/arm64/v8??
           push: true
-          tags: ${{ secrets.DOCKER_USER }}/jeedom:full
+          tags:
+            - ${{ secrets.DOCKER_USER }}/jeedom:full-stable
+            - ${{ secrets.DOCKER_USER }}/jeedom:full
+            - ${{ secrets.DOCKER_USER }}/jeedom:latest
       -
         name: Build and push Jeedom with Xdebug
         uses: docker/build-push-action@v3
@@ -57,4 +60,6 @@ jobs:
           context: build
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
-          tags: ${{ secrets.DOCKER_USER }}/jeedom:xdebug
+          tags:
+            - ${{ secrets.DOCKER_USER }}/jeedom:light-xdebug
+            - ${{ secrets.DOCKER_USER }}/jeedom:light-xdebug-stable
