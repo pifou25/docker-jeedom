@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'master'
+      - 'develop'
 
 jobs:
   docker:
@@ -40,26 +41,22 @@ jobs:
           echo "Flags:     ${{ steps.buildx.outputs.flags }}"
           echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
       -
-        name: Build and push Standalone Jeedom
-        # https://github.com/marketplace/actions/build-and-push-docker-images
-        # this job build the docker image and push into Docker Hub
-        uses: docker/build-push-action@v3
-        with:
-          context: standalone
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          # platforms: linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/amd64/v4,linux/386 - ,linux/arm64/v8??
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:full-stable,
-            ${{ secrets.DOCKER_USER }}/jeedom:full,
-            ${{ secrets.DOCKER_USER }}/jeedom:latest
-      -
         name: Build and push Jeedom with Xdebug
         uses: docker/build-push-action@v3
         with:
           context: build
+          target: xdebug
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:light-xdebug,
-            ${{ secrets.DOCKER_USER }}/jeedom:light-xdebug-stable
+            ${{ secrets.DOCKER_USER }}/jeedom:light-xdebug-stable-dev
+      -
+        name: Build and push Jeedom light
+        uses: docker/build-push-action@v3
+        with:
+          context: build
+          target: jeedom
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USER }}/jeedom:light-stable-dev
