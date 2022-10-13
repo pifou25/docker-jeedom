@@ -1,4 +1,4 @@
-version: '3.8'
+﻿version: '3.8'
 
 networks:
   default:
@@ -104,3 +104,16 @@ services:
     ports:
       - 8080:8080
 
+
+    # On peux ajouter également Node-red. permettant une gestion de mqtt native
+    node-red:
+      profiles: ["nodered"]
+      image:  nodered/node-red
+      volumes:
+      - ../volumes/nodered:/data  # remplacer /nfs/volumes par l'emplacement du volume souhaité
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:1880"]
+        interval: 1m
+        timeout: 10s
+        retries: 3
+        start_period: 10s
