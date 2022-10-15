@@ -32,6 +32,16 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Cache Docker layers
+        # https://github.com/marketplace/actions/cache
+        # this action allows caching dependancies and build output
+        uses: actions/cache@v3
+        id: cache
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
       -
         name: Inspect builder
         run: |
@@ -42,21 +52,50 @@ jobs:
           echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
       -
         name: Build and push Jeedom with Xdebug
+        # https://github.com/marketplace/actions/build-and-push-docker-images
         uses: docker/build-push-action@v3
         with:
           context: build
-          target: xdebug
+          target: light_xdebug
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:light-xdebug-stable-dev
+            ${{ secrets.DOCKER_USER }}/jeedom:light-xdebug-dev
       -
         name: Build and push Jeedom light
         uses: docker/build-push-action@v3
         with:
           context: build
-          target: jeedom
+          target: light_jeedom
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:light-stable-dev
+            ${{ secrets.DOCKER_USER }}/jeedom:light-dev
+      -
+        name: Build and push Jeedom light
+        uses: docker/build-push-action@v3
+        with:
+          context: build
+          target: full_jeedom
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          tags: |
+            ${{ secrets.DOCKER_USER }}/jeedom:dev
+      -
+        name: Build and push Jeedom light
+        uses: docker/build-push-action@v3
+        with:
+          context: build
+          target: full_xdebug
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          tags: |
+            ${{ secrets.DOCKER_USER }}/jeedom:xdebug-dev

@@ -66,6 +66,7 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
     sed -i "s/#USERNAME#/${MYSQL_JEEDOM_USER}/g" /var/www/html/core/config/common.config.php
     sed -i "s/#PORT#/3306/g" /var/www/html/core/config/common.config.php
     sed -i "s/#HOST#/${MYSQL_HOST}/g" /var/www/html/core/config/common.config.php
+
     chmod 770 -R /var/www/html
     chown -R www-data:www-data /var/www/html
     mkdir -p /tmp/jeedom
