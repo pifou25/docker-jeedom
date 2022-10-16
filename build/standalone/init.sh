@@ -135,5 +135,5 @@ a2dismod status
 a2enmod headers
 a2enmod remoteip
 
-# start supervisord
-exec /usr/bin/supervisord
+# start apache2
+supervisorctl start apache2

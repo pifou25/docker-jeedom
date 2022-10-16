@@ -38,9 +38,9 @@ Il faut utiliser le nom de la branche pour avoir la version cible. *Pas de build
 Après avoir cloné le repo, on peut builder l'une ou l'autre image avec l'option --target pour avoir la bonne saveur
 ```
 cd build
-docker build --target full_xdebug --builf-arg JEEDOM_VERSION=V4-stable -tag xjeedom .
+docker build --target full_xdebug --build-arg JEEDOM_VERSION=V4-stable --tag xjeedom .
 ```
-Les options possibles pour target sont: light_xdebug, light_jeedom, full_jeedom, full_xdebug
+Les options possibles pour target sont: light_jeedom, light_xdebug, full_jeedom, full_xdebug
 
 ### Dockerfile : génération du serveur apache - PHP
 
@@ -66,6 +66,11 @@ docker run --name jeedom -d -v "$PWD/jeedom/":/var/www/html pifou25/jeedom
 
 ( --name = le nom du container créé, -d = mode détaché, -v = volume source:destination, 
 le dernier paramètre est le nom de l'image)
+
+## Initialisation
+Au premier lancement du container, un script d'initialisation (init.sh) fait les différents
+paramétrages en fonction des variables d'environnement définies. Puis il démarre `supervisor`
+qui est le superviseur de tous les démons.
 
 ## Creer le réseau
 

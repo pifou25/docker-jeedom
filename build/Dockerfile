@@ -76,6 +76,8 @@ RUN usermod -u 1000 www-data \
 WORKDIR /var/www/html
 VOLUME  /var/www/html
 
+HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
+ CMD curl -s --fail http://localhost/here.html || exit 1
 
 # First final image: with xdebug
 # docker build --target xdebug -t jeedom_xdebug .
@@ -85,12 +87,17 @@ RUN pecl install redis-5.3.4 \
 	&& pecl install xdebug-3.0.4 \
 	&& docker-php-ext-enable redis xdebug
 COPY xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+# Initialisation 
+COPY init.sh /root/init.sh
+RUN chmod +x /root/init.sh
 ENTRYPOINT ["/root/init.sh"]
 
 
 # Second final image: normal without xdebug
 # docker build --target light_jeedom -t light_jeedom .
 FROM base as light_jeedom
+COPY init.sh /root/init.sh
+RUN chmod +x /root/init.sh
 ENTRYPOINT ["/root/init.sh"]
 
 
@@ -134,7 +141,6 @@ RUN chmod +x /root/init.sh
 
 # ENTRYPOINT ["/root/init.sh"]
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
-ENTRYPOINT ["/root/init.sh"]
 
 # Fourth final image: full standalone with xdebug
 # docker build --target full_xdebug -t jeedom_xdebug .
@@ -144,4 +150,4 @@ RUN pecl install redis-5.3.4 \
 	&& pecl install xdebug-3.0.4 \
 	&& docker-php-ext-enable redis xdebug
 COPY xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
-# same CMD and ENTRYPOINT as full_jeedom
+# same CMD as full_jeedom
