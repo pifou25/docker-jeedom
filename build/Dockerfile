@@ -6,7 +6,6 @@ ENV MYSQL_JEEDOM_DATABASE=jeedom
 ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_JEEDOM_PASSWD
 # ENV MYSQL_ROOT_PASSWORD
-ENV MYSQL_HOST=db
 
 LABEL com.jeedom.version="Jeedom v4.x (${JEEDOM_VERSION}) for Debian Buster + PHP7.3"
 
@@ -82,6 +81,7 @@ HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
 # First final image: with xdebug
 # docker build --target xdebug -t jeedom_xdebug .
 FROM base as light_xdebug
+ENV MYSQL_HOST=db
 # install xdebug
 RUN pecl install redis-5.3.4 \
 	&& pecl install xdebug-3.0.4 \
@@ -96,6 +96,7 @@ ENTRYPOINT ["/root/init.sh"]
 # Second final image: normal without xdebug
 # docker build --target light_jeedom -t light_jeedom .
 FROM base as light_jeedom
+ENV MYSQL_HOST=db
 COPY init.sh /root/init.sh
 RUN chmod +x /root/init.sh
 ENTRYPOINT ["/root/init.sh"]
@@ -104,6 +105,7 @@ ENTRYPOINT ["/root/init.sh"]
 # third final image: full standalone
 # docker build --target full_jeedom -t jeedom .
 FROM base as full_jeedom
+ENV MYSQL_HOST=localhost
 ENV WEBSERVER_HOME=/var/www/html
 
 RUN apt-get update && apt-get install -y \
@@ -133,7 +135,7 @@ RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available
     rm /etc/apache2/conf-enabled/other-vhosts-access-log.conf > /dev/null 2>&1 && \
     echo '' > /etc/apache2/mods-available/alias.conf && \
     echo "vm.swappiness = 10" >>  /etc/sysctl.conf && \
-	mkdir -p /var/www/html/log/supervisor
+    rm /etc/fail2ban/jail.d/defaults-debian.conf
 
 # Initialisation 
 COPY standalone/init.sh /root/init.sh
@@ -142,9 +144,11 @@ RUN chmod +x /root/init.sh
 # ENTRYPOINT ["/root/init.sh"]
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
 
+
 # Fourth final image: full standalone with xdebug
 # docker build --target full_xdebug -t jeedom_xdebug .
 FROM full_jeedom as full_xdebug
+ENV MYSQL_HOST=localhost
 # install xdebug
 RUN pecl install redis-5.3.4 \
 	&& pecl install xdebug-3.0.4 \

@@ -37,7 +37,7 @@ mysql_sql() {
 #   starting...
 # ___________________________
 
-log_info "starting jeedom ${JEEDOM_BRANCH}"
+log_info "starting jeedom ${JEEDOM_VERSION}"
 cd /var/www/html
 
 # ___________________________
@@ -45,8 +45,8 @@ cd /var/www/html
 # ___________________________
 
 if [ ! -f "/var/www/html/index.php" ]; then
-    log_debug "git clone jeedom ${JEEDOM_BRANCH}"
-    git clone https://github.com/jeedom/core.git -b ${JEEDOM_BRANCH} .
+    log_debug "git clone jeedom ${JEEDOM_VERSION}"
+    git clone https://github.com/jeedom/core.git -b ${JEEDOM_VERSION} .
 fi
 
 if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
