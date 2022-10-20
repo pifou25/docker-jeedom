@@ -135,7 +135,10 @@ RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available
     rm /etc/apache2/conf-enabled/other-vhosts-access-log.conf > /dev/null 2>&1 && \
     echo '' > /etc/apache2/mods-available/alias.conf && \
     echo "vm.swappiness = 10" >>  /etc/sysctl.conf && \
-    rm /etc/fail2ban/jail.d/defaults-debian.conf
+    rm /etc/fail2ban/jail.d/defaults-debian.conf && \
+    mkdir /var/run/fail2ban && \
+    chown -R www-data:www-data /var/log/apache2 && \
+    chown -R www-data:www-data /run/mysqld/
 
 # Initialisation 
 COPY standalone/init.sh /root/init.sh

@@ -38,14 +38,17 @@ services:
 
 
   jeedom:
-    build : ./build
+    # build your own image first:
+    # build : ./build # add target if required
+    # use existing ready-to-go image:
+    image: pifou25/jeedom:light
     hostname: jeedom
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:?required value}
       - MYSQL_JEEDOM_DATABASE=${MYSQL_DATABASE:-jeedom}
       - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
       - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:?required value}
-      - JEEDOM_BRANCH=beta
+      - JEEDOM_VERSION=${JEEDOM_VERSION:-V4-stable}
       - MYSQL_HOST=db
       - TZ=${TIME_ZONE}
     restart: unless-stopped

@@ -78,7 +78,6 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
   chown www-data:www-data -R /tmp/jeedom
 
   log_info " ___ Start mysql ___"
-  # /usr/sbin/mysqld
   supervisorctl start mysql
   if [ $? -ne 0 ]; then
     log_error "Ne peut lancer mysql - Annulation"
@@ -127,9 +126,19 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
      php /var/www/html/install/restore.php
   fi
   log_info " ___ successfull new installation ! ___"
+else
+
+  log_info " ___ (re)Start mysql ___"
+  supervisorctl start mysql
+  if [ $? -ne 0 ]; then
+    log_error "Ne peut (re)lancer mysql - Annulation"
+    exit 1
+  fi
+
 fi
 
 sysctl vm.swappiness=10
+touch /var/www/html/log/http.error
 
 a2dismod status
 a2enmod headers
