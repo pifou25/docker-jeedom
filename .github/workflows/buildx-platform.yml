@@ -54,6 +54,7 @@ jobs:
         name: Build and push Jeedom with Xdebug
         # https://github.com/marketplace/actions/build-and-push-docker-images
         uses: docker/build-push-action@v3
+        continue-on-error: true
         with:
           context: build
           target: light_xdebug
@@ -62,10 +63,11 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:light-xdebug-dev
+            ${{ secrets.DOCKER_USER }}/jeedom:light-debug-dev
       -
         name: Build and push Jeedom light
         uses: docker/build-push-action@v3
+        continue-on-error: true
         with:
           context: build
           target: light_jeedom
@@ -78,6 +80,7 @@ jobs:
       -
         name: Build and push Jeedom light
         uses: docker/build-push-action@v3
+        continue-on-error: true
         with:
           context: build
           target: full_jeedom
@@ -90,6 +93,7 @@ jobs:
       -
         name: Build and push Jeedom light
         uses: docker/build-push-action@v3
+        continue-on-error: true
         with:
           context: build
           target: full_xdebug
@@ -98,4 +102,4 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:xdebug-dev
+            ${{ secrets.DOCKER_USER }}/jeedom:debug-dev

@@ -137,11 +137,11 @@ RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available
     echo "vm.swappiness = 10" >>  /etc/sysctl.conf && \
     rm /etc/fail2ban/jail.d/defaults-debian.conf && \
     mkdir /var/run/fail2ban && \
-    chown -R www-data:www-data /var/log/apache2 && \
     mkdir -p /run/mysqld && \
+    mkdir -p /var/run/mysqld && \
+    chown -R www-data:www-data /var/log/apache2 && \
     chown -R www-data:www-data /run/mysqld/ && \
-    chown -R www-data /etc/apache2 && \
-    mkdir -p /var/run/mysqld
+    chown -R www-data /etc/apache2
 
 # Initialisation 
 COPY standalone/init.sh /root/init.sh
