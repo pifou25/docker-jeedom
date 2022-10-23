@@ -51,7 +51,7 @@ jobs:
           echo "Flags:     ${{ steps.buildx.outputs.flags }}"
           echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
       -
-        name: Build and push Jeedom with Xdebug
+        name: Build and push Jeedom light with Xdebug
         # https://github.com/marketplace/actions/build-and-push-docker-images
         uses: docker/build-push-action@v3
         continue-on-error: true
@@ -78,7 +78,7 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USER }}/jeedom:light-dev
       -
-        name: Build and push Jeedom light
+        name: Build and push Jeedom Full Standalone Dev
         uses: docker/build-push-action@v3
         continue-on-error: true
         with:
@@ -91,7 +91,7 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USER }}/jeedom:dev
       -
-        name: Build and push Jeedom light
+        name: Build and push Jeedom Full Standalone with XDebug
         uses: docker/build-push-action@v3
         continue-on-error: true
         with:
