@@ -34,7 +34,7 @@ RUN apt-get update && apt-get install -y \
   ntp \
   ntpdate \
   mariadb-client \
-  python python-pip python3 python-dev python3-pip python-virtualenv \
+  python python3 python3-pip python-dev python3-pip python-virtualenv \
   smbclient \
   software-properties-common \
   ssl-cert \
