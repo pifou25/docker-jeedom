@@ -6,14 +6,17 @@ ENV MYSQL_JEEDOM_DATABASE=jeedom
 ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_JEEDOM_PASSWD
 # ENV MYSQL_ROOT_PASSWORD
+ENV DEBIAN_FRONTEND=noninteractive
 
 LABEL com.jeedom.version="Jeedom v4.x (${JEEDOM_VERSION}) for Debian Buster + PHP7.3"
 
 # common packages intall
 # alphabetical order for better compare
-RUN apt-get update && apt-get install -y \
-  software-properties-common && add-apt-repository non-free && \
-  apt-get update && apt-get install -y \
+RUN apt-get update && \
+  apt-get install --no-install-recommends --no-install-suggests -q -y software-properties-common && \
+  add-apt-repository non-free && \
+  apt-get update && \
+  apt-get install --no-install-suggests -q -y \
   apt-transport-https \
   apt-utils \
   at   # daemon atd \
@@ -34,7 +37,7 @@ RUN apt-get update && apt-get install -y \
   ntp \
   ntpdate \
   mariadb-client \
-  python python-pip python3 python-dev python3-pip python-virtualenv \
+  python3 python3-dev python3-pip python3-virtualenv \
   smbclient \
   software-properties-common \
   ssl-cert \
@@ -108,7 +111,10 @@ FROM base as full_jeedom
 ENV MYSQL_HOST=localhost
 ENV WEBSERVER_HOME=/var/www/html
 
-RUN apt-get update && apt-get install -y \
+# add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
+RUN groupadd -r mysql && useradd -r -g mysql mysql
+
+RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
   cron \
   fail2ban \
   mariadb-common mariadb-server \
@@ -139,6 +145,8 @@ RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available
     mkdir /var/run/fail2ban && \
     mkdir -p /run/mysqld && \
     mkdir -p /var/run/mysqld && \
+    chown root:mysql /var/run/mysqld && \
+    chmod 770 /var/run/mysqld && \
     chown -R www-data:www-data /var/log/apache2 && \
     chown -R www-data:www-data /run/mysqld/ && \
     chown -R www-data /etc/apache2
@@ -154,7 +162,6 @@ CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.con
 # Fourth final image: full standalone with xdebug
 # docker build --target full_xdebug -t jeedom_xdebug .
 FROM full_jeedom as full_xdebug
-ENV MYSQL_HOST=localhost
 # install xdebug
 RUN pecl install redis-5.3.4 \
 	&& pecl install xdebug-3.0.4 \
