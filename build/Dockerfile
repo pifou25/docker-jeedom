@@ -117,6 +117,7 @@ RUN groupadd -r mysql && useradd -r -g mysql mysql
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
   cron \
   fail2ban \
+  git \
   mariadb-common mariadb-server \
   supervisor
 
@@ -143,12 +144,10 @@ RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available
     echo "vm.swappiness = 10" >>  /etc/sysctl.conf && \
     rm /etc/fail2ban/jail.d/defaults-debian.conf && \
     mkdir /var/run/fail2ban && \
-    mkdir -p /run/mysqld && \
     mkdir -p /var/run/mysqld && \
     chown root:mysql /var/run/mysqld && \
     chmod 770 /var/run/mysqld && \
     chown -R www-data:www-data /var/log/apache2 && \
-    chown -R www-data:www-data /run/mysqld/ && \
     chown -R www-data /etc/apache2
 
 # Initialisation 
