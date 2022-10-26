@@ -45,9 +45,11 @@ And optional with these default values:
 * JEEDOM_VERSION=beta
 
 ```
-docker run -p 81:80 -v jeedom:/var/www/html -v mysql:/var/lib/mysql \
-  -e MYSQL_ROOT_PASSWORD=admin -e MYSQL_JEEDOM_PASSWD=jeedom \
-  --name jeedom_full pifou25/jeedom:full
+docker run -p 81:80 -v $PWD/jeedom:/var/www/html -v $PWD/mysql:/var/lib/mysql \
+  -e MYSQL_ROOT_PASSWORD=admin \
+  -e MYSQL_JEEDOM_PASSWD=jeedom \
+  -e MYSQL_HOST=127.0.0.1 --hostname jeedom \
+  --name jeedom jeedom:full
 ```
 
 Now you may join your new jeedom server at http://localhost:81

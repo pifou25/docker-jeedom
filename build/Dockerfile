@@ -108,7 +108,8 @@ ENTRYPOINT ["/root/init.sh"]
 # third final image: full standalone
 # docker build --target full_jeedom -t jeedom .
 FROM base as full_jeedom
-ENV MYSQL_HOST=localhost
+# localhost didn't work for mysql
+ENV MYSQL_HOST=127.0.0.1 
 ENV WEBSERVER_HOME=/var/www/html
 
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
@@ -117,6 +118,7 @@ RUN groupadd -r mysql && useradd -r -g mysql mysql
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
   cron \
   fail2ban \
+  # add git again because it was removed (?)
   git \
   mariadb-common mariadb-server \
   supervisor
@@ -143,16 +145,20 @@ RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available
     echo '' > /etc/apache2/mods-available/alias.conf && \
     echo "vm.swappiness = 10" >>  /etc/sysctl.conf && \
     rm /etc/fail2ban/jail.d/defaults-debian.conf && \
-    mkdir /var/run/fail2ban && \
+    mkdir -p /var/run/fail2ban && \
     mkdir -p /var/run/mysqld && \
     chown root:mysql /var/run/mysqld && \
     chmod 770 /var/run/mysqld && \
-    chown -R www-data:www-data /var/log/apache2 && \
-    chown -R www-data /etc/apache2
+    chown -R www-data /etc/apache2 && \
+    rm /var/log/apache2/error.log && touch /var/log/apache2/error.log && \
+    chown -R www-data:www-data /var/log/apache2/error.log
 
 # Initialisation 
 COPY standalone/init.sh /root/init.sh
 RUN chmod +x /root/init.sh
+
+#volume for mariadb data
+VOLUME  /var/lib/mysql
 
 # ENTRYPOINT ["/root/init.sh"]
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

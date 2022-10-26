@@ -123,7 +123,6 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
 fi
 
 sysctl vm.swappiness=10
-touch /var/www/html/log/http.error
 
 a2dismod status
 a2enmod headers
@@ -131,7 +130,7 @@ a2enmod remoteip
 
 # required for fail2ban starting
 touch /var/www/html/log/http.error
-mkdir /var/run/fail2ban
+chown -R www-data:www-data /var/www/html
 
 # start apache2 and fail2ban
 supervisorctl start apache2
