@@ -124,7 +124,7 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
   supervisor
 
 # customization from official jeedom/core repo
-ADD  standalone/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+ADD  standalone/supervisord.conf /etc/supervisor/supervisord.conf
 ADD  standalone/jeedom_my.cnf /etc/mysql/conf.d/jeedom_my.cnf
 ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/apache_security /etc/apache2/conf-available/security.conf
 ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/apache_remoteip /etc/apache2/conf-available/remoteip.conf
@@ -143,7 +143,6 @@ RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available
     rm /etc/apache2/conf-available/other-vhosts-access-log.conf > /dev/null 2>&1 && \
     rm /etc/apache2/conf-enabled/other-vhosts-access-log.conf > /dev/null 2>&1 && \
     echo '' > /etc/apache2/mods-available/alias.conf && \
-    echo "vm.swappiness = 10" >>  /etc/sysctl.conf && \
     rm /etc/fail2ban/jail.d/defaults-debian.conf && \
     mkdir -p /var/run/fail2ban && \
     mkdir -p /var/run/mysqld && \
@@ -161,7 +160,7 @@ RUN chmod +x /root/init.sh
 VOLUME  /var/lib/mysql
 
 # ENTRYPOINT ["/root/init.sh"]
-CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
 
 
 # Fourth final image: full standalone with xdebug
