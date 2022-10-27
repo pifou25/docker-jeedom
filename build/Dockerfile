@@ -145,9 +145,6 @@ RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available
     echo '' > /etc/apache2/mods-available/alias.conf && \
     rm /etc/fail2ban/jail.d/defaults-debian.conf && \
     mkdir -p /var/run/fail2ban && \
-    mkdir -p /var/run/mysqld && \
-    chown root:mysql /var/run/mysqld && \
-    chmod 770 /var/run/mysqld && \
     chown -R www-data /etc/apache2 && \
     rm /var/log/apache2/error.log && touch /var/log/apache2/error.log && \
     chown -R www-data:www-data /var/log/apache2/error.log

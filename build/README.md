@@ -48,7 +48,7 @@ And optional with these default values:
 docker run -p 81:80 -v $PWD/jeedom:/var/www/html -v $PWD/mysql:/var/lib/mysql \
   -e MYSQL_ROOT_PASSWORD=admin \
   -e MYSQL_JEEDOM_PASSWD=jeedom \
-  -e MYSQL_HOST=127.0.0.1 --hostname jeedom \
+  --hostname jeedom \
   --name jeedom jeedom:full
 ```
 
