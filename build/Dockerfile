@@ -109,7 +109,7 @@ ENTRYPOINT ["/root/init.sh"]
 # docker build --target full_jeedom -t jeedom .
 FROM base as full_jeedom
 # localhost didn't work for mysql
-ENV MYSQL_HOST=127.0.0.1 
+ENV MYSQL_HOST=localhost 
 ENV WEBSERVER_HOME=/var/www/html
 
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
