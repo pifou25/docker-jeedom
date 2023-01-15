@@ -16,7 +16,7 @@ RUN apt-get update && \
   apt-get install --no-install-recommends --no-install-suggests -q -y software-properties-common && \
   add-apt-repository non-free && \
   apt-get update && \
-  apt-get install --no-install-suggests -q -y \
+  apt-get install --no-install-recommends --no-install-suggests -q -y \
   apt-transport-https \
   apt-utils \
   at   # daemon atd \
@@ -125,7 +125,8 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
   # add git again because it was removed (?)
   git \
   mariadb-common mariadb-server \
-  supervisor
+  supervisor \
+  && rm -rf /var/lib/apt/lists/*
 
 # customization from official jeedom/core repo
 ADD  standalone/supervisord.conf /etc/supervisor/supervisord.conf
