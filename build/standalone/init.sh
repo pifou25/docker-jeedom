@@ -132,6 +132,9 @@ a2enmod remoteip
 touch /var/www/html/log/http.error
 chown -R www-data:www-data /var/www/html
 
-# start apache2 and fail2ban
+# start apache2 cron and fail2ban
 supervisorctl start apache2
+
+supervisorctl start cron
+
 supervisorctl start fail2ban

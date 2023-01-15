@@ -1,4 +1,6 @@
-﻿# Docker Jeedom : Un container Docker pour Jeedom !
+﻿[![Docker Multiplatform Build ci](https://github.com/pifou25/docker-jeedom/actions/workflows/buildx-platform.yml/badge.svg)](https://github.com/pifou25/docker-jeedom/actions/workflows/buildx-platform.yml)
+
+# Docker Jeedom : Un container Docker pour Jeedom !
 
 Le container contient les `packages` nécessaires (le serveur apache + php,
  les extensions PHP, le language Python et ses extensions, le demon atd) ...
@@ -13,13 +15,14 @@ le serveur MariaDB pour la base de données, le cron, fail2ban, le supervisor.
 
  ## Les Tags disponibles
 
-* Version de Jeedom `stable` (current = v4.2) ou `beta` (future v4.3)
-* Version normale ou avec `xdebug` (pour debuggage php)
-* `Full` une version standalone avec tous les démons (contient le serveur de base de données, le service de cron, fail2ban, supervisord...) ou `Light`.
+### Signification des tags utilisés
 
-La version `light` ne peut tourner seule, mais nécessite d'autres containers: 
-une base de données, un service de cron (plus d'autres
-facultatifs, voir docker-compose.yml dans la branche nginx)
+* `Full` : une version standalone avec tous les démons (contient le serveur de base de données, le service de cron, fail2ban, supervisord...) 
+* `Light` : cette version n'est pas `standalone`, mais nécessite d'autres containers: une base de données, un service de cron (plus d'autres facultatifs, voir docker-compose.yml dans la branche nginx)
+* Version de Jeedom `stable` (current = v4.3) ou `beta` (future v4.4)
+* Version normale ou avec `xdebug` (pour debuggage php)
+
+### Liste des Tags générés
 
 * full-stable full latest
 * full-beta beta

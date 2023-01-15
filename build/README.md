@@ -1,11 +1,11 @@
 ## Docker Build
-After cloning the git repository, one may build the Docker image using the `--target` option tohave the right image:
+After cloning the git repository, one may build the Docker image using the `--target` option to have the right image:
 ```
 cd build
-docker build --target full_xdebug --build-arg JEEDOM_VERSION=V4-stable --tag xjeedom .
+docker build --target full_xdebug --build-arg JEEDOM_VERSION=V4-stable --tag jeedom:debug .
 ```
 * Available targets are: light_jeedom, light_xdebug, full_jeedom, full_xdebug
-* $JEEDOM_VERSION is beta or V4-stable (default)
+* $JEEDOM_VERSION is beta or V4-stable (default) (or master for the unsupported Jeedom v3)
 
 ### Dockerfile : génération du serveur apache - PHP
 
@@ -29,11 +29,6 @@ volume "$PWD/jeedom":/var/www/html
 The image may be available on dockerhub :
 ```
 docker pull pifou25/jeedom:full
-```
-
-Build image if needed.
-```
-docker build -t jeedom:full .
 ```
 
 Run the container with required environment variables:

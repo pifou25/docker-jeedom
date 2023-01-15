@@ -13,6 +13,12 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v3.1.0
+      - name: Docker Lint
+        uses: luke142367/Docker-Lint-Action@v1.1.1
+        with:
+          target: build/Dockerfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       -
         name: Set up QEMU
         # https://github.com/marketplace/actions/docker-setup-qemu

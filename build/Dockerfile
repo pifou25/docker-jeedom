@@ -115,6 +115,10 @@ ENV WEBSERVER_HOME=/var/www/html
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
 RUN groupadd -r mysql && useradd -r -g mysql mysql
 
+RUN mkdir -p '/var/run/mysqld' && \
+    chown root:mysql '/var/run/mysqld' && \
+    chmod 774 '/var/run/mysqld'
+
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
   cron \
   fail2ban \
