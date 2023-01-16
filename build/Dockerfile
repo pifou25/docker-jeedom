@@ -1,4 +1,4 @@
-﻿FROM php:7.3-apache-buster as base
+﻿FROM php:7.3-apache-bullseye as base
 
 ARG JEEDOM_VERSION=V4-stable
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}
@@ -68,6 +68,10 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
 	mkdir -p /etc/sudoers.d && \
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
+ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/install.sh /root/install.ssh
+RUN chmod +x /root/install.sh
+
+
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
    && groupmod -g 1000 www-data \
@@ -76,13 +80,14 @@ RUN usermod -u 1000 www-data \
    && chown www-data:www-data -R /tmp/jeedom
 
 WORKDIR /var/www/html
-VOLUME  /var/www/html
+VOLUME /var/www/html
+VOLUME /var/www/html/backup
+VOLUME /var/www/html/log
 
 HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
  CMD curl -s --fail http://localhost/here.html || exit 1
 
-# First final image: with xdebug
-# docker build --target xdebug -t jeedom_xdebug .
+# First final image: light with xdebug
 FROM base as light_xdebug
 ENV MYSQL_HOST=db
 # install xdebug
@@ -96,8 +101,7 @@ RUN chmod +x /root/init.sh
 ENTRYPOINT ["/root/init.sh"]
 
 
-# Second final image: normal without xdebug
-# docker build --target light_jeedom -t light_jeedom .
+# Second final image: light without xdebug
 FROM base as light_jeedom
 ENV MYSQL_HOST=db
 COPY init.sh /root/init.sh
@@ -106,7 +110,6 @@ ENTRYPOINT ["/root/init.sh"]
 
 
 # third final image: full standalone
-# docker build --target full_jeedom -t jeedom .
 FROM base as full_jeedom
 # localhost didn't work for mysql
 ENV MYSQL_HOST=localhost 
@@ -166,7 +169,6 @@ CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
 
 
 # Fourth final image: full standalone with xdebug
-# docker build --target full_xdebug -t jeedom_xdebug .
 FROM full_jeedom as full_xdebug
 # install xdebug
 RUN pecl install redis-5.3.4 \

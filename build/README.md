@@ -9,6 +9,13 @@ docker build --target full_xdebug --build-arg JEEDOM_VERSION=V4-stable --tag jee
 * Available targets are: light_jeedom, light_xdebug, full_jeedom, full_xdebug
 * $JEEDOM_VERSION is beta or V4-stable (default) (or master for the unsupported Jeedom v3)
 
+## Github Workflow
+
+The current workflow build all 4 targets (Jeedom Standalone, with XDebug, Jeedom Light, Light + XDebug) but only for the V4-Stable version (default build-arg).
+There is another build for the same with build-arg = beta.
+
+Supported architectures are: linux/amd64,linux/arm64,linux/arm/v7
+
 ### Dockerfile : génération du serveur apache - PHP
 
 Dans le fichier dockerfile, choisir la version de php adéquate, par exemple 7.3-apache (il faut préciser buster
