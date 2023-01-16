@@ -1,5 +1,7 @@
 ## Docker Build
-After cloning the git repository, one may build the Docker image using the `--target` option to have the right image:
+
+After cloning the git repository, one may build the desired Docker image using the `--target` option to have the right image
+ and the `--build-arg` for the Git Branch i.e. the Jeedom version (V4-stable or beta)
 ```
 cd build
 docker build --target full_xdebug --build-arg JEEDOM_VERSION=V4-stable --tag jeedom:debug .

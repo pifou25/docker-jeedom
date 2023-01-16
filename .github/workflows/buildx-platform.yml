@@ -110,3 +110,18 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
             ${{ secrets.DOCKER_USER }}/jeedom:debug-dev
+      -
+        name: Build and push Jeedom Full Standalone Beta
+        # Same builds with arg = beta...
+        uses: docker/build-push-action@v3
+        continue-on-error: true
+        with:
+          context: build
+          target: full_jeedom
+          build-args: JEEDOM_VERSION=beta
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          tags: |
+            ${{ secrets.DOCKER_USER }}/jeedom:beta
