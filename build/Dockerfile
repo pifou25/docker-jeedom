@@ -68,7 +68,7 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
 	mkdir -p /etc/sudoers.d && \
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
-ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/install.sh /root/install.ssh
+ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/install.sh /root/install.sh
 RUN chmod +x /root/install.sh
 
 
