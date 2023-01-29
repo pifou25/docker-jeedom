@@ -1,5 +1,7 @@
 ﻿FROM php:7.3-apache-bullseye as base
 
+LABEL org.opencontainers.image.source https://github.com/pifou25/docker-jeedom
+
 ARG JEEDOM_VERSION=V4-stable
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}
 ENV MYSQL_JEEDOM_DATABASE=jeedom
