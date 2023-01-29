@@ -1,6 +1,10 @@
 ﻿FROM php:7.3-apache-bullseye as base
 
+# GitHub use this label to connect Git repo and Docker images in ghcr.io
 LABEL org.opencontainers.image.source https://github.com/pifou25/docker-jeedom
+LABEL org.opencontainers.artifact.description "Jeedom Home Automation in Docker"
+LABEL org.opencontainers.image.authors pifou25
+
 
 ARG JEEDOM_VERSION=V4-stable
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}

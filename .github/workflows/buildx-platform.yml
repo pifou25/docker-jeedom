@@ -58,7 +58,7 @@ jobs:
           echo "Flags:     ${{ steps.buildx.outputs.flags }}"
           echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
       -
-        name: Build and push Jeedom light with Xdebug
+        name: Build and push Jeedom Light with Xdebug
         # https://github.com/marketplace/actions/build-and-push-docker-images
         uses: docker/build-push-action@v3
         continue-on-error: true
@@ -70,9 +70,9 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:light-debug-dev
+            ${{ secrets.DOCKER_USER }}/jeedom:light-debug
       -
-        name: Build and push Jeedom light
+        name: Build and push Jeedom Light
         uses: docker/build-push-action@v3
         continue-on-error: true
         with:
@@ -83,9 +83,9 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:light-dev
+            ${{ secrets.DOCKER_USER }}/jeedom:light
       -
-        name: Build and push Jeedom Full Standalone Dev
+        name: Build and push Jeedom Full Standalone
         uses: docker/build-push-action@v3
         continue-on-error: true
         with:
@@ -96,7 +96,7 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:dev
+            ${{ secrets.DOCKER_USER }}/jeedom:full
       -
         name: Build and push Jeedom Full Standalone with XDebug
         uses: docker/build-push-action@v3
@@ -109,7 +109,7 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:debug-dev
+            ${{ secrets.DOCKER_USER }}/jeedom:debug
       -
         name: Build and push Jeedom Full Standalone Beta
         # Same builds with arg = beta...
@@ -125,3 +125,17 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
             ${{ secrets.DOCKER_USER }}/jeedom:beta
+      -
+        name: Build and push Jeedom Light
+        uses: docker/build-push-action@v3
+        continue-on-error: true
+        with:
+          context: build
+          target: light_jeedom
+          build-args: JEEDOM_VERSION=beta
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          tags: |
+            ${{ secrets.DOCKER_USER }}/jeedom:light-beta
