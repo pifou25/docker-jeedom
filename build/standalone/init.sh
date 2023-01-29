@@ -41,7 +41,7 @@ mysql_sql() {
 #   starting...
 # ___________________________
 
-log_info "starting jeedom ${JEEDOM_BRANCH}"
+log_info "starting jeedom ${JEEDOM_VERSION}"
 cd /var/www/html
 
 # ___________________________
@@ -49,8 +49,8 @@ cd /var/www/html
 # ___________________________
 
 if [ ! -f "/var/www/html/index.php" ]; then
-    log_debug "git clone jeedom ${JEEDOM_BRANCH}"
-    git clone https://github.com/jeedom/core.git -b ${JEEDOM_BRANCH} .
+    log_debug "git clone jeedom ${JEEDOM_VERSION}"
+    git clone https://github.com/jeedom/core.git -b ${JEEDOM_VERSION} .
 fi
 
 if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
@@ -77,20 +77,12 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
   chmod 770 -R /tmp/jeedom
   chown www-data:www-data -R /tmp/jeedom
 
-  log_info " ___ Start mysql ___"
-  # /usr/sbin/mysqld
-  supervisorctl start mysql
-  if [ $? -ne 0 ]; then
-    log_error "Ne peut lancer mysql - Annulation"
-    exit 1
-  fi
-
-  log_info "Création de la database SQL ${MYSQL_JEEDOM_DATABASE}..."
-  mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'%';"
-  mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'%' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
+  log_info " ___ Création de la database SQL ${MYSQL_JEEDOM_DATABASE}... ___"
+  mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'localhost';"
+  mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'localhost' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
   mysql_sql "DROP DATABASE IF EXISTS ${MYSQL_JEEDOM_DATABASE};"
   mysql_sql "CREATE DATABASE ${MYSQL_JEEDOM_DATABASE};"
-  mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'%';"
+  mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'localhost';"
 
   log_info "jeedom clean install"
   php /var/www/html/install/install.php mode=force
@@ -127,6 +119,7 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
      php /var/www/html/install/restore.php
   fi
   log_info " ___ successfull new installation ! ___"
+
 fi
 
 sysctl vm.swappiness=10
@@ -135,5 +128,11 @@ a2dismod status
 a2enmod headers
 a2enmod remoteip
 
-# start supervisord
-exec /usr/bin/supervisord
+# required for fail2ban starting
+touch /var/www/html/log/http.error
+chown -R www-data:www-data /var/www/html
+
+# start apache2 cron and fail2ban
+supervisorctl start apache2
+supervisorctl start cron
+supervisorctl start fail2ban

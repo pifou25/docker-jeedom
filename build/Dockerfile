@@ -1,38 +1,49 @@
-﻿FROM php:7.3-apache-buster
+﻿FROM php:7.3-apache-bullseye as base
 
-ENV JEEDOM_BRANCH=beta
+ARG JEEDOM_VERSION=V4-stable
+ENV JEEDOM_VERSION=${JEEDOM_VERSION}
 ENV MYSQL_JEEDOM_DATABASE=jeedom
 ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_JEEDOM_PASSWD
 # ENV MYSQL_ROOT_PASSWORD
-ENV MYSQL_HOST=db
-ENV JEEDOM_BRANCH=beta
+ENV DEBIAN_FRONTEND=noninteractive
 
-LABEL version="Jeedom with XDebug for Docker"
+LABEL com.jeedom.version="Jeedom v4.x (${JEEDOM_VERSION}) for Debian Buster + PHP7.3"
 
-# Installation des paquets
-# 	ccze          : couleur pour les logs
-# 	wget          : téléchargement
-#   libzip-dev zip: pour l'extension php zip
-#   sudo          : pour les droits sudo de jeedom
-#   python*       : pour certains plugins
-#   mariadb-client: pour backup et restauration
-
-RUN apt-get update && apt-get install -y \
-	apt-utils \
-	net-tools \
-	wget \
-	ntp \
-	locales \
-	ccze \
-	python python-pip python3 python-dev python3-pip python-virtualenv \
-	libzip-dev zip \
-	git iproute2 \
-	mariadb-client \
-	gettext librsync-dev \
-	sudo at ntpdate nmap apt-transport-https ffmpeg smbclient \
-	software-properties-common ssl-cert \
-	libssh2-1 libssh2-1-dev
+# common packages intall
+# alphabetical order for better compare
+RUN apt-get update && \
+  apt-get install --no-install-recommends --no-install-suggests -q -y software-properties-common && \
+  add-apt-repository non-free && \
+  apt-get update && \
+  apt-get install --no-install-recommends --no-install-suggests -q -y \
+  apt-transport-https \
+  apt-utils \
+  at   # daemon atd \
+  ccze # for logs colors \
+  curl \
+  dos2unix \
+  ffmpeg \
+  gettext \
+  git \
+  iproute2 \
+  librsync-dev \
+  libssh2-1 \
+  libssh2-1-dev \
+  libzip-dev \
+  locales \
+  net-tools \
+  nmap \
+  ntp \
+  ntpdate \
+  mariadb-client \
+  python3 python3-dev python3-pip python3-virtualenv \
+  smbclient \
+  software-properties-common \
+  ssl-cert \
+  sudo \
+  wget \
+  zip
 
 
 # add php extension
@@ -42,35 +53,24 @@ RUN install-php-extensions\
     mbstring mysqli pcntl pdo_mysql \
     soap sockets xmlrpc zip gd opcache ssh2
 
-# add manually duplicity v0.7.19 from jeedom image
-RUN python -m pip install future fasteners && \
-    wget https://images.jeedom.com/resources/duplicity/duplicity.tar.gz -O /tmp/duplicity.tar.gz && \
-    tar xvf /tmp/duplicity.tar.gz -C /tmp && \
-	cd /tmp/duplicity-0.7.19 && \
-	python setup.py install 2>&1 >> /dev/null && \
-	rm -rf /tmp/duplicity.tar.gz && \
-	rm -rf duplicity-0.7.19
 
 # install composer for dependancies
 # COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 # RUN composer install
 
-#add motd - link sh to bash for Docker Desktop
+#add motd & bashrc - link sh to bash for Docker Desktop
 COPY motd /etc/jmotd
+ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/bashrc /root/.bashrc
 RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd && cat /etc/jmotd' \
     >> /etc/bash.bashrc && \
     ln -sf /bin/bash /bin/sh && \
     # add sudo for www-data
+	mkdir -p /etc/sudoers.d && \
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
-# install xdebug
-RUN pecl install redis-5.3.4 \
-	&& pecl install xdebug-3.0.4 \
-	&& docker-php-ext-enable redis xdebug
+ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/install.sh /root/install.sh
+RUN chmod +x /root/install.sh
 
-# RUN echo "zend_extension=$(find /usr/local/lib/php/extensions/ -name xdebug.so)" >> /usr/local/etc/php/conf.d/xdebug.ini;
-COPY xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
-RUN cp /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
@@ -80,10 +80,99 @@ RUN usermod -u 1000 www-data \
    && chown www-data:www-data -R /tmp/jeedom
 
 WORKDIR /var/www/html
-VOLUME  /var/www/html
+VOLUME /var/www/html
+VOLUME /var/www/html/backup
+VOLUME /var/www/html/log
 
+HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
+ CMD curl -s --fail http://localhost/here.html || exit 1
+
+# First final image: light with xdebug
+FROM base as light_xdebug
+ENV MYSQL_HOST=db
+# install xdebug
+RUN pecl install redis-5.3.4 \
+	&& pecl install xdebug-3.0.4 \
+	&& docker-php-ext-enable redis xdebug
+COPY xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 # Initialisation 
-ADD init.sh /root/init.sh
+COPY init.sh /root/init.sh
 RUN chmod +x /root/init.sh
 ENTRYPOINT ["/root/init.sh"]
 
+
+# Second final image: light without xdebug
+FROM base as light_jeedom
+ENV MYSQL_HOST=db
+COPY init.sh /root/init.sh
+RUN chmod +x /root/init.sh
+ENTRYPOINT ["/root/init.sh"]
+
+
+# third final image: full standalone
+FROM base as full_jeedom
+# localhost didn't work for mysql
+ENV MYSQL_HOST=localhost 
+ENV WEBSERVER_HOME=/var/www/html
+
+# add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
+RUN groupadd -r mysql && useradd -r -g mysql mysql
+
+RUN mkdir -p '/var/run/mysqld' && \
+    chown root:mysql '/var/run/mysqld' && \
+    chmod 774 '/var/run/mysqld'
+
+RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
+  cron \
+  fail2ban \
+  # add git again because it was removed (?)
+  git \
+  mariadb-common mariadb-server \
+  supervisor \
+  && rm -rf /var/lib/apt/lists/*
+
+# customization from official jeedom/core repo
+ADD  standalone/supervisord.conf /etc/supervisor/supervisord.conf
+ADD  standalone/jeedom_my.cnf /etc/mysql/conf.d/jeedom_my.cnf
+ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/apache_security /etc/apache2/conf-available/security.conf
+ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/apache_remoteip /etc/apache2/conf-available/remoteip.conf
+ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/apache_default /etc/apache2/sites-available/000-default.conf
+ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/fail2ban.jeedom.conf /etc/fail2ban/jail.d/jeedom.conf
+ADD  php.ini /usr/local/etc/php/php.ini
+
+RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available/security.conf && \
+    sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available/remoteip.conf && \
+    rm /etc/apache2/conf-enabled/security.conf > /dev/null 2>&1 && \
+    ln -s /etc/apache2/conf-available/security.conf /etc/apache2/conf-enabled/ && \
+    ln -s /etc/apache2/conf-available/remoteip.conf /etc/apache2/conf-enabled/ && \
+    sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/sites-available/000-default.conf && \
+    rm /etc/apache2/sites-enabled/000-default.conf > /dev/null 2>&1 && \
+    ln -s /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-enabled/ && \
+    rm /etc/apache2/conf-available/other-vhosts-access-log.conf > /dev/null 2>&1 && \
+    rm /etc/apache2/conf-enabled/other-vhosts-access-log.conf > /dev/null 2>&1 && \
+    echo '' > /etc/apache2/mods-available/alias.conf && \
+    rm /etc/fail2ban/jail.d/defaults-debian.conf && \
+    mkdir -p /var/run/fail2ban && \
+    chown -R www-data /etc/apache2 && \
+    rm /var/log/apache2/error.log && touch /var/log/apache2/error.log && \
+    chown -R www-data:www-data /var/log/apache2/error.log
+
+# Initialisation 
+COPY standalone/init.sh /root/init.sh
+RUN chmod +x /root/init.sh
+
+#volume for mariadb data
+VOLUME  /var/lib/mysql
+
+# ENTRYPOINT ["/root/init.sh"]
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
+
+
+# Fourth final image: full standalone with xdebug
+FROM full_jeedom as full_xdebug
+# install xdebug
+RUN pecl install redis-5.3.4 \
+	&& pecl install xdebug-3.0.4 \
+	&& docker-php-ext-enable redis xdebug
+COPY xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+# same CMD as full_jeedom
