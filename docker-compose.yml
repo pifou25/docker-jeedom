@@ -14,7 +14,7 @@ services:
       - PGID=1000
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - TZ=${TIME_ZONE}
-      - MYSQL_DATABASE=${MYSQL_DATABASE-jeedom}
+      - MYSQL_DATABASE=${MYSQL_JEEDOM_DB-jeedom}
       - MYSQL_USER=${MYSQL_JEEDOM_USER:-jeedom}
       - MYSQL_PASSWD=${MYSQL_JEEDOM_PASSWD:?required}
     healthcheck:
@@ -34,18 +34,22 @@ services:
       # label chadburn for the "cron" container
       chadburn.enabled: "true"
       chadburn.job-exec.jeedom-backup.schedule: "@every 1d"
-      chadburn.job-exec.jeedom-backup.command: "mysqldump -d${MYSQL_DATABASE-jeedom} -u${MYSQL_JEEDOM_USER:-jeedom} -p\"${MYSQL_JEEDOM_PASSWD:?required}\"' > /backup/jeedom.sql"
+      chadburn.job-exec.jeedom-backup.command: "mysqldump -d${MYSQL_JEEDOM_DB-jeedom} -u${MYSQL_JEEDOM_USER:-jeedom} -p\"${MYSQL_JEEDOM_PASSWD:?required}\"' > /backup/jeedom.sql"
 
 
   jeedom:
-    # build your own image first:
-    # build : ./build # add target if required
-    # use existing ready-to-go image:
-    image: pifou25/jeedom:light
+    # build your own image first with build-args and target:
+    build:
+      context: ./build
+      target: light_xdebug # add target if required
+      args:
+        JEEDOM_VERSION: V4-stable
+    # OR use existing ready-to-go image:
+    # image: pifou25/jeedom:light
     hostname: jeedom
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:?required value}
-      - MYSQL_JEEDOM_DATABASE=${MYSQL_DATABASE:-jeedom}
+      - MYSQL_DATABASE=${MYSQL_JEEDOM_DB:-jeedom}
       - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
       - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:?required value}
       - JEEDOM_VERSION=${JEEDOM_VERSION:-V4-stable}
@@ -108,15 +112,15 @@ services:
       - 8080:8080
 
 
-    # On peux ajouter également Node-red. permettant une gestion de mqtt native
-    node-red:
-      profiles: ["nodered"]
-      image:  nodered/node-red
-      volumes:
-      - ../volumes/nodered:/data  # remplacer /nfs/volumes par l'emplacement du volume souhaité
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:1880"]
-        interval: 1m
-        timeout: 10s
-        retries: 3
-        start_period: 10s
+  # On peux ajouter également Node-red. permettant une gestion de mqtt native
+  node-red:
+    profiles: ["nodered"]
+    image:  nodered/node-red
+    volumes:
+    - ../volumes/nodered:/data  # remplacer /nfs/volumes par l'emplacement du volume souhaité
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1880"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 10s
