@@ -1,6 +1,8 @@
 ﻿<img align="right" src="https://www.jeedom.com/site/logo.png" width="100">
 
 [![Docker Multiplatform Build ci](https://github.com/pifou25/docker-jeedom/actions/workflows/buildx-platform.yml/badge.svg)](https://github.com/pifou25/docker-jeedom/actions/workflows/buildx-platform.yml)
+![Docker Pulls](https://img.shields.io/docker/pulls/pifou25/jeedom)
+![GitHub forks](https://img.shields.io/github/forks/pifou25/docker-jeedom)
 
 # Jeedom - *Innovative Home Automation*
 <p align="center">

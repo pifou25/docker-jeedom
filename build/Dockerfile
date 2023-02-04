@@ -1,6 +1,6 @@
 ﻿ARG DEBIAN=bullseye
 FROM php:7.3-apache-${DEBIAN} as base
-ARG DEBIAN=bullseye
+ARG DEBIAN
 
 # GitHub use this label to connect Git repo and Docker images in ghcr.io
 LABEL org.opencontainers.image.source https://github.com/pifou25/docker-jeedom
@@ -10,6 +10,7 @@ LABEL org.opencontainers.image.authors pifou25
 
 ARG JEEDOM_VERSION=V4-stable
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}
+ENV WEBSERVER_HOME=/var/www/html
 ENV MYSQL_JEEDOM_DATABASE=jeedom
 ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_JEEDOM_PASSWD
@@ -76,8 +77,8 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
 	mkdir -p /etc/sudoers.d && \
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
-# ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/install.sh /root/install.sh
-# RUN chmod +x /root/install.sh
+ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/install.sh /root/install.sh
+RUN chmod +x /root/install.sh
 
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
@@ -87,10 +88,10 @@ RUN usermod -u 1000 www-data \
    && chmod 777 -R /tmp/jeedom \
    && chown www-data:www-data -R /tmp/jeedom
 
-WORKDIR /var/www/html
-VOLUME /var/www/html
-VOLUME /var/www/html/backup
-VOLUME /var/www/html/log
+WORKDIR ${WEBSERVER_HOME}
+VOLUME ${WEBSERVER_HOME}
+VOLUME ${WEBSERVER_HOME}/backup
+VOLUME ${WEBSERVER_HOME}/log
 
 # First final image: light with xdebug
 FROM base as light_xdebug
@@ -124,7 +125,6 @@ ENTRYPOINT ["/root/init.sh"]
 FROM base as full_jeedom
 # localhost didn't work for mysql
 ENV MYSQL_HOST=localhost 
-ENV WEBSERVER_HOME=/var/www/html
 # Add the supervisord healthcheck script
 COPY standalone/healthcheck.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/healthcheck.sh
