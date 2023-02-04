@@ -1,4 +1,6 @@
-﻿FROM php:7.3-apache-bullseye as base
+﻿ARG DEBIAN=bullseye
+FROM php:7.3-apache-${DEBIAN} as base
+ARG DEBIAN=bullseye
 
 # GitHub use this label to connect Git repo and Docker images in ghcr.io
 LABEL org.opencontainers.image.source https://github.com/pifou25/docker-jeedom
@@ -14,7 +16,7 @@ ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_ROOT_PASSWORD
 ENV DEBIAN_FRONTEND=noninteractive
 
-LABEL com.jeedom.version="Jeedom v4.x (${JEEDOM_VERSION}) for Debian Buster + PHP7.3"
+LABEL com.jeedom.version="Jeedom ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP7.3"
 
 # common packages intall
 # alphabetical order for better compare
@@ -74,8 +76,8 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
 	mkdir -p /etc/sudoers.d && \
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
-ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/install.sh /root/install.sh
-RUN chmod +x /root/install.sh
+# ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/install.sh /root/install.sh
+# RUN chmod +x /root/install.sh
 
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
@@ -90,9 +92,6 @@ VOLUME /var/www/html
 VOLUME /var/www/html/backup
 VOLUME /var/www/html/log
 
-HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
- CMD curl -s --fail http://localhost/here.html || exit 1
-
 # First final image: light with xdebug
 FROM base as light_xdebug
 ENV MYSQL_HOST=db
@@ -101,6 +100,9 @@ RUN pecl install redis-5.3.4 \
 	&& pecl install xdebug-3.0.4 \
 	&& docker-php-ext-enable redis xdebug
 COPY xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+# Healthcheck for the 'light' image, apache is running ?
+HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
+  CMD curl -s --fail http://localhost/here.html || exit 1
 # Initialisation 
 COPY init.sh /root/init.sh
 RUN chmod +x /root/init.sh
@@ -110,6 +112,9 @@ ENTRYPOINT ["/root/init.sh"]
 # Second final image: light without xdebug
 FROM base as light_jeedom
 ENV MYSQL_HOST=db
+# Healthcheck for the 'light' image, apache is running ?
+HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
+  CMD curl -s --fail http://localhost/here.html || exit 1
 COPY init.sh /root/init.sh
 RUN chmod +x /root/init.sh
 ENTRYPOINT ["/root/init.sh"]
@@ -120,6 +125,11 @@ FROM base as full_jeedom
 # localhost didn't work for mysql
 ENV MYSQL_HOST=localhost 
 ENV WEBSERVER_HOME=/var/www/html
+# Add the supervisord healthcheck script
+COPY standalone/healthcheck.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/healthcheck.sh
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD /usr/local/bin/healthcheck.sh
 
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
 RUN groupadd -r mysql && useradd -r -g mysql mysql
