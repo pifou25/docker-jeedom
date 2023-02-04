@@ -15,6 +15,7 @@ on:
 jobs:
 
   build:
+  # this step use only simple scripts commands
 
     runs-on: ubuntu-latest
 
@@ -26,12 +27,15 @@ jobs:
         docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }} 
 
     - name: Build the Docker image
-      run: docker build standalone --file standalone/Dockerfile --tag ${{ secrets.DOCKER_USER }}/jeedom:test
+      # docker build [directory] --file [file] --tag [tag]
+      run: docker build build --file build/Dockerfile --tag ${{ secrets.DOCKER_USER }}/jeedom:test
       
     - name: Docker Push
-      run: docker push ${{ secrets.DOCKER_USER }}/jeedom:full
+      run: docker push ${{ secrets.DOCKER_USER }}/jeedom:test
 
   dockerx:
+  # this step use only Github Marketplace Actions
+
     runs-on: ubuntu-latest
     steps:
       -
@@ -56,4 +60,4 @@ jobs:
           context: build
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
-          tags: ${{ secrets.DOCKER_USER }}/jeedom:xdebug
+          tags: ${{ secrets.DOCKER_USER }}/jeedom:xdebug-test
