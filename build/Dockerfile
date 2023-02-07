@@ -141,8 +141,8 @@ RUN mkdir -p '/var/run/mysqld' && \
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
   cron \
   fail2ban \
-  # add git again because it was removed (?)
-  git \
+  # add same packages again because it was removed (?)
+  git wget zip \
   mariadb-common mariadb-server \
   supervisor \
   && rm -rf /var/lib/apt/lists/*
