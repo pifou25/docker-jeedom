@@ -64,7 +64,8 @@ jobs:
         continue-on-error: true
         with:
           context: build
-          target: light_xdebug
+          target: light_jeedom
+          build-args: XDEBUG=true
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
@@ -115,7 +116,8 @@ jobs:
         continue-on-error: true
         with:
           context: build
-          target: full_xdebug
+          target: full_jeedom
+          build-args: XDEBUG=true
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
@@ -138,7 +140,7 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USER }}/jeedom:beta
       -
-        name: Build and push Jeedom Light
+        name: Build and push Jeedom Light beta
         uses: docker/build-push-action@v3
         continue-on-error: true
         with:
