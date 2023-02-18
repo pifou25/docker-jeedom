@@ -135,6 +135,8 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
   fail2ban \
   mariadb-common mariadb-server \
   supervisor \
+  # add forgetten packages ?
+  git zip wget \
   && rm -rf /var/lib/apt/lists/*
 
 # customization from official jeedom/core repo

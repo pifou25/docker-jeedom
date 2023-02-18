@@ -76,6 +76,9 @@ if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
   chmod 770 -R /tmp/jeedom
   chown www-data:www-data -R /tmp/jeedom
 
+  # start database
+  supervisorctl start mysql
+
   log_info " ___ Création de la database SQL ${MYSQL_JEEDOM_DATABASE}... ___"
   mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'localhost';"
   mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'localhost' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
