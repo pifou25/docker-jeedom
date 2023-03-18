@@ -6,7 +6,6 @@ networks:
 
 services:
   db:
-    container_name: db
     image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
     restart: unless-stopped
     environment:
@@ -118,7 +117,7 @@ services:
     # profiles: ["nodered"]
     image:  nodered/node-red
     volumes:
-    - ./volumes/nodered:/data  # remplacer /nfs/volumes par l'emplacement du volume souhaité
+    - ./volumes/nodered:/data  # remplacer ./volumes par l'emplacement du volume souhaité
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:1880"]
       interval: 1m
