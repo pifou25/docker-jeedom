@@ -30,7 +30,8 @@ log_debug() {
 }
 
 mysql_sql() {
-  echo "$@" | mysql -uroot "-p${MYSQL_ROOT_PASSWORD}"
+  # no mysql root password for standalone install
+  echo "$@" | mysql -uroot # "-p${MYSQL_ROOT_PASSWORD}"
   if [ $? -ne 0 ]; then
     log_error "Ne peut exécuter $@ dans MySQL - Annulation"
     exit 1
@@ -42,19 +43,18 @@ mysql_sql() {
 # ___________________________
 
 log_info "starting jeedom ${JEEDOM_VERSION}"
-cd /var/www/html
+cd ${WEBSERVER_HOME}
 
 # ___________________________
 #   first start: download sources
 # ___________________________
 
-if [ ! -f "/var/www/html/index.php" ]; then
-    log_debug "git clone jeedom ${JEEDOM_VERSION}"
-    git clone https://github.com/jeedom/core.git -b ${JEEDOM_VERSION} .
+if [ ! -f "${WEBSERVER_HOME}/index.php" ]; then
+  /root/install.sh -v ${JEEDOM_VERSION} -w ${WEBSERVER_HOME} -s 6
 fi
 
-if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
-  if [ ! -f "/var/www/html/core/config/common.config.sample.php" ]; then
+if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
+  if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.sample.php" ]; then
     log_error "Can not install jeedom (no config.sample file)"
     exit 1
   fi
@@ -64,18 +64,21 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
   # ___________________________
 
   log_info "first run of jeedom container : configuration"
-  cp /var/www/html/core/config/common.config.sample.php /var/www/html/core/config/common.config.php
-  sed -i "s/#PASSWORD#/${MYSQL_JEEDOM_PASSWD}/g" /var/www/html/core/config/common.config.php
-  sed -i "s/#DBNAME#/${MYSQL_JEEDOM_DATABASE}/g" /var/www/html/core/config/common.config.php
-  sed -i "s/#USERNAME#/${MYSQL_JEEDOM_USER}/g" /var/www/html/core/config/common.config.php
-  sed -i "s/#PORT#/3306/g" /var/www/html/core/config/common.config.php
-  sed -i "s/#HOST#/${MYSQL_HOST}/g" /var/www/html/core/config/common.config.php
+  cp ${WEBSERVER_HOME}/core/config/common.config.sample.php ${WEBSERVER_HOME}/core/config/common.config.php
+  sed -i "s/#PASSWORD#/${MYSQL_JEEDOM_PASSWD}/g" ${WEBSERVER_HOME}/core/config/common.config.php
+  sed -i "s/#DBNAME#/${MYSQL_JEEDOM_DATABASE}/g" ${WEBSERVER_HOME}/core/config/common.config.php
+  sed -i "s/#USERNAME#/${MYSQL_JEEDOM_USER}/g" ${WEBSERVER_HOME}/core/config/common.config.php
+  sed -i "s/#PORT#/3306/g" ${WEBSERVER_HOME}/core/config/common.config.php
+  sed -i "s/#HOST#/${MYSQL_HOST}/g" ${WEBSERVER_HOME}/core/config/common.config.php
   
-  chmod 770 -R /var/www/html
-  chown -R www-data:www-data /var/www/html
+  chmod 770 -R ${WEBSERVER_HOME}
+  chown -R www-data:www-data ${WEBSERVER_HOME}
   mkdir -p /tmp/jeedom
   chmod 770 -R /tmp/jeedom
   chown www-data:www-data -R /tmp/jeedom
+
+  # start database
+  supervisorctl start mysql
 
   log_info " ___ Création de la database SQL ${MYSQL_JEEDOM_DATABASE}... ___"
   mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'localhost';"
@@ -85,7 +88,7 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
   mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'localhost';"
 
   log_info "jeedom clean install"
-  php /var/www/html/install/install.php mode=force
+  php ${WEBSERVER_HOME}/install/install.php mode=force
   if [ $? -ne 0 ]; then
     log_error "Can not install jeedom (error in install.php, see log)"
     exit 1
@@ -115,8 +118,8 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
 
   if [ -d "/tmp/backup" ] && [ "$(ls -A /tmp/backup)" ]; then
      log_info "found a backup, try to restore..."
-     cp /tmp/backup/* /var/www/html/backup
-     php /var/www/html/install/restore.php
+     cp /tmp/backup/* ${WEBSERVER_HOME}/backup
+     php ${WEBSERVER_HOME}/install/restore.php
   fi
   log_info " ___ successfull new installation ! ___"
 
@@ -129,8 +132,8 @@ a2enmod headers
 a2enmod remoteip
 
 # required for fail2ban starting
-touch /var/www/html/log/http.error
-chown -R www-data:www-data /var/www/html
+touch ${WEBSERVER_HOME}/log/http.error
+chown -R www-data:www-data ${WEBSERVER_HOME}
 
 # start apache2 cron and fail2ban
 supervisorctl start apache2

@@ -1,14 +1,27 @@
-﻿FROM php:7.3-apache-bullseye as base
+﻿# Build with 3 stages, 2 targets : 
+# light_jeedom: no daemon, only apache+php
+# full_jeedom: standalone with all required daemons
+ARG DEBIAN=bullseye
+FROM php:7.3-apache-${DEBIAN} as base
+ARG DEBIAN
+# optional XDEBUG arg to add xdebug packages and configuration
+ARG XDEBUG
+
+# GitHub use this label to connect Git repo and Docker images in ghcr.io
+LABEL org.opencontainers.image.source https://github.com/pifou25/docker-jeedom
+LABEL org.opencontainers.artifact.description "Jeedom Home Automation in Docker"
+LABEL org.opencontainers.image.authors pifou25
 
 ARG JEEDOM_VERSION=V4-stable
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}
+ENV WEBSERVER_HOME=/var/www/html
 ENV MYSQL_JEEDOM_DATABASE=jeedom
 ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_JEEDOM_PASSWD
 # ENV MYSQL_ROOT_PASSWORD
 ENV DEBIAN_FRONTEND=noninteractive
 
-LABEL com.jeedom.version="Jeedom v4.x (${JEEDOM_VERSION}) for Debian Buster + PHP7.3"
+LABEL com.jeedom.version="Jeedom ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP7.3"
 
 # common packages intall
 # alphabetical order for better compare
@@ -79,41 +92,36 @@ RUN usermod -u 1000 www-data \
    && chmod 777 -R /tmp/jeedom \
    && chown www-data:www-data -R /tmp/jeedom
 
-WORKDIR /var/www/html
-VOLUME /var/www/html
-VOLUME /var/www/html/backup
-VOLUME /var/www/html/log
+WORKDIR ${WEBSERVER_HOME}
+VOLUME ${WEBSERVER_HOME}
+VOLUME ${WEBSERVER_HOME}/backup
+VOLUME ${WEBSERVER_HOME}/log
 
-HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
- CMD curl -s --fail http://localhost/here.html || exit 1
-
-# First final image: light with xdebug
-FROM base as light_xdebug
-ENV MYSQL_HOST=db
 # install xdebug
-RUN pecl install redis-5.3.4 \
+COPY xdebug.ini /tmp/xdebug.ini
+RUN if [[ -N "$XDEBUG" ]] ; then \
+  echo "XDebug Build" && \
+  pecl install redis-5.3.4 \
 	&& pecl install xdebug-3.0.4 \
-	&& docker-php-ext-enable redis xdebug
-COPY xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
-# Initialisation 
-COPY init.sh /root/init.sh
-RUN chmod +x /root/init.sh
-ENTRYPOINT ["/root/init.sh"]
+	&& docker-php-ext-enable redis xdebug \
+  && mv /tmp/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini ; \
+  fi
 
-
-# Second final image: light without xdebug
+# First final image: light Jeedom with /without xdebug
 FROM base as light_jeedom
 ENV MYSQL_HOST=db
+# Healthcheck for the 'light' image, apache is running ?
+HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
+  CMD curl -s --fail http://localhost/here.html || exit 1
 COPY init.sh /root/init.sh
 RUN chmod +x /root/init.sh
 ENTRYPOINT ["/root/init.sh"]
 
 
-# third final image: full standalone
+# Second final image: full standalone
 FROM base as full_jeedom
 # localhost didn't work for mysql
 ENV MYSQL_HOST=localhost 
-ENV WEBSERVER_HOME=/var/www/html
 
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
 RUN groupadd -r mysql && useradd -r -g mysql mysql
@@ -125,10 +133,10 @@ RUN mkdir -p '/var/run/mysqld' && \
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
   cron \
   fail2ban \
-  # add git again because it was removed (?)
-  git \
   mariadb-common mariadb-server \
   supervisor \
+  # add forgetten packages ?
+  git zip wget \
   && rm -rf /var/lib/apt/lists/*
 
 # customization from official jeedom/core repo
@@ -157,6 +165,12 @@ RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available
     rm /var/log/apache2/error.log && touch /var/log/apache2/error.log && \
     chown -R www-data:www-data /var/log/apache2/error.log
 
+# Add the supervisord healthcheck script
+COPY standalone/healthcheck.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/healthcheck.sh
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD /usr/local/bin/healthcheck.sh
+
 # Initialisation 
 COPY standalone/init.sh /root/init.sh
 RUN chmod +x /root/init.sh
@@ -166,13 +180,3 @@ VOLUME  /var/lib/mysql
 
 # ENTRYPOINT ["/root/init.sh"]
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
-
-
-# Fourth final image: full standalone with xdebug
-FROM full_jeedom as full_xdebug
-# install xdebug
-RUN pecl install redis-5.3.4 \
-	&& pecl install xdebug-3.0.4 \
-	&& docker-php-ext-enable redis xdebug
-COPY xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
-# same CMD as full_jeedom

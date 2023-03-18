@@ -1,78 +1,87 @@
-﻿[![Docker Multiplatform Build ci](https://github.com/pifou25/docker-jeedom/actions/workflows/buildx-platform.yml/badge.svg)](https://github.com/pifou25/docker-jeedom/actions/workflows/buildx-platform.yml)
+﻿<img align="right" src="https://www.jeedom.com/site/logo.png" width="100">
 
-# Docker Jeedom : Un container Docker pour Jeedom !
+[![Docker Multiplatform Build ci](https://github.com/pifou25/docker-jeedom/actions/workflows/buildx-platform.yml/badge.svg)](https://github.com/pifou25/docker-jeedom/actions/workflows/buildx-platform.yml)
+![Docker Pulls](https://img.shields.io/docker/pulls/pifou25/jeedom)
+![GitHub forks](https://img.shields.io/github/forks/pifou25/docker-jeedom)
 
-Le container contient les `packages` nécessaires (le serveur apache + php,
- les extensions PHP, le language Python et ses extensions, le demon atd) ...
+[![Try in PWD](https://raw.githubusercontent.com/play-with-docker/stacks/master/assets/images/button.png)](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/pifou25/docker-jeedom/master/docker-compose.yml) Try in "Play-With-Docker" require a Docker account.
 
-**Dans sa version "full"** (standalone) il contient égalemnet tous les demons nécessaires:
-le serveur MariaDB pour la base de données, le cron, fail2ban, le supervisor.
 
- Le container ne contient pas Jeedom (le code) qui est cloné depuis le dépôt officiel au premier
- lancement du container. De fait, le container ne contient pas non plus les éventuels plugins qui seront
- installés ultérieurement. Ni leurs dépendances, qui sont à (re)installer à chaque mise à jour
- de l'image Docker de Jeedom.
+# Jeedom - *Innovative Home Automation*
+<p align="center">
+<a href="https://www.jeedom.com/">Site</a>  -
+<a href="https://blog.jeedom.com/">Blog</a>  -
+<a href="https://community.jeedom.com/">Community</a>  -
+<a href="https://market.jeedom.com/">Market</a>  -
+<a href="https://doc.jeedom.com/">Doc</a>
+</p>
 
- ## Les Tags disponibles
+# Docker Jeedom : choose your style
 
-### Signification des tags utilisés
+## Jeedom As A Service (JaaS)
 
-* `Full` : une version standalone avec tous les démons (contient le serveur de base de données, le service de cron, fail2ban, supervisord...) 
-* `Light` : cette version n'est pas `standalone`, mais nécessite d'autres containers: une base de données, un service de cron (plus d'autres facultatifs, voir docker-compose.yml dans la branche nginx)
-* Version de Jeedom `stable` (current = v4.3) ou `beta` (future v4.4)
-* Version normale ou avec `xdebug` (pour debuggage php)
+A complete standalone `full` Docker container including every PHP packages, Apache server,
+ Python, and also many daemons: MariaDB, Cron scheduler, atd, fail2ban, supervisor....
 
-### Liste des Tags générés
+## Jeedom as simple as possible
+
+A very `light` container with the minimal PHP extensions over the PHP-Apache base.
+No other daemon nor database, this single container should work with others services.
+The `docker-compose.yml` is an example of the complete service stack used for a 
+complete installation.
+
+## Jeedom Plugins
+
+No plugin is installed by default, because no Jeedom market account is set after the install.
+You may have your own backup to initialize the installation, including all your plugins, history
+and, thus, you will have to trigger any plugin dependency during the first container run.
+
+ ## List of Docker available images
+
+### Meaning of any keywords
+
+* `Full`
+* `Light`
+* Jeedom Version `stable` (current = v4.3 = latest) or `beta` (future v4.4), see jeedom Git branches.
+* `xdebug` when the image also contains XDebug packages for PHP debug
+
+### List of generated Tags
 
 * full-stable full latest
 * full-beta beta
 * debug-full-stable debug-full debug
 * debug-full-beta debug-beta
+* light-stable light
+* light-beta 
+* debug-light-stable debug-light
+* debug-light-beta
 
-### Jeedom Branches et Versions
-* V4-stable = v4.2.x
-* beta = v4.3.x
-* alpha = dernière version dev en cours 
-* master = release = stable = v3.x
+# Pull and Run Jeedom As A Service
 
-Il faut utiliser le nom de la branche pour avoir la version cible. *Pas de build de l'ancienne v3.*
-
-vous pouvez donc simplement démarrer un container jeedom avec cette commande:
+You can run the standalone `latest` container as-it :
 ```
 docker run --name jeedom -d -v "$PWD/jeedom/":/var/www/html pifou25/jeedom
 ```
 
-( --name = le nom du container créé, -d = mode détaché, -v = volume source:destination, 
-le dernier paramètre est le nom de l'image)
+( --name = the container name, -d = detached mode, -v = mount the volume source:destination)
 
-## Initialisation
-Au premier lancement du container, un script d'initialisation (init.sh) fait les différents
-paramétrages en fonction des variables d'environnement définies. Puis il démarre `supervisor`
-qui est le superviseur de tous les démons.
+## Docker Compose for Debug and specific services
 
-## Creer le réseau
-
-Pour **certains plugins** il est nécessaire de configurer un réseau local 
-spécifique utilisé par docker et ses containers: c'est **facultatif** pour le core jeedom
-et la plupart des plugins
+The `docker-compose.yml` is an example to run several services (mariaDB, scheduler, ...) and the `light`
+Jeedom container. the `.env` file is mandatory (copy and edit the `.env.default` one).
+You may edit the yml to build your own Jeedom container with these parameters:
 ```
-docker network create \
-  -d macvlan \
-  --subnet=192.168.1.0/24 \
-  --ip-range=192.168.1.240/29 \
-  --gateway=192.168.1.254 \
-  --aux-address="host_bridge=192.168.1.241" \
-  -o parent=eth0 \
-  mymacvlan
+  jeedom:
+    # build your own image first with build-args and target:
+    build:
+      context: ./build
+      target: light_xdebug # add target if required
+      args:
+        JEEDOM_VERSION: V4-stable
 ```
-subnet = réseau existant
+... or let the default jeedom:light-xdebug version.
 
-gateway = IP de la box
-
-## Docker compose
-
-Le fichier docker-compose.yml utilise le Dockerfile courant, et ajoute un second container pour 
-la base de données - si vous ne l'avez pas déjà installée.
+Then, launch the complete service stack :
 ```
-link mariadb:db
+docker compose up -d
 ```
