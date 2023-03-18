@@ -4,6 +4,9 @@
 ![Docker Pulls](https://img.shields.io/docker/pulls/pifou25/jeedom)
 ![GitHub forks](https://img.shields.io/github/forks/pifou25/docker-jeedom)
 
+[![Try in PWD](https://raw.githubusercontent.com/play-with-docker/stacks/master/assets/images/button.png)](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/pifou25/docker-jeedom/master/docker-compose.yml) Try in "Play-With-Docker" require a Docker account.
+
+
 # Jeedom - *Innovative Home Automation*
 <p align="center">
 <a href="https://www.jeedom.com/">Site</a>  -
