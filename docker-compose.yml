@@ -25,9 +25,9 @@ services:
       timeout: 20s
     volumes:
       # database filesystem
-      - ../volumes/db:/var/lib/mysql
+      - ./volumes/db:/var/lib/mysql
       # directory for init sql and scripts
-      - ../volumes/sql:/docker-entrypoint-initdb.d
+      - ./volumes/sql:/docker-entrypoint-initdb.d
     ports:
       - 3306:3306
     labels:
@@ -58,8 +58,8 @@ services:
       - TZ=${TIME_ZONE:-Europe/Paris}
     restart: unless-stopped
     volumes:
-      - ../volumes/jeedom:/var/www/html
-      - ../volumes/backup:/tmp/backup
+      - ./volumes/jeedom:/var/www/html
+      - ./volumes/backup:/tmp/backup
     healthcheck:
       test: ["CMD-SHELL", "curl -so /tmp/status http://localhost/here.html || exit 1"]
       interval: 1m30s
@@ -115,10 +115,10 @@ services:
 
   # On peux ajouter également Node-red. permettant une gestion de mqtt native
   node-red:
-    profiles: ["nodered"]
+    # profiles: ["nodered"]
     image:  nodered/node-red
     volumes:
-    - ../volumes/nodered:/data  # remplacer /nfs/volumes par l'emplacement du volume souhaité
+    - ./volumes/nodered:/data  # remplacer /nfs/volumes par l'emplacement du volume souhaité
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:1880"]
       interval: 1m
