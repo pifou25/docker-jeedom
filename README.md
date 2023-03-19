@@ -17,23 +17,17 @@
 
 # Docker Jeedom : choose your style
 
-## Jeedom As A Service (JaaS)
+## Jeedom As A Service (full)
 
 A complete standalone `full` Docker container including every PHP packages, Apache server,
  Python, and also many daemons: MariaDB, Cron scheduler, atd, fail2ban, supervisor....
 
-## Jeedom as simple as possible
+## Jeedom as simple as possible (light)
 
 A very `light` container with the minimal PHP extensions over the PHP-Apache base.
 No other daemon nor database, this single container should work with others services.
 The `docker-compose.yml` is an example of the complete service stack used for a 
 complete installation.
-
-## Jeedom Plugins
-
-No plugin is installed by default, because no Jeedom market account is set after the install.
-You may have your own backup to initialize the installation, including all your plugins, history
-and, thus, you will have to trigger any plugin dependency during the first container run.
 
  ## List of Docker available images
 
@@ -42,7 +36,7 @@ and, thus, you will have to trigger any plugin dependency during the first conta
 * `Full`
 * `Light`
 * Jeedom Version `stable` (current = v4.3 = latest) or `beta` (future v4.4), see jeedom Git branches.
-* `xdebug` when the image also contains XDebug packages for PHP debug
+* `debug` when the image also contains XDebug packages for PHP debug
 
 ### List of generated Tags
 
@@ -54,6 +48,12 @@ and, thus, you will have to trigger any plugin dependency during the first conta
 * light-beta 
 * debug-light-stable debug-light
 * debug-light-beta
+
+## Jeedom Plugins
+
+No plugin is installed by default, because no Jeedom market account is set after the install.
+You may have your own backup to initialize the installation, including all your plugins, history
+and, thus, you will have to trigger any plugin dependency during the first container run.
 
 # Pull and Run Jeedom As A Service
 
@@ -74,11 +74,12 @@ You may edit the yml to build your own Jeedom container with these parameters:
     # build your own image first with build-args and target:
     build:
       context: ./build
-      target: light_xdebug # add target if required
+      target: light_jeedom # add target if required
       args:
         JEEDOM_VERSION: V4-stable
+        XDEBUG: true
 ```
-... or let the default jeedom:light-xdebug version.
+... or let the default jeedom:light version.
 
 Then, launch the complete service stack :
 ```

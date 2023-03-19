@@ -110,12 +110,17 @@ RUN if [[ -N "$XDEBUG" ]] ; then \
 # First final image: light Jeedom with /without xdebug
 FROM base as light_jeedom
 ENV MYSQL_HOST=db
+# add forgetten packages ?
+RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
+  git zip wget \
+  && rm -rf /var/lib/apt/lists/*
+
 # Healthcheck for the 'light' image, apache is running ?
 HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
   CMD curl -s --fail http://localhost/here.html || exit 1
 COPY init.sh /root/init.sh
 RUN chmod +x /root/init.sh
-ENTRYPOINT ["/root/init.sh"]
+CMD ["/root/init.sh"]
 
 
 # Second final image: full standalone

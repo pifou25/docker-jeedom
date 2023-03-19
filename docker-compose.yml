@@ -7,7 +7,7 @@ networks:
 services:
   db:
     image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
-    # restart: unless-stopped
+    restart: unless-stopped
     environment:
       - PUID=1000
       - PGID=1000
@@ -37,14 +37,6 @@ services:
 
 
   jeedom:
-    # build your own image first with build-args and target:
-    # build:
-    #  context: ./build
-    #  target: light_jeedom # add target if required
-    #  args:
-    #    JEEDOM_VERSION: V4-stable
-    #    XDEBUG: true
-    # OR use existing ready-to-go image:
     image: pifou25/jeedom:light
     hostname: jeedom
     environment:
@@ -55,7 +47,7 @@ services:
       - JEEDOM_VERSION=${JEEDOM_VERSION:-V4-stable}
       - MYSQL_HOST=db
       - TZ=${TIME_ZONE:-Europe/Paris}
-    # restart: unless-stopped
+    restart: unless-stopped
     volumes:
       - ./volumes/jeedom:/var/www/html
       - ./volumes/backup:/tmp/backup
@@ -90,7 +82,7 @@ services:
       - TZ=${TIME_ZONE:-Europe/Paris}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    # command: --config=/config/config.ini
+    command: daemon
     logging:
       options:
         max-size: "10m"

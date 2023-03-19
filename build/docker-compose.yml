@@ -1,0 +1,47 @@
+﻿version: '3.8'
+
+networks:
+  default:
+    name: jeedom_network
+
+services:
+  jeedom:
+    # build your own image first with build-args and target:
+    build:
+      context: .
+      target: light_jeedom # add target if required
+      args:
+        JEEDOM_VERSION: V4-stable
+        XDEBUG: true
+    hostname: jeedom
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
+      - MYSQL_DATABASE=${MYSQL_JEEDOM_DB:-jeedom}
+      - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
+      - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
+      - JEEDOM_VERSION=${JEEDOM_VERSION:-V4-stable}
+      - MYSQL_HOST=db
+      - TZ=${TIME_ZONE:-Europe/Paris}
+    restart: unless-stopped
+    volumes:
+      - ../volumes/jeedom:/var/www/html
+      - ../volumes/backup:/tmp/backup
+    healthcheck:
+      test: ["CMD-SHELL", "curl -so /tmp/status http://localhost/here.html || exit 1"]
+      interval: 1m30s
+      retries: 3
+      start_period: 40s
+      timeout: 20s
+    ports:
+      - "80:80"
+    labels:
+      # label chadburn for the "cron" container
+      chadburn.enabled: "true"
+      chadburn.job-exec.jeedom-cron.schedule: "@every 1m"
+      chadburn.job-exec.jeedom-cron.command: "/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
+      # label for watchtower: don't check
+      com.centurylinklabs.watchtower.enable: "false"
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
