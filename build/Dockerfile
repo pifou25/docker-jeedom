@@ -56,7 +56,7 @@ RUN apt-get update && \
   ssl-cert \
   sudo \
   wget \
-  zip
+  zip unzip
 
 
 # add php extension
@@ -112,7 +112,7 @@ FROM base as light_jeedom
 ENV MYSQL_HOST=db
 # add forgetten packages ?
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
-  git zip wget \
+  git zip unzip wget \
   && rm -rf /var/lib/apt/lists/*
 
 # Healthcheck for the 'light' image, apache is running ?
@@ -141,7 +141,7 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
   mariadb-common mariadb-server \
   supervisor \
   # add forgetten packages ?
-  git zip wget \
+  git zip unzip wget \
   && rm -rf /var/lib/apt/lists/*
 
 # customization from official jeedom/core repo
