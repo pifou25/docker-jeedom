@@ -72,6 +72,12 @@ if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
     chmod 770 -R /tmp/jeedom
     chown www-data:www-data -R /tmp/jeedom
 
+    # wait until db is up and running
+    while ! mysqladmin ping -h"$MYSQL_HOST" --silent; do
+      log_warn "Wait 2 seconds for MariaDB to start..."
+      sleep 2
+    done
+
     log_info "Création de la database SQL ${MYSQL_JEEDOM_DATABASE}..."
     mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'%';"
     mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'%' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
