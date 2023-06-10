@@ -1,10 +1,10 @@
-# version: '2.3'
+﻿# version: '2.3'
 
 
 services:
 
   nginx:
-    image: jc21/nginx-proxy-manager:latest
+    image: jc21/nginx-proxy-manager:2
     restart: unless-stopped
     ports:
       - '80:80'
@@ -32,7 +32,7 @@ services:
 
 
   db:
-    image: yobasystems/alpine-mariadb:latest
+    image: yobasystems/alpine-mariadb:10
     restart: unless-stopped
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
@@ -48,6 +48,11 @@ services:
       - ./init.db/script:/scripts/pre-init.d
       # sql or sql.tar.gz init data
       - ./init.db/sql:/docker-entrypoint-initdb.d
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+
 
 
   jeedom:
@@ -123,10 +128,14 @@ services:
     volumes:
         - /var/run/docker.sock:/var/run/docker.sock
         - ./data/portainer:/data
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
 
 
   zwave:
-    image: zwavejs/zwave-js-ui # former zwavejs/zwavejs2mqtt
+    image: zwavejs/zwave-js-ui:8
     ports:
       - 3000:3000 # Z-Wave JS websocket server
       - 8091:8091 # Web Interface
@@ -154,9 +163,9 @@ services:
 
 
   mqtt:
-    image: eclipse-mosquitto
+    image: eclipse-mosquitto:2
     ports:
-      - 1883:1883 #Uniquement si besoin d'avoir le port exposé
+      - 1883:1883 # only required to expose service on host
     environment:
       - TZ=${TIME_ZONE}
     volumes:
