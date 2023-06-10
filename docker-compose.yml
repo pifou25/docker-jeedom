@@ -5,7 +5,7 @@
 services:
 
   nginx:
-    image: jc21/nginx-proxy-manager:latest
+    image: jc21/nginx-proxy-manager:2
     restart: unless-stopped
     ports:
       - '80:80'
@@ -179,9 +179,9 @@ services:
 
 
   mqtt:
-    image: eclipse-mosquitto
+    image: eclipse-mosquitto:2
     ports:
-      - 1883:1883 #Uniquement si besoin d'avoir le port exposé
+      - 1883:1883 # only required to expose service on host
     environment:
       - TZ=Europe/Paris
     ports:
