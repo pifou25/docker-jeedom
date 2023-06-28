@@ -1,4 +1,4 @@
-﻿# Build with 3 stages, 2 targets : 
+﻿# Build with 3 stages, 2 targets :
 # light_jeedom: no daemon, only apache+php
 # full_jeedom: standalone with all required daemons
 ARG DEBIAN=bullseye
@@ -110,6 +110,7 @@ RUN if [[ -N "$XDEBUG" ]] ; then \
 # First final image: light Jeedom with /without xdebug
 FROM base as light_jeedom
 ENV MYSQL_HOST=db
+
 # add forgetten packages ?
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
   git mariadb-client zip unzip wget \
@@ -126,7 +127,7 @@ CMD ["/root/init.sh"]
 # Second final image: full standalone
 FROM base as full_jeedom
 # localhost didn't work for mysql
-ENV MYSQL_HOST=localhost 
+ENV MYSQL_HOST=localhost
 
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
 RUN groupadd -r mysql && useradd -r -g mysql mysql
@@ -176,7 +177,7 @@ RUN chmod +x /usr/local/bin/healthcheck.sh
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD /usr/local/bin/healthcheck.sh
 
-# Initialisation 
+# Initialisation
 COPY standalone/init.sh /root/init.sh
 RUN chmod +x /root/init.sh
 

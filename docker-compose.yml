@@ -37,6 +37,14 @@ services:
 
 
   jeedom:
+    # build your own image first with build-args and target:
+    # build:
+    #  context: ./build
+    #  target: light_jeedom # add target if required
+    #  args:
+    #    JEEDOM_VERSION: V4-stable
+    #    XDEBUG: true
+    # OR use existing ready-to-go image:
     image: pifou25/jeedom:light
     hostname: jeedom
     environment:
