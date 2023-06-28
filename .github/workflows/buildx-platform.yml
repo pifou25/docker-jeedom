@@ -83,7 +83,6 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: ${{ secrets.DOCKER_USER }}/jeedom:light
-          tags: ${{ secrets.DOCKER_USER }}/jeedom:light
       -
         name: Build and push Jeedom Full Standalone
         uses: docker/build-push-action@v4
