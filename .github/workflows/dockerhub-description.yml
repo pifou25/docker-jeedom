@@ -19,11 +19,10 @@ jobs:
     steps:
 
     - name: Update Docker Hub Description
+      # This job updates the Docker Hub description and short-desc
       # https://github.com/marketplace/actions/docker-hub-description
       uses: peter-evans/dockerhub-description@v3.4.2
       with:
         username: ${{ secrets.DOCKER_USER }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-        repository: ${{ secrets.DOCKER_USER }}/docker-jeedom
         short-description: ${{ github.event.repository.description }}
-        readme-filepath: './README.md'
