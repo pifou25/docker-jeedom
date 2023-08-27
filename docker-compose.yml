@@ -59,6 +59,8 @@ services:
     volumes:
       - ./volumes/jeedom:/var/www/html
       - ./volumes/backup:/tmp/backup
+    tmpfs:
+      - /tmp/jeedom
     healthcheck:
       test: ["CMD-SHELL", "curl -so /tmp/status http://localhost/here.html || exit 1"]
       interval: 1m30s
