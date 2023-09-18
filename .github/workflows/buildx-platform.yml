@@ -60,7 +60,7 @@ jobs:
       -
         name: Build and push Jeedom Light with Xdebug
         # https://github.com/marketplace/actions/build-and-push-docker-images
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         continue-on-error: true
         with:
           context: build
@@ -73,7 +73,7 @@ jobs:
           tags: ${{ secrets.DOCKER_USER }}/jeedom:light-debug
       -
         name: Build and push Jeedom Light
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         continue-on-error: true
         with:
           context: build
@@ -85,7 +85,7 @@ jobs:
           tags: ${{ secrets.DOCKER_USER }}/jeedom:light
       -
         name: Build and push Jeedom Full Standalone
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         continue-on-error: true
         with:
           context: build
@@ -99,7 +99,7 @@ jobs:
             ${{ secrets.DOCKER_USER }}/jeedom:latest
       -
         name: Build and push Jeedom Full Standalone Debian Buster
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         continue-on-error: true
         with:
           context: build
@@ -112,7 +112,7 @@ jobs:
           tags: ${{ secrets.DOCKER_USER }}/jeedom:buster
       -
         name: Build and push Jeedom Full Standalone with XDebug
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         continue-on-error: true
         with:
           context: build
@@ -127,7 +127,7 @@ jobs:
       -
         name: Build and push Jeedom Full Standalone Beta
         # Same builds with arg = beta...
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         continue-on-error: true
         with:
           context: build
@@ -141,7 +141,7 @@ jobs:
             ${{ secrets.DOCKER_USER }}/jeedom:beta
       -
         name: Build and push Jeedom Light beta
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         continue-on-error: true
         with:
           context: build
