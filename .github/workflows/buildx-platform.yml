@@ -35,7 +35,7 @@ jobs:
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
         # login to DockerHub with secrets login & token
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASSWORD }}
