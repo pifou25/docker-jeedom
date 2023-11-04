@@ -1,12 +1,8 @@
 ﻿# Build with 3 stages, 2 targets :
 # light_jeedom: no daemon, only apache+php
 # full_jeedom: standalone with all required daemons
-# DEBIAN version (buster/bullseye/bookworm)
-# PHP version (min 8 for bookworm, 7.3 otherwise)
-# XDEBUG (boolean)
 ARG DEBIAN=bullseye
-ARG PHP=7.3
-FROM php:${PHP}-apache-${DEBIAN} as base
+FROM php:7.3-apache-${DEBIAN} as base
 ARG DEBIAN
 # optional XDEBUG arg to add xdebug packages and configuration
 ARG XDEBUG
@@ -29,7 +25,6 @@ LABEL com.jeedom.version="Jeedom ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP7.3
 
 # common packages intall
 # alphabetical order for better compare
-# atd daemon - ccze for logs colors - ...
 RUN apt-get update && \
   apt-get install --no-install-recommends --no-install-suggests -q -y software-properties-common && \
   add-apt-repository non-free && \
@@ -37,24 +32,21 @@ RUN apt-get update && \
   apt-get install --no-install-recommends --no-install-suggests -q -y \
   apt-transport-https \
   apt-utils \
-  at \
-  ccze \
+  at   # daemon atd \
+  ccze # for logs colors \
   curl \
   dos2unix \
   ffmpeg \
   gettext \
   git \
-  iproute2 \
   librsync-dev \
   libssh2-1 \
   libssh2-1-dev \
   libzip-dev \
   locales \
-  net-tools \
   nmap \
   ntp \
   ntpdate \
-  mariadb-client \
   python3 python3-dev python3-pip python3-virtualenv \
   smbclient \
   software-properties-common \
@@ -117,9 +109,9 @@ FROM base as light_jeedom
 ENV MYSQL_HOST=db
 
 # add forgotten packages ?
-# RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
-#  git mariadb-client zip unzip wget sudo \
-#  && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
+  git mariadb-client zip unzip wget sudo iproute2 net-tools \
+  && rm -rf /var/lib/apt/lists/*
 
 # Healthcheck for the 'light' image, apache is running ?
 HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
@@ -146,8 +138,8 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
   fail2ban \
   mariadb-common mariadb-server \
   supervisor \
-  # add forgetten packages ? \
-  # git mariadb-client zip unzip wget sudo \
+  # add forgetten packages ?
+  git mariadb-client zip unzip wget sudo iproute2 net-tools \
   && rm -rf /var/lib/apt/lists/*
 
 # customization from official jeedom/core repo
