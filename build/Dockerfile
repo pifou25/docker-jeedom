@@ -39,17 +39,14 @@ RUN apt-get update && \
   ffmpeg \
   gettext \
   git \
-  iproute2 \
   librsync-dev \
   libssh2-1 \
   libssh2-1-dev \
   libzip-dev \
   locales \
-  net-tools \
   nmap \
   ntp \
   ntpdate \
-  mariadb-client \
   python3 python3-dev python3-pip python3-virtualenv \
   smbclient \
   software-properties-common \
@@ -113,7 +110,7 @@ ENV MYSQL_HOST=db
 
 # add forgotten packages ?
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
-  git mariadb-client zip unzip wget sudo \
+  git mariadb-client zip unzip wget sudo iproute2 net-tools \
   && rm -rf /var/lib/apt/lists/*
 
 # Healthcheck for the 'light' image, apache is running ?
@@ -142,7 +139,7 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
   mariadb-common mariadb-server \
   supervisor \
   # add forgetten packages ?
-  git mariadb-client zip unzip wget sudo \
+  git mariadb-client zip unzip wget sudo iproute2 net-tools \
   && rm -rf /var/lib/apt/lists/*
 
 # customization from official jeedom/core repo
