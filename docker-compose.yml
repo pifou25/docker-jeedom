@@ -1,6 +1,5 @@
 ﻿# version: '2.3'
 
-
 services:
 
   nginx:
@@ -34,8 +33,9 @@ services:
   db:
     image: yobasystems/alpine-mariadb:10
     restart: unless-stopped
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    env_file:
+      - path: .env
+        required: true
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 1m30s
@@ -56,7 +56,8 @@ services:
 
 
   jeedom:
-    build: ./php
+    # build: ./php
+    image: pifou25/jeedom:light
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:?required value}
       - MYSQL_JEEDOM_DATABASE=${MYSQL_DATABASE:-jeedom}
