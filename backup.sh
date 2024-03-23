@@ -1,5 +1,12 @@
 #!/bin/bash
 
+cd /home/pi/dev/nginx
+# remove previous backups
+rm data/*.sql.gz
+
+# get evry env configuration: usernames and passwords
+source .env
+
 NOW=$(date +%Y%m%d-%H%M%S)
 FILE="data_$NOW.tar.gz"
 
@@ -9,13 +16,13 @@ FILE="data_$NOW.tar.gz"
 # https://github.com/NginxProxyManager/nginx-proxy-manager/discussions/1529#discussioncomment-1921806
 echo backup databases: npm jeedom yourls nextcloud
 
-docker exec nginx_db_1 sh -c 'exec mysqldump --databases npm -uroot -p"admin"' | gzip -c > data/npm_$NOW.sql.gz
-docker exec nginx_db_1 sh -c 'exec mysqldump --databases jeedom -uroot -p"admin"' | gzip -c > data/jeedom_$NOW.sql.gz
-docker exec nginx_db_1 sh -c 'exec mysqldump --databases yourls -uroot -p"admin"' | gzip -c > data/yourls_$NOW.sql.gz
-docker exec nginx_db_1 sh -c 'exec mysqldump --databases nextcloud -uroot -p"admin"' | gzip -c > data/nextcloud_$NOW.sql.gz
+docker exec nginx-db-1 sh -c 'exec mysqldump --databases npm -uroot -p"${MYSQL_ROOT_PASSWORD}"' | gzip -c > data/npm_$NOW.sql.gz
+docker exec nginx-db-1 sh -c 'exec mysqldump --databases jeedom -uroot -p"${MYSQL_ROOT_PASSWORD}"' | gzip -c > data/jeedom_$NOW.sql.gz
+# docker exec nginx-db-1 sh -c 'exec mysqldump --databases yourls -uroot -p"${MYSQL_ROOT_PASSWORD}"' | gzip -c > data/yourls_$NOW.sql.gz
+# docker exec nginx-db-1 sh -c 'exec mysqldump --databases nextcloud -uroot -p"${MYSQL_ROOT_PASSWORD}"' | gzip -c > data/nextcloud_$NOW.sql.gz
 
 # restore database:
-# docker exec -i some-mariadb sh -c 'exec mysql -uroot -p"$MARIADB_ROOT_PASSWORD"' < /some/path/on/your/host/all-databases.sql
+# docker exec -i some-mariadb sh -c 'exec mysql -uroot -p"${MYSQL_ROOT_PASSWORD}"' < /some/path/on/your/host/all-databases.sql
 
 echo compress /data to $FILE
 # c – create an archive file.
@@ -31,3 +38,16 @@ tar czf $FILE --exclude={"data/mosquitto/log","data/nginx/hivemq.si","data/nginx
 # tar -xvf file
 # or
 # tar -xvf -C destination file
+
+# send to FTP backup site
+HOST='mafreebox.freebox.fr'
+REMOTEPATH='/Freebox/PiBackup/jeedom'
+
+ftp -n ${HOST} <<END_SCRIPT
+quote USER ${FTP_USER}
+quote PASS ${FTP_PASSWORD}
+cd ${REMOTEPATH}
+put ${FILE}
+quit
+END_SCRIPT
+exit 0
