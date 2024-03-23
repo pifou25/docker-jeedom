@@ -1,0 +1,3 @@
+CREATE USER IF NOT EXISTS 'jeedom'@'%' IDENTIFIED BY 'jeedom';
+CREATE DATABASE IF NOT EXISTS `jeedom`;
+GRANT ALL PRIVILEGES ON `jeedom`.* TO 'jeedom'@'%';

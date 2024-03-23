@@ -110,6 +110,9 @@ services:
       options:
         max-size: "10m"
         max-file: "1"
+    tmpfs:
+      - /tmp/jeedom
+
 
 
   # Scheduler Service: mcuadros/ofelia or premoweb/chadburn
@@ -167,8 +170,8 @@ services:
     depends_on:
       - mqtt
     healthcheck: # check if both mqtt and zwave client are connected
-      test: ["CMD-SHELL", "curl localhost:8091/health/zwave -H \"Accept: text/plain\""]
-      interval: 2m30s
+      test: 'wget --no-verbose --spider --no-check-certificate --header "Accept: text/plain" http://localhost:8091/health || exit 1'
+      interval: 2m
       retries: 3
       start_period: 40s
       timeout: 20s
