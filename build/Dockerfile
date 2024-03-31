@@ -25,6 +25,7 @@ LABEL com.jeedom.version="Jeedom ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP7.3
 
 # common packages intall
 # alphabetical order for better compare
+# atd daemon - ccze for logs colors - ...
 RUN apt-get update && \
   apt-get install --no-install-recommends --no-install-suggests -q -y software-properties-common && \
   add-apt-repository non-free && \
@@ -32,8 +33,8 @@ RUN apt-get update && \
   apt-get install --no-install-recommends --no-install-suggests -q -y \
   apt-transport-https \
   apt-utils \
-  at   # daemon atd \
-  ccze # for logs colors \
+  at \
+  ccze \
   curl \
   dos2unix \
   ffmpeg \
@@ -112,9 +113,9 @@ FROM base as light_jeedom
 ENV MYSQL_HOST=db
 
 # add forgotten packages ?
-RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
-  git mariadb-client zip unzip wget sudo \
-  && rm -rf /var/lib/apt/lists/*
+# RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
+#  git mariadb-client zip unzip wget sudo \
+#  && rm -rf /var/lib/apt/lists/*
 
 # Healthcheck for the 'light' image, apache is running ?
 HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
@@ -141,8 +142,8 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
   fail2ban \
   mariadb-common mariadb-server \
   supervisor \
-  # add forgetten packages ?
-  git mariadb-client zip unzip wget sudo \
+  # add forgetten packages ? \
+  # git mariadb-client zip unzip wget sudo \
   && rm -rf /var/lib/apt/lists/*
 
 # customization from official jeedom/core repo

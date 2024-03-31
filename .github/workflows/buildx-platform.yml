@@ -111,6 +111,19 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: ${{ secrets.DOCKER_USER }}/jeedom:buster
       -
+        name: Build and push Jeedom Full Standalone Debian Bookworm
+        uses: docker/build-push-action@v5
+        continue-on-error: true
+        with:
+          context: build
+          target: full_jeedom
+          build-args: DEBIAN=bookworm
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          tags: ${{ secrets.DOCKER_USER }}/jeedom:bookworm
+      -
         name: Build and push Jeedom Full Standalone with XDebug
         uses: docker/build-push-action@v5
         continue-on-error: true
