@@ -92,10 +92,11 @@ if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
       exit 1
     fi
 
-    if [ -d "/tmp/backup" ] && [ "$(ls -A /tmp/backup)" ]; then
-       log_info "found a backup, try to restore..."
-       cp /tmp/backup/* ${WEBSERVER_HOME}/backup
-       php ${WEBSERVER_HOME}/install/restore.php
+    # find latest backup and try to restore at the first container launch
+    if [ -d "${WEBSERVER_HOME}/backup" ] && [ "$(ls -A ${WEBSERVER_HOME}/backup)" ]; then
+      filename=$(ls -Art ${WEBSERVER_HOME}/backup)
+      log_info "found a backup, try to restore: ${filename}"
+      php ${WEBSERVER_HOME}/install/restore.php backup=${filename}
     fi
     log_info " ___ successfull new installation ! ___"
 fi

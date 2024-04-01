@@ -6,7 +6,10 @@ After cloning the git repository, one may build the desired Docker image using t
 cd build
 docker build --target full_xdebug --build-arg JEEDOM_VERSION=V4-stable --tag jeedom:debug .
 ```
-* Available targets are: light_jeedom, light_xdebug, full_jeedom, full_xdebug
+* Available targets are: light_jeedom, full_jeedom
+* $DEBIAN is buster, bullseye or bookworm
+* for bookworm: add $PHP with minimal version 8. $PHP=7.3 is the default value for previous Debian versions
+* $XDEBUG = true / false
 * $JEEDOM_VERSION is beta or V4-stable (default) (or master for the unsupported Jeedom v3)
 
 ## Github Workflow

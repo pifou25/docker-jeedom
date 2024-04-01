@@ -3,8 +3,7 @@
 [![Docker Multiplatform Build ci](https://github.com/pifou25/docker-jeedom/actions/workflows/buildx-platform.yml/badge.svg)](https://github.com/pifou25/docker-jeedom/actions/workflows/buildx-platform.yml)
 ![Docker Pulls](https://img.shields.io/docker/pulls/pifou25/jeedom)
 ![GitHub forks](https://img.shields.io/github/forks/pifou25/docker-jeedom)
-
-[![Try in PWD](https://img.shields.io/badge/PWD-Play%20With%20Docker-blue?logo=docker)](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/pifou25/docker-jeedom/master/docker-compose.yml) Try in "Play-With-Docker" require a Docker account.
+[![Try in PWD](https://img.shields.io/badge/try-it_now!-blue?logo=docker&color=lemon)](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/pifou25/docker-jeedom/master/docker-compose.yml)
 
 # Jeedom - *Innovative Home Automation*
 <p align="center">
@@ -33,8 +32,9 @@ complete installation.
 
 ### Meaning of any keywords
 
-* `Full`
-* `Light`
+* `Full` = standalone
+* `Light` = without extra daemon
+* bullseye, buster, or bookworm is the Debian base version. The current default is `bullseye`
 * Jeedom Version `stable` (current = v4.3 = latest) or `beta` (future v4.4), see jeedom Git branches.
 * `debug` when the image also contains XDebug packages for PHP debug
 
@@ -61,8 +61,14 @@ You can run the standalone `latest` container as-it :
 ```
 docker run --name jeedom -d -v "$PWD/jeedom/":/var/www/html pifou25/jeedom
 ```
-
 ( --name = the container name, -d = detached mode, -v = mount the volume source:destination)
+
+## run a new container with an existing backup
+
+The init sequence may track and restore a previous Jeedom backup:
+```
+docker run --name jeedom -d -v "$PWD/backup":/var/www/html/backup pifou25/jeedom
+```
 
 ## Docker Compose for Debug and specific services
 
