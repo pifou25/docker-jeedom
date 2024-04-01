@@ -1,7 +1,11 @@
 ﻿# Build with 3 stages, 2 targets :
 # light_jeedom: no daemon, only apache+php
 # full_jeedom: standalone with all required daemons
+# DEBIAN version (buster/bullseye/bookworm)
+# PHP version (min 8 for bookworm, 7.3 otherwise)
+# XDEBUG (boolean)
 ARG DEBIAN=bullseye
+ARG PHP=7.3
 FROM php:7.3-apache-${DEBIAN} as base
 ARG DEBIAN
 # optional XDEBUG arg to add xdebug packages and configuration

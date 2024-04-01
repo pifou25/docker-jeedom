@@ -70,7 +70,9 @@ jobs:
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: ${{ secrets.DOCKER_USER }}/jeedom:light-debug
+          tags: | 
+            ${{ secrets.DOCKER_USER }}/jeedom:light-debug,
+            ${{ secrets.DOCKER_USER }}/jeedom:bullseye-light-debug
       -
         name: Build and push Jeedom Light
         uses: docker/build-push-action@v5
@@ -82,7 +84,9 @@ jobs:
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: ${{ secrets.DOCKER_USER }}/jeedom:light
+          tags: |
+            ${{ secrets.DOCKER_USER }}/jeedom:light,
+            ${{ secrets.DOCKER_USER }}/jeedom:bullseye-light
       -
         name: Build and push Jeedom Full Standalone
         uses: docker/build-push-action@v5
@@ -109,7 +113,9 @@ jobs:
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: ${{ secrets.DOCKER_USER }}/jeedom:buster
+          tags: |
+            ${{ secrets.DOCKER_USER }}/jeedom:buster,
+            ${{ secrets.DOCKER_USER }}/jeedom:buster-full
       -
         name: Build and push Jeedom Full Standalone Debian Bookworm
         uses: docker/build-push-action@v5
@@ -117,12 +123,31 @@ jobs:
         with:
           context: build
           target: full_jeedom
-          build-args: DEBIAN=bookworm
+          build-args: |
+            DEBIAN=bookworm
+            PHP=8.3
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: ${{ secrets.DOCKER_USER }}/jeedom:bookworm
+          tags: |
+            ${{ secrets.DOCKER_USER }}/jeedom:bookworm,
+            ${{ secrets.DOCKER_USER }}/jeedom:bookworm-full
+      -
+        name: Build and push Jeedom Full Standalone Debian Bookworm
+        uses: docker/build-push-action@v5
+        continue-on-error: true
+        with:
+          context: build
+          target: light_jeedom
+          build-args: |
+            DEBIAN=bookworm
+            PHP=8.3
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          tags: ${{ secrets.DOCKER_USER }}/jeedom:bookworm-light
       -
         name: Build and push Jeedom Full Standalone with XDebug
         uses: docker/build-push-action@v5
@@ -136,7 +161,8 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:debug
+            ${{ secrets.DOCKER_USER }}/jeedom:debug,
+            ${{ secrets.DOCKER_USER }}/jeedom:bullseye-debug
       -
         name: Build and push Jeedom Full Standalone Beta
         # Same builds with arg = beta...
@@ -151,7 +177,9 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:beta
+            ${{ secrets.DOCKER_USER }}/jeedom:beta,
+            ${{ secrets.DOCKER_USER }}/jeedom:bullseye-full-beta,
+            ${{ secrets.DOCKER_USER }}/jeedom:bullseye-beta
       -
         name: Build and push Jeedom Light beta
         uses: docker/build-push-action@v5
@@ -165,4 +193,5 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:light-beta
+            ${{ secrets.DOCKER_USER }}/jeedom:light-beta,
+            ${{ secrets.DOCKER_USER }}/jeedom:bullseye-light-beta
