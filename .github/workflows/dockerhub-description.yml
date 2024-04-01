@@ -17,6 +17,7 @@ jobs:
   dockerHubDescription:
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v4
 
     - name: Update Docker Hub Description
       # This job updates the Docker Hub description and short-desc
