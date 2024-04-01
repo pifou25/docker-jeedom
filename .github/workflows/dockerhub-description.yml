@@ -26,5 +26,5 @@ jobs:
       with:
         username: ${{ secrets.DOCKER_USER }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-        repository: pifou25/docker-jeedom
+        repository: pifou25/jeedom
         short-description: ${{ github.event.repository.description }}
