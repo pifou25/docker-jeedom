@@ -6,7 +6,7 @@
 # XDEBUG (boolean)
 ARG DEBIAN=bullseye
 ARG PHP=7.3
-FROM php:7.3-apache-${DEBIAN} as base
+FROM php:${PHP}-apache-${DEBIAN} as base
 ARG DEBIAN
 # optional XDEBUG arg to add xdebug packages and configuration
 ARG XDEBUG
