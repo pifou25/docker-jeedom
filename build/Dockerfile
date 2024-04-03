@@ -77,10 +77,6 @@ RUN install-php-extensions\
     mbstring mysqli pcntl pdo_mysql \
     soap sockets xmlrpc zip gd opcache ssh2
 
-# install composer for dependancies
-COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
-RUN composer install
-
 WORKDIR ${WEBSERVER_HOME}
 
 # copy unzip jeedom source into /webserver
@@ -91,6 +87,10 @@ RUN mkdir -p ${WEBSERVER_HOME} && \
   cp -R /root/core-*/.[^.]* ${WEBSERVER_HOME} && \
   rm -rf /root/core-* > /dev/null 2>&1 && \
   rm /tmp/jeedom.zip
+
+# install composer for dependancies
+COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+RUN composer install
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
