@@ -50,7 +50,8 @@ cd ${WEBSERVER_HOME}
 # ___________________________
 
 if [ ! -f "${WEBSERVER_HOME}/index.php" ]; then
-  /root/install.sh -v ${JEEDOM_VERSION} -w ${WEBSERVER_HOME} -s 6
+    log_error "Can not install jeedom (no jeedom source)"
+    exit 1
 fi
 
 if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then

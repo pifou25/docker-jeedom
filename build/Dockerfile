@@ -2,8 +2,10 @@
 # light_jeedom: no daemon, only apache+php
 # full_jeedom: standalone with all required daemons
 ARG DEBIAN=bullseye
-FROM php:7.3-apache-${DEBIAN} as base
+ARG PHP=7.3
+FROM php:${PHP}-apache-${DEBIAN} as base
 ARG DEBIAN
+ARG PHP=7.3
 # optional XDEBUG arg to add xdebug packages and configuration
 ARG XDEBUG
 
@@ -22,7 +24,7 @@ ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_ROOT_PASSWORD
 ENV DEBIAN_FRONTEND=noninteractive
 
-LABEL com.jeedom.version="Jeedom ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP7.3"
+LABEL com.jeedom.version="Jeedom ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
 
 # common packages intall
 # alphabetical order for better compare
@@ -69,7 +71,7 @@ RUN install-php-extensions\
 # COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 # RUN composer install
 
-#add motd & bashrc - link sh to bash for Docker Desktop
+# add motd & bashrc - link sh to bash for Docker Desktop
 COPY motd /etc/jmotd
 ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/bashrc /root/.bashrc
 RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd && cat /etc/jmotd' \
@@ -79,8 +81,16 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
 	mkdir -p /etc/sudoers.d && \
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
-ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/install.sh /root/install.sh
-RUN chmod +x /root/install.sh
+WORKDIR ${WEBSERVER_HOME}
+
+# copy unzip jeedom source into /webserver
+ADD https://github.com/jeedom/core/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
+RUN mkdir -p ${WEBSERVER_HOME} && \
+  unzip -q /tmp/jeedom.zip -d /root/ && \
+  cp -R /root/core-*/* ${WEBSERVER_HOME} && \
+  cp -R /root/core-*/.[^.]* ${WEBSERVER_HOME} && \
+  rm -rf /root/core-* > /dev/null 2>&1 && \
+  rm /tmp/jeedom.zip
 
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
@@ -90,7 +100,6 @@ RUN usermod -u 1000 www-data \
    && chmod 777 -R /tmp/jeedom \
    && chown www-data:www-data -R /tmp/jeedom
 
-WORKDIR ${WEBSERVER_HOME}
 VOLUME ${WEBSERVER_HOME}
 VOLUME ${WEBSERVER_HOME}/backup
 VOLUME ${WEBSERVER_HOME}/log
