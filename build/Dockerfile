@@ -1,7 +1,9 @@
 ﻿# Build with 3 stages, 2 targets :
 # light_jeedom: no daemon, only apache+php
 # full_jeedom: standalone with all required daemons
+# Debian version: buster / bullseye / bookworm
 ARG DEBIAN=bullseye
+# PHP version required for bookworm is 8 minimum
 ARG PHP=7.3
 FROM php:${PHP}-apache-${DEBIAN} as base
 ARG DEBIAN
@@ -25,6 +27,16 @@ ENV MYSQL_JEEDOM_USER=jeedom
 ENV DEBIAN_FRONTEND=noninteractive
 
 LABEL com.jeedom.version="Jeedom ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
+
+# add motd & bashrc - link sh to bash for Docker Desktop
+COPY motd /etc/jmotd
+ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/bashrc /root/.bashrc
+RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd && cat /etc/jmotd' \
+    >> /etc/bash.bashrc && \
+    ln -sf /bin/bash /bin/sh && \
+    # add sudo for www-data
+	mkdir -p /etc/sudoers.d && \
+    echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
 # common packages intall
 # alphabetical order for better compare
@@ -58,7 +70,6 @@ RUN apt-get update && \
   wget \
   zip unzip
 
-
 # add php extension
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 RUN install-php-extensions\
@@ -66,20 +77,9 @@ RUN install-php-extensions\
     mbstring mysqli pcntl pdo_mysql \
     soap sockets xmlrpc zip gd opcache ssh2
 
-
 # install composer for dependancies
-# COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
-# RUN composer install
-
-# add motd & bashrc - link sh to bash for Docker Desktop
-COPY motd /etc/jmotd
-ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/bashrc /root/.bashrc
-RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd && cat /etc/jmotd' \
-    >> /etc/bash.bashrc && \
-    ln -sf /bin/bash /bin/sh && \
-    # add sudo for www-data
-	mkdir -p /etc/sudoers.d && \
-    echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
+COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+RUN composer install
 
 WORKDIR ${WEBSERVER_HOME}
 
@@ -91,7 +91,6 @@ RUN mkdir -p ${WEBSERVER_HOME} && \
   cp -R /root/core-*/.[^.]* ${WEBSERVER_HOME} && \
   rm -rf /root/core-* > /dev/null 2>&1 && \
   rm /tmp/jeedom.zip
-
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
