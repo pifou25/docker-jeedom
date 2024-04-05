@@ -1,4 +1,7 @@
-﻿# prepare PHP source with dependencies
+﻿ARG DEBIAN=bullseye
+ARG PHP=7.3
+
+# prepare PHP source with dependencies
 FROM composer:2.0 as vendor
 
 ARG JEEDOM_VERSION=V4-stable
