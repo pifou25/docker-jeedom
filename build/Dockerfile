@@ -1,4 +1,30 @@
-﻿# Build with 3 stages, 2 targets :
+﻿# prepare PHP source with dependencies
+FROM composer:2.0 as vendor
+
+ARG JEEDOM_VERSION=V4-stable
+ENV JEEDOM_VERSION=${JEEDOM_VERSION}
+
+WORKDIR /app
+# Download and extract PHP sources
+ADD https://github.com/jeedom/core/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
+RUN unzip -q /tmp/jeedom.zip -d /root/ && \
+  cp -R /root/core-*/* /app && \
+  cp -R /root/core-*/.[^.]* /app && \
+  rm -rf /root/core-* > /dev/null 2>&1 && \
+  rm /tmp/jeedom.zip && \
+  rm -rf /app/vendor /app/install/.htaccess
+COPY install.htaccess ./install/.htaccess
+
+# run composer for dependancies
+RUN composer install \
+    --no-interaction \
+    --no-plugins \
+    --no-scripts \
+    --no-dev \
+    --prefer-dist
+
+
+# Build with 3 stages, 2 targets :
 # light_jeedom: no daemon, only apache+php
 # full_jeedom: standalone with all required daemons
 # Debian version: buster / bullseye / bookworm
@@ -47,8 +73,8 @@ RUN apt-get update && \
   apt-get install --no-install-recommends --no-install-suggests -q -y \
   apt-transport-https \
   apt-utils \
-  at   # daemon atd \
-  ccze # for logs colors \
+  at \
+  ccze \
   curl \
   dos2unix \
   ffmpeg \
@@ -78,19 +104,12 @@ RUN install-php-extensions\
     soap sockets xmlrpc zip gd opcache ssh2
 
 WORKDIR ${WEBSERVER_HOME}
+# change doc root apache configuration
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# copy unzip jeedom source into /webserver
-ADD https://github.com/jeedom/core/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
-RUN mkdir -p ${WEBSERVER_HOME} && \
-  unzip -q /tmp/jeedom.zip -d /root/ && \
-  cp -R /root/core-*/* ${WEBSERVER_HOME} && \
-  cp -R /root/core-*/.[^.]* ${WEBSERVER_HOME} && \
-  rm -rf /root/core-* > /dev/null 2>&1 && \
-  rm /tmp/jeedom.zip
-
-# install composer for dependancies
-COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
-RUN composer install
+# copy PHP sources from previous stage
+COPY --from=vendor app/ ${WEBSERVER_HOME}
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
