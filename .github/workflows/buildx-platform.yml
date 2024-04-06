@@ -28,7 +28,8 @@ jobs:
         # https://github.com/marketplace/actions/build-and-push-docker-images
         uses: docker/build-push-action@v5
         with:
-          context: build/Dockerfile.source
+          context: build
+          file: build/Dockerfile.source
           push: true
           tags: | 
             ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:source
