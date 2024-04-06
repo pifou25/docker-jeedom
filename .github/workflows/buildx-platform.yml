@@ -11,22 +11,12 @@ concurrency:
   cancel-in-progress: true
       
 jobs:
-  docker:
+  jeedomSource:
     runs-on: ubuntu-latest
     steps:
       -
         name: Checkout
         uses: actions/checkout@v4.1.2
-      - name: Cache Docker layers
-        # https://github.com/marketplace/actions/cache
-        # this action allows caching dependancies and build output
-        uses: actions/cache@v4
-        id: cache
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.ref_name }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
       -
         name: Composer install Jeedom source
         # https://github.com/marketplace/actions/build-and-push-docker-images
@@ -34,15 +24,14 @@ jobs:
         continue-on-error: true
         with:
           context: build/Dockerfile.source
-          push: true
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+          push: false
           tags: | 
             ${{ secrets.DOCKER_USER }}/jeedom:source
 
 
   matrix_jobs:
     runs-on: ubuntu-latest
+    needs: jeedomSource
     strategy:
       matrix:
         debian: ["buster", "bullseye", "bookworm"]
@@ -58,7 +47,7 @@ jobs:
         id: buildJeedom
         continue-on-error: true
         run: |
-          echo "${{ matrix.debian }} PHP${{ matrix.php }} target ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }} has ERRORS!"
+          echo "${{ matrix.debian }} PHP${{ matrix.php }} target ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }} 🚀" >> $GITHUB_STEP_SUMMARY
           echo docker ps
       - name: Check on failures
         if: steps.buildJeedom.outcome != 'success'
