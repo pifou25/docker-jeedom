@@ -2,8 +2,16 @@
 FROM composer:2.7 as vendor
 
 ARG JEEDOM_REPO=jeedom/core
-ARG JEEDOM_VERSION=V4-stable
+ARG JEEDOM_VERSION=master
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}
+
+# GitHub use this label to connect Git repo and Docker images in ghcr.io
+LABEL org.opencontainers.image.source https://github.com/pifou25/docker-jeedom
+LABEL org.opencontainers.artifact.description "Jeedom ${JEEDOM_VERSION} PHP Sources with Composer dependancies \
+  This Container is just to use as a base for next build stage."
+LABEL org.opencontainers.image.authors pifou25
+LABEL org.opencontainers.image.description "Jeedom ${JEEDOM_VERSION} PHP Sources with Composer dependancies \
+  This Container is just to use as a base for next build stage."
 
 WORKDIR /app
 # Download and extract PHP sources
@@ -15,4 +23,9 @@ RUN unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
 COPY install.htaccess ./install/.htaccess
 
 # run composer for dependancies
-RUN composer install --no-progress --no-interaction --no-dev 
+RUN composer update && composer install \
+    --no-interaction \
+    --no-plugins \
+    --no-scripts \
+    --no-dev \
+    --prefer-dist

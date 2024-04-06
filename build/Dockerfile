@@ -1,27 +1,13 @@
-﻿ARG DEBIAN=bullseye
-ARG PHP=7.3
-ARG JEEDOM_REPO=jeedom/core
+ARG JEEDOM_VERSION=master
+# need to repead ARG that are scoped...
+ARG DEBIAN=bullseye
+ARG PHP=7.4
+ARG WEBSERVER_HOME=/var/www/html
+ARG XDEBUG
+# preload previous image with Jeedom PHP soures
+FROM jeedom:${JEEDOM_VERSION}-source AS jeedom-source
 
-# prepare PHP source with dependencies
-FROM composer:2.7 as vendor
-
-ARG JEEDOM_REPO
-ARG JEEDOM_VERSION=V4-stable
-ENV JEEDOM_VERSION=${JEEDOM_VERSION}
-
-WORKDIR /app
-# Download and extract PHP sources
-ADD https://github.com/${JEEDOM_REPO}/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
-RUN unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
-  find /tmp/source/ -maxdepth 1 -type d -name '*core*' -exec sh -c 'mv -T {} /app' {} \; && \
-  rm /tmp/jeedom.zip && \
-  rm -rf /app/vendor /app/install/.htaccess
-COPY install.htaccess ./install/.htaccess
-
-# run composer for dependancies
-RUN composer install --no-progress --no-interaction --no-dev 
-
-
+ 
 # Build with 3 stages, 2 targets :
 # first stage 'base' is common to 2 following targets
 # 'light_jeedom': no daemon, only apache+php
@@ -30,8 +16,10 @@ RUN composer install --no-progress --no-interaction --no-dev
 # Debian version: buster / bullseye / bookworm
 ARG DEBIAN
 # PHP version required for bookworm is 8 minimum
-ARG PHP
+ARG PHP=7.3
+
 FROM php:${PHP}-apache-${DEBIAN} as base
+# ARG is scoped we need to repeat after each 'FROM' declaration
 ARG DEBIAN
 ARG PHP
 ARG JEEDOM_REPO
@@ -51,8 +39,8 @@ ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_ROOT_PASSWORD
 ENV DEBIAN_FRONTEND=noninteractive
 
-LABEL com.jeedom.version="${JEEDOM_REPO} ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
-LABEL org.opencontainers.image.description "Jeedom Home Automation in Docker. ${JEEDOM_REPO} ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
+LABEL com.jeedom.version="${JEEDOM_REPO} ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP} ${XDEBUG}"
+LABEL org.opencontainers.image.description "Jeedom Home Automation in Docker. ${JEEDOM_REPO} ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP} ${XDEBUG}"
 
 # add motd & bashrc - link sh to bash for Docker Desktop
 # add sudo for www-data
@@ -109,10 +97,13 @@ RUN install-php-extensions\
     mbstring mysqli pcntl pdo_mysql \
     soap sockets xmlrpc zip gd opcache ssh2
 
-WORKDIR /var/www/html
-VOLUME /var/www/html
+WORKDIR ${WEBSERVER_HOME}
+# change doc root apache configuration
+RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/sites-available/*.conf
+RUN sed -ri -e "s!/var/www/!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
 # copy PHP sources from previous stage
-COPY --from=vendor app/ .
+COPY --from=jeedom-source app/ ${WEBSERVER_HOME}
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
