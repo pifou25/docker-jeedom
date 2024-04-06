@@ -13,6 +13,9 @@ concurrency:
 jobs:
   jeedomSource:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        jeedom: ["V4-stable", "beta"]
     steps:
       -
         name: Checkout
@@ -31,8 +34,10 @@ jobs:
           context: build
           file: build/Dockerfile.source
           push: true
+          build-args: |
+            ARG JEEDOM_VERSION=V4-stable
           tags: | 
-            ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:source
+            ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.jeedom == 'beta' && 'beta-' }}source
 
 
   matrix_jobs:
