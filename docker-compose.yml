@@ -12,10 +12,10 @@ services:
       - PUID=1000
       - PGID=1000
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
-      - TZ=${TIME_ZONE:-Europe/Paris}
-      - MYSQL_DATABASE=${MYSQL_JEEDOM_DB:-jeedom}
-      - MYSQL_USER=${MYSQL_JEEDOM_USER:-jeedom}
-      - MYSQL_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
+      - TZ=${TZ:-Europe/Paris}
+      - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
+      - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
+      - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-password}"]
       interval: 1m30s
@@ -49,12 +49,12 @@ services:
     hostname: jeedom
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
-      - MYSQL_DATABASE=${MYSQL_JEEDOM_DB:-jeedom}
+      - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
       - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
       - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
       - JEEDOM_VERSION=${JEEDOM_VERSION:-V4-stable}
       - MYSQL_HOST=db
-      - TZ=${TIME_ZONE:-Europe/Paris}
+      - TZ=${TZ:-Europe/Paris}
     restart: unless-stopped
     volumes:
       - ./volumes/jeedom:/var/www/html
@@ -89,7 +89,7 @@ services:
   scheduler:
     image: premoweb/chadburn
     environment:
-      - TZ=${TIME_ZONE:-Europe/Paris}
+      - TZ=${tz:-Europe/Paris}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: daemon

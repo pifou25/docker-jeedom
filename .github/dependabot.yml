@@ -1,12 +1,8 @@
 version: 2
 # doc and options for this file :
 # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
-# doc and options for this file :
-# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 updates:
-  # keep automatic actions up-to-date with the last version
-  # https://docs.github.com/en/code-security/dependabot/working-with-dependabot/keeping-your-actions-up-to-date-with-dependabot
   # keep automatic actions up-to-date with the last version
   # https://docs.github.com/en/code-security/dependabot/working-with-dependabot/keeping-your-actions-up-to-date-with-dependabot
   - package-ecosystem: "github-actions"
@@ -29,13 +25,4 @@ updates:
     reviewers:
       - pifou25
     # Branch to create pull requests against
-    target-branch: "develop"
-
-  - package-ecosystem: "docker"
-    directory: "/build/"
-    schedule:
-      interval: "weekly"
-      day: "saturday"
-    reviewers:
-      - pifou25
     target-branch: "develop"

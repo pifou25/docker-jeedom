@@ -61,16 +61,17 @@ if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
   fi
 
   # ___________________________
-  #   configure database
+  #   configure database : localhost use socket configuration
   # ___________________________
 
   log_info "first run of jeedom container : configuration"
   cp ${WEBSERVER_HOME}/core/config/common.config.sample.php ${WEBSERVER_HOME}/core/config/common.config.php
+  sed -i "s/'host'/'unix_socket'/g" ${WEBSERVER_HOME}/core/config/common.config.php
   sed -i "s/#PASSWORD#/${MYSQL_JEEDOM_PASSWD}/g" ${WEBSERVER_HOME}/core/config/common.config.php
   sed -i "s/#DBNAME#/${MYSQL_JEEDOM_DATABASE}/g" ${WEBSERVER_HOME}/core/config/common.config.php
   sed -i "s/#USERNAME#/${MYSQL_JEEDOM_USER}/g" ${WEBSERVER_HOME}/core/config/common.config.php
   sed -i "s/#PORT#/3306/g" ${WEBSERVER_HOME}/core/config/common.config.php
-  sed -i "s/#HOST#/${MYSQL_HOST}/g" ${WEBSERVER_HOME}/core/config/common.config.php
+  sed -i "s/#HOST#/\/run\/mysqld\/mysqld.sock/g" ${WEBSERVER_HOME}/core/config/common.config.php
   
   chmod 770 -R ${WEBSERVER_HOME}
   chown -R www-data:www-data ${WEBSERVER_HOME}
@@ -81,12 +82,18 @@ if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
   # start database
   supervisorctl start mysql
 
-  log_info " ___ Création de la database SQL ${MYSQL_JEEDOM_DATABASE}... ___"
-  mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'localhost';"
-  mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'localhost' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
+  # wait until db is up and running
+  while ! mysqladmin ping -h"$MYSQL_HOST" --silent; do
+    log_warn "Wait 2 seconds for MariaDB to start..."
+    sleep 2
+  done
+
+  log_info " ___ Création de la database SQL ${MYSQL_JEEDOM_DATABASE} pour '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}' ... ___"
+  mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}';"
+  mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
   mysql_sql "DROP DATABASE IF EXISTS ${MYSQL_JEEDOM_DATABASE};"
   mysql_sql "CREATE DATABASE ${MYSQL_JEEDOM_DATABASE};"
-  mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'localhost';"
+  mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}';"
 
   log_info "jeedom clean install"
   php ${WEBSERVER_HOME}/install/install.php mode=force

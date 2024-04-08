@@ -16,18 +16,21 @@ services:
     hostname: jeedom
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
-      - MYSQL_DATABASE=${MYSQL_JEEDOM_DB:-jeedom}
+      - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
       - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
       - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
       - JEEDOM_VERSION=${JEEDOM_VERSION:-V4-stable}
       - MYSQL_HOST=db
-      - TZ=${TIME_ZONE:-Europe/Paris}
+      - TZ=${TZ:-Europe/Paris}
     restart: unless-stopped
     volumes:
       - ../volumes/jeedom:/var/www/html
       - ../volumes/backup:/tmp/backup
     healthcheck:
-      test: ["CMD-SHELL", "curl -so /tmp/status http://localhost/here.html || exit 1"]
+      # test for light Jeedom: only HTTP query
+      # test: ["CMD-SHELL", "curl -so /tmp/status http://localhost/here.html || exit 1"]
+      # test for full Jeedom: supervisor script
+      test: ["CMD-SHELL", "/usr/local/bin/healthcheck.sh"]
       interval: 1m30s
       retries: 3
       start_period: 40s
@@ -45,3 +48,6 @@ services:
       options:
         max-size: "10m"
         max-file: "1"
+    tmpfs:
+      - /tmp/jeedom
+ 

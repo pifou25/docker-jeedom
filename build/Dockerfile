@@ -28,8 +28,10 @@ RUN composer install \
 
 
 # Build with 3 stages, 2 targets :
-# light_jeedom: no daemon, only apache+php
-# full_jeedom: standalone with all required daemons
+# first stage 'base' is common to 2 following targets
+# 'light_jeedom': no daemon, only apache+php
+# 'full_jeedom': standalone with all required daemons
+#
 # Debian version: buster / bullseye / bookworm
 ARG DEBIAN=bullseye
 # PHP version required for bookworm is 8 minimum
@@ -106,11 +108,12 @@ RUN install-php-extensions\
     mbstring mysqli pcntl pdo_mysql \
     soap sockets xmlrpc zip gd opcache ssh2
 
-WORKDIR ${WEBSERVER_HOME}
 # change doc root apache configuration
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+RUN sed -ri -e 's!/var/www/html!${WEBSERVER_HOME}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${WEBSERVER_HOME}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
+WORKDIR ${WEBSERVER_HOME}
+VOLUME ${WEBSERVER_HOME}
 # copy PHP sources from previous stage
 COPY --from=vendor app/ ${WEBSERVER_HOME}
 
@@ -121,7 +124,6 @@ RUN usermod -u 1000 www-data \
    && chmod 777 -R /tmp/jeedom \
    && chown www-data:www-data -R /tmp/jeedom
 
-VOLUME ${WEBSERVER_HOME}
 VOLUME ${WEBSERVER_HOME}/backup
 VOLUME ${WEBSERVER_HOME}/log
 
@@ -169,8 +171,6 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
   fail2ban \
   mariadb-common mariadb-server \
   supervisor \
-  # add forgetten packages ?
-  git mariadb-client zip unzip wget sudo iproute2 net-tools \
   && rm -rf /var/lib/apt/lists/*
 
 # customization from official jeedom/core repo
@@ -197,7 +197,8 @@ RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available
     mkdir -p /var/run/fail2ban && \
     chown -R www-data /etc/apache2 && \
     rm /var/log/apache2/error.log && touch /var/log/apache2/error.log && \
-    chown -R www-data:www-data /var/log/apache2/error.log
+    chown -R www-data:www-data /var/log/apache2/error.log && \
+    chmod 0444 /etc/mysql/conf.d/jeedom_my.cnf
 
 # Add the supervisord healthcheck script
 COPY standalone/healthcheck.sh /usr/local/bin/
@@ -211,6 +212,10 @@ RUN chmod +x /root/init.sh
 
 #volume for mariadb data
 VOLUME  /var/lib/mysql
+
+# env config for supervisord
+ENV PYTHONUNBUFFERED=True 
+ENV PYTHONIOENCODING=UTF-8
 
 # ENTRYPOINT ["/root/init.sh"]
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
