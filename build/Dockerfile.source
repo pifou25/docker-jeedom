@@ -1,7 +1,12 @@
 # prepare PHP source with dependencies
 FROM composer:2.0 as vendor
-
 ARG JEEDOM_VERSION=V4-stable
+
+# GitHub use this label to connect Git repo and Docker images in ghcr.io
+LABEL org.opencontainers.image.source https://github.com/pifou25/docker-jeedom
+LABEL org.opencontainers.artifact.description "Jeedom ${JEEDOM_VERSION} PHP Sources with Composer dependancies \
+  This Container is just to use as a base for next build stage."
+LABEL org.opencontainers.image.authors pifou25
 
 WORKDIR /app
 # Download and extract PHP sources

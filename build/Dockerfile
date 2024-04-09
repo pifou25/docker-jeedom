@@ -1,33 +1,4 @@
-﻿ARG DEBIAN=bullseye
-ARG PHP=7.3
-
-# prepare PHP source with dependencies
-FROM composer:2.0 as vendor
-
-ARG JEEDOM_VERSION=V4-stable
-ENV JEEDOM_VERSION=${JEEDOM_VERSION}
-
-WORKDIR /app
-# Download and extract PHP sources
-ADD https://github.com/jeedom/core/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
-RUN unzip -q /tmp/jeedom.zip -d /root/ && \
-  cp -R /root/core-*/* /app && \
-  cp -R /root/core-*/.[^.]* /app && \
-  rm -rf /root/core-* > /dev/null 2>&1 && \
-  rm /tmp/jeedom.zip && \
-  rm -rf /app/vendor /app/install/.htaccess
-COPY install.htaccess ./install/.htaccess
-
-# run composer for dependancies
-RUN composer install \
-    --no-interaction \
-    --no-plugins \
-    --no-scripts \
-    --no-dev \
-    --prefer-dist
-
-
-# Build with 3 stages, 2 targets :
+﻿# Build with 3 stages, 2 targets :
 # light_jeedom: no daemon, only apache+php
 # full_jeedom: standalone with all required daemons
 # Debian version: buster / bullseye / bookworm
@@ -108,11 +79,11 @@ RUN install-php-extensions\
 
 WORKDIR ${WEBSERVER_HOME}
 # change doc root apache configuration
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/sites-available/*.conf
+RUN sed -ri -e "s!/var/www/!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 # copy PHP sources from previous stage
-COPY --from=vendor app/ ${WEBSERVER_HOME}
+COPY --from=grch.io/pifou25/jeedom:${JEEDOM_VERSION}-source app/ ${WEBSERVER_HOME}
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \

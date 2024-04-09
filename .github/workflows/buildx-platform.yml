@@ -37,7 +37,7 @@ jobs:
           build-args: |
             ARG JEEDOM_VERSION=V4-stable
           tags: | 
-            ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.jeedom == 'beta' && 'beta-' }}source
+            ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.jeedom }}-source
 
 
   matrix_jobs:
@@ -57,13 +57,79 @@ jobs:
             jeedom: "beta"
           - debian: "buster"
     steps:
-      - name: "${{ matrix.debian }} PHP${{ matrix.php }} target ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }}"
-        id: buildJeedom
-        continue-on-error: true
+      -
+        name: Set up QEMU
+        # https://github.com/marketplace/actions/docker-setup-qemu
+        # set up more platforms (default = all)
+        uses: docker/setup-qemu-action@v3
+      -
+        name: Set up Docker Buildx
+        id: buildx
+        # https://github.com/marketplace/actions/docker-setup-buildx
+        # set up a multi-platform builder for Docker containers
+        uses: docker/setup-buildx-action@v3
+      -
+        name: Login to DockerHub
+        # https://github.com/marketplace/actions/docker-login
+        # login to DockerHub with secrets login & token
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - 
+        name: Login to GitHub Container Registry
+        # push to multi-registry
+        # https://docs.docker.com/build/ci/github-actions/push-multi-registries/
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      -
+        name: Cache Docker layers
+        # https://github.com/marketplace/actions/cache
+        # this action allows caching dependancies and build output
+        uses: actions/cache@v4
+        id: cache
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.ref_name }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+      -
+        name: Inspect builder
         run: |
-          echo "${{ matrix.debian }} PHP${{ matrix.php }} target ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }} 🚀" >> $GITHUB_STEP_SUMMARY
-          echo docker ps
+          echo "Name:      ${{ steps.buildx.outputs.name }}"
+          echo "Endpoint:  ${{ steps.buildx.outputs.endpoint }}"
+          echo "Status:    ${{ steps.buildx.outputs.status }}"
+          echo "Flags:     ${{ steps.buildx.outputs.flags }}"
+          echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
+      
+      - 
+        name: "${{ matrix.debian }} PHP${{ matrix.php }} target ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }}"
+        # id required for next step that check success
+        id: buildJeedom
+        # https://github.com/marketplace/actions/build-and-push-docker-images
+        uses: docker/build-push-action@v5
+        # do every matrix combination, don't stop on errors
+        continue-on-error: true
+        with:
+          context: build
+          target: ${{ matrix.target }}_jeedom
+          build-args: |
+            DEBIAN=${{ matrix.debian }}
+            PHP=${{ matrix.php }}
+            JEEDOM_VERSION=${{ matrix.jeedom }}
+            XDEBUG=${{ matrix.xdebug }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          tags: |
+            ${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-{{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+            ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-{{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+  
       - name: Check on failures
         if: steps.buildJeedom.outcome != 'success'
-        run: echo "${{ matrix.debian }} PHP${{ matrix.php }} target ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }} has ERRORS!"
-        
+        run: |
+          echo "${{ matrix.debian }} PHP${{ matrix.php }} target ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
