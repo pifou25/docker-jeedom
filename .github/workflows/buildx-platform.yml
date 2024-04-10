@@ -58,6 +58,9 @@ jobs:
           - debian: "buster"
     steps:
       -
+        name: Checkout
+        uses: actions/checkout@v4.1.2
+      -
         name: Set up QEMU
         # https://github.com/marketplace/actions/docker-setup-qemu
         # set up more platforms (default = all)
