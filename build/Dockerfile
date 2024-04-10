@@ -83,7 +83,7 @@ RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/sites-av
 RUN sed -ri -e "s!/var/www/!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 # copy PHP sources from previous stage
-COPY --from=grch.io/pifou25/jeedom:${JEEDOM_VERSION}-source app/ ${WEBSERVER_HOME}
+COPY --from=ghcr.io/pifou25/jeedom:${JEEDOM_VERSION}-source app/ ${WEBSERVER_HOME}
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
