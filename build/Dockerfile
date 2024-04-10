@@ -1,5 +1,7 @@
 # hack to get Jeedom sources available for COPY
 ARG JEEDOM_VERSION=V4-stable
+ARG DEBIAN=bullseye
+ARG PHP=7.3
 FROM ghcr.io/pifou25/jeedom:${JEEDOM_VERSION}-source AS source
  
  # Build with 3 stages, 2 targets :
@@ -9,6 +11,8 @@ FROM ghcr.io/pifou25/jeedom:${JEEDOM_VERSION}-source AS source
 ARG DEBIAN=bullseye
 # PHP version required for bookworm is 8 minimum
 ARG PHP=7.3
+ARG JEEDOM_VERSION=V4-stable
+
 FROM php:${PHP}-apache-${DEBIAN} as base
 # ARG is scoped we need to repeat after each 'FROM' declaration
 ARG DEBIAN
