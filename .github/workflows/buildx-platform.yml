@@ -12,8 +12,23 @@ concurrency:
   cancel-in-progress: true
       
 jobs:
-  docker:
+  jeedomBuild:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        debian: ["buster", "bullseye", "bookworm"]
+        php: [7.3, 8.1]
+        jeedom: ["V4-stable", "beta"]
+        target: ["light", "full"]
+        xdebug: [true, false]
+        exclude:
+          # exclude PHP7.3 on every bookworm OS
+          - debian: "bookworm"
+            php: 7.3
+          # exclude Jeedom beta on every buster, not supported
+          - debian: "buster"
+            jeedom: "beta"
+
     steps:
       -
         name: Checkout
@@ -44,6 +59,15 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+      - 
+        name: Login to GitHub Container Registry
+        # push to multi-registry
+        # https://docs.docker.com/build/ci/github-actions/push-multi-registries/
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache Docker layers
         # https://github.com/marketplace/actions/cache
         # this action allows caching dependancies and build output
@@ -55,148 +79,43 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
       -
-        name: Inspect builder
+        name: "${{ matrix.debian }} PHP${{ matrix.php }} target ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }}"
         run: |
           echo "Name:      ${{ steps.buildx.outputs.name }}"
           echo "Endpoint:  ${{ steps.buildx.outputs.endpoint }}"
           echo "Status:    ${{ steps.buildx.outputs.status }}"
           echo "Flags:     ${{ steps.buildx.outputs.flags }}"
           echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
-      -
-        name: Build and push Jeedom Light with Xdebug
+      - 
+        name: "${{ matrix.debian }} PHP${{ matrix.php }} target ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }}"
+        # id required for next step that check success
+        id: buildJeedom
         # https://github.com/marketplace/actions/build-and-push-docker-images
         uses: docker/build-push-action@v5
+        # do every matrix combination, don't stop on errors
         continue-on-error: true
         with:
           context: build
-          target: light_jeedom
-          build-args: XDEBUG=true
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: true
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: | 
-            ${{ secrets.DOCKER_USER }}/jeedom:light-debug,
-            ${{ secrets.DOCKER_USER }}/jeedom:bullseye-light-debug
-      -
-        name: Build and push Jeedom Light
-        uses: docker/build-push-action@v5
-        continue-on-error: true
-        with:
-          context: build
-          target: light_jeedom
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: true
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:light,
-            ${{ secrets.DOCKER_USER }}/jeedom:bullseye-light
-      -
-        name: Build and push Jeedom Full Standalone
-        uses: docker/build-push-action@v5
-        continue-on-error: true
-        with:
-          context: build
-          target: full_jeedom
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: true
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:full,
-            ${{ secrets.DOCKER_USER }}/jeedom:latest
-      -
-        name: Build and push Jeedom Full Standalone Debian Buster
-        uses: docker/build-push-action@v5
-        continue-on-error: true
-        with:
-          context: build
-          target: full_jeedom
-          build-args: DEBIAN=buster
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: true
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:buster,
-            ${{ secrets.DOCKER_USER }}/jeedom:buster-full
-      -
-        name: Build and push Jeedom Full Standalone Debian Bookworm
-        uses: docker/build-push-action@v5
-        continue-on-error: true
-        with:
-          context: build
-          target: full_jeedom
+          target: ${{ matrix.target }}_jeedom
           build-args: |
-            DEBIAN=bookworm
-            PHP=8.3
+            DEBIAN=${{ matrix.debian }}
+            PHP=${{ matrix.php }}
+            JEEDOM_VERSION=${{ matrix.jeedom }}
+            XDEBUG=${{ matrix.xdebug }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:bookworm,
-            ${{ secrets.DOCKER_USER }}/jeedom:bookworm-full
-      -
-        name: Build and push Jeedom Full Standalone Debian Bookworm
-        uses: docker/build-push-action@v5
-        continue-on-error: true
-        with:
-          context: build
-          target: light_jeedom
-          build-args: |
-            DEBIAN=bookworm
-            PHP=8.3
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: true
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: ${{ secrets.DOCKER_USER }}/jeedom:bookworm-light
-      -
-        name: Build and push Jeedom Full Standalone with XDebug
-        uses: docker/build-push-action@v5
-        continue-on-error: true
-        with:
-          context: build
-          target: full_jeedom
-          build-args: XDEBUG=true
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: true
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:debug,
-            ${{ secrets.DOCKER_USER }}/jeedom:bullseye-debug
-      -
-        name: Build and push Jeedom Full Standalone Beta
-        # Same builds with arg = beta...
-        uses: docker/build-push-action@v5
-        continue-on-error: true
-        with:
-          context: build
-          target: full_jeedom
-          build-args: JEEDOM_VERSION=beta
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: true
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:beta,
-            ${{ secrets.DOCKER_USER }}/jeedom:bullseye-full-beta,
-            ${{ secrets.DOCKER_USER }}/jeedom:bullseye-beta
-      -
-        name: Build and push Jeedom Light beta
-        uses: docker/build-push-action@v5
-        continue-on-error: true
-        with:
-          context: build
-          target: light_jeedom
-          build-args: JEEDOM_VERSION=beta
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: true
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:light-beta,
-            ${{ secrets.DOCKER_USER }}/jeedom:bullseye-light-beta
+            ${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }},
+            ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+
+      - name: Check on failures
+        if: steps.buildJeedom.outcome != 'success'
+        run: |
+          echo "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "Name:      ${{ steps.buildx.outputs.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "Endpoint:  ${{ steps.buildx.outputs.endpoint }}" >> $GITHUB_STEP_SUMMARY
+          echo "Status:    ${{ steps.buildx.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "Flags:     ${{ steps.buildx.outputs.flags }}" >> $GITHUB_STEP_SUMMARY
+          echo "Platforms: ${{ steps.buildx.outputs.platforms }}" >> $GITHUB_STEP_SUMMARY
