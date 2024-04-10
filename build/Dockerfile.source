@@ -7,6 +7,8 @@ LABEL org.opencontainers.image.source https://github.com/pifou25/docker-jeedom
 LABEL org.opencontainers.artifact.description "Jeedom ${JEEDOM_VERSION} PHP Sources with Composer dependancies \
   This Container is just to use as a base for next build stage."
 LABEL org.opencontainers.image.authors pifou25
+LABEL org.opencontainers.image.description "Jeedom ${JEEDOM_VERSION} PHP Sources with Composer dependancies \
+  This Container is just to use as a base for next build stage."
 
 WORKDIR /app
 # Download and extract PHP sources
