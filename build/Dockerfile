@@ -1,4 +1,8 @@
-﻿# Build with 3 stages, 2 targets :
+# hack to get Jeedom sources available for COPY
+ARG JEEDOM_VERSION=V4-stable
+FROM ghcr.io/pifou25/jeedom:${JEEDOM_VERSION}-source AS source
+ 
+ # Build with 3 stages, 2 targets :
 # light_jeedom: no daemon, only apache+php
 # full_jeedom: standalone with all required daemons
 # Debian version: buster / bullseye / bookworm
@@ -6,6 +10,7 @@ ARG DEBIAN=bullseye
 # PHP version required for bookworm is 8 minimum
 ARG PHP=7.3
 FROM php:${PHP}-apache-${DEBIAN} as base
+# ARG is scoped we need to repeat after each 'FROM' declaration
 ARG DEBIAN
 ARG PHP=7.3
 # optional XDEBUG arg to add xdebug packages and configuration
@@ -83,7 +88,7 @@ RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/sites-av
 RUN sed -ri -e "s!/var/www/!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 # copy PHP sources from previous stage
-COPY --from=ghcr.io/pifou25/jeedom:${JEEDOM_VERSION}-source app/ ${WEBSERVER_HOME}
+COPY --from=source app/ ${WEBSERVER_HOME}
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
