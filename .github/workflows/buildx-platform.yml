@@ -12,12 +12,29 @@ concurrency:
   cancel-in-progress: true
       
 jobs:
+  jeedomInitStep:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4.1.2
+      - name: Docker Lint
+        # https://github.com/marketplace/actions/hadolint-action
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: build/Dockerfile
+          no-fail: true
+          verbose: true
+
   jeedomBuild:
     runs-on: ubuntu-latest
+    needs: jeedomInitStep
     strategy:
       matrix:
         debian: ["buster", "bullseye", "bookworm"]
         php: [7.3, 8.1]
+        # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
+        platform: ["linux/amd64", "linux/arm64", "linux/arm/v7"]
         jeedom: ["V4-stable", "beta"]
         target: ["light", "full"]
         xdebug: [true, false]
@@ -87,7 +104,7 @@ jobs:
           echo "Flags:     ${{ steps.buildx.outputs.flags }}"
           echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
       - 
-        name: "${{ matrix.debian }} PHP${{ matrix.php }} target ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }}"
+        name: "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.platform }} target=${{ matrix.target }} branch=${{ matrix.jeedom }} ${{ matrix.xdebug && 'debug' || '' }}"
         # id required for next step that check success
         id: buildJeedom
         # https://github.com/marketplace/actions/build-and-push-docker-images
@@ -102,7 +119,7 @@ jobs:
             PHP=${{ matrix.php }}
             JEEDOM_VERSION=${{ matrix.jeedom }}
             XDEBUG=${{ matrix.xdebug }}
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: ${{ matrix.platform }}
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
