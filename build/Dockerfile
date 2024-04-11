@@ -12,7 +12,7 @@ WORKDIR /app
 ADD https://github.com/jeedom/core/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
 RUN unzip -q /tmp/jeedom.zip -d /root/ && \
   cp -R /root/core-*/* /app && \
-  cp -R /root/core-*/.[^.]* /app && \
+  cp -R /root/core-*/.[!.]* /app && \
   rm -rf /root/core-* > /dev/null 2>&1 && \
   rm /tmp/jeedom.zip && \
   rm -rf /app/vendor /app/install/.htaccess
@@ -60,12 +60,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 LABEL com.jeedom.version="Jeedom ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
 
 # add motd & bashrc - link sh to bash for Docker Desktop
+# add sudo for www-data
 COPY motd /etc/jmotd
 ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/bashrc /root/.bashrc
+# Use bash as the default shell - replace     ln -sf /bin/bash /bin/sh && \
+SHELL ["/bin/bash", "-c"]
+# shellcheck disable=SC2016
 RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd && cat /etc/jmotd' \
     >> /etc/bash.bashrc && \
-    ln -sf /bin/bash /bin/sh && \
-    # add sudo for www-data
 	mkdir -p /etc/sudoers.d && \
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
@@ -85,14 +87,17 @@ RUN apt-get update && \
   ffmpeg \
   gettext \
   git \
+  iproute2 \
   librsync-dev \
   libssh2-1 \
   libssh2-1-dev \
   libzip-dev \
   locales \
+  net-tools \
   nmap \
   ntp \
   ntpdate \
+  mariadb-client \
   python3 python3-dev python3-pip python3-virtualenv \
   smbclient \
   software-properties-common \
@@ -102,6 +107,7 @@ RUN apt-get update && \
   zip unzip
 
 # add php extension
+# shellcheck disable=DL3022
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 RUN install-php-extensions\
    bcmath calendar imap intl ldap \
@@ -109,8 +115,8 @@ RUN install-php-extensions\
     soap sockets xmlrpc zip gd opcache ssh2
 
 # change doc root apache configuration
-RUN sed -ri -e 's!/var/www/html!${WEBSERVER_HOME}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${WEBSERVER_HOME}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+RUN sed -ri -e "s!/var/www/html!${WEBSERVER_HOME}!g" /etc/apache2/sites-available/*.conf && \
+    sed -ri -e "s!/var/www/!${WEBSERVER_HOME}!g" /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 WORKDIR ${WEBSERVER_HOME}
 VOLUME ${WEBSERVER_HOME}
@@ -141,22 +147,16 @@ RUN if [[ -N "$XDEBUG" ]] ; then \
 FROM base as light_jeedom
 ENV MYSQL_HOST=db
 
-# add forgotten packages ?
-RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
-  git mariadb-client zip unzip wget sudo iproute2 net-tools \
-  && rm -rf /var/lib/apt/lists/*
-
-# Healthcheck for the 'light' image, apache is running ?
+# Healthcheck for the 'light' image, just check if apache is running
 HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
   CMD curl -s --fail http://localhost/here.html || exit 1
-COPY init.sh /root/init.sh
-RUN chmod +x /root/init.sh
+COPY --chmod=0775 init.sh /root/init.sh
 CMD ["/root/init.sh"]
 
 
 # Second final image: full standalone
 FROM base as full_jeedom
-# localhost didn't work for mysql
+# localhost didn't work for mysql, should try 127.0.0.1
 ENV MYSQL_HOST=localhost
 
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
@@ -174,13 +174,13 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
   && rm -rf /var/lib/apt/lists/*
 
 # customization from official jeedom/core repo
-ADD  standalone/supervisord.conf /etc/supervisor/supervisord.conf
-ADD  standalone/jeedom_my.cnf /etc/mysql/conf.d/jeedom_my.cnf
+COPY  standalone/supervisord.conf /etc/supervisor/supervisord.conf
+COPY  standalone/jeedom_my.cnf /etc/mysql/conf.d/jeedom_my.cnf
 ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/apache_security /etc/apache2/conf-available/security.conf
 ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/apache_remoteip /etc/apache2/conf-available/remoteip.conf
 ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/apache_default /etc/apache2/sites-available/000-default.conf
 ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/fail2ban.jeedom.conf /etc/fail2ban/jail.d/jeedom.conf
-ADD  php.ini /usr/local/etc/php/php.ini
+COPY  php.ini /usr/local/etc/php/php.ini
 
 RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available/security.conf && \
     sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available/remoteip.conf && \
@@ -201,14 +201,12 @@ RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available
     chmod 0444 /etc/mysql/conf.d/jeedom_my.cnf
 
 # Add the supervisord healthcheck script
-COPY standalone/healthcheck.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/healthcheck.sh
+COPY --chmod=0775 standalone/healthcheck.sh /usr/local/bin/
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD /usr/local/bin/healthcheck.sh
 
 # Initialisation
-COPY standalone/init.sh /root/init.sh
-RUN chmod +x /root/init.sh
+COPY --chmod=0775 standalone/init.sh /root/init.sh
 
 #volume for mariadb data
 VOLUME  /var/lib/mysql
