@@ -109,7 +109,7 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+            ${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
 
       - 
         name: Login to GitHub Container Registry
@@ -123,11 +123,15 @@ jobs:
       
       -
         name: Push to ghcr.io
+        continue-on-error: true
         run: |
-          docker image tag  ${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }} \
-          ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
-          docker image push --quiet \
-          ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+          TAG=image tag  ${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+          echo tag=${TAG}
+          GHCR=ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+          echo ghcr=${GHCR}
+          docker image tag  ${TAG} ${GHCR}
+          docker image ls -a
+          docker image push --quiet ${GHCR}
 
       - name: Check on failures
         if: steps.buildJeedom.outcome != 'success'
