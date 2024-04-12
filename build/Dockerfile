@@ -1,4 +1,14 @@
-﻿ # Build with 3 stages, 2 targets :
+ARG JEEDOM_VERSION=V4-stable
+# need to repead ARG that are scoped...
+ARG DEBIAN=bullseye
+ARG PHP=7.3
+ARG WEBSERVER_HOME=/var/www/html
+ARG XDEBUG
+# preload previous image with Jeedom PHP soures
+FROM jeedom:${JEEDOM_VERSION}-source AS jeedom-source
+
+ 
+# Build with 3 stages, 2 targets :
 # light_jeedom: no daemon, only apache+php
 # full_jeedom: standalone with all required daemons
 # Debian version: buster / bullseye / bookworm
@@ -28,7 +38,7 @@ ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_ROOT_PASSWORD
 ENV DEBIAN_FRONTEND=noninteractive
 
-LABEL com.jeedom.version="Jeedom ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
+LABEL com.jeedom.version="Jeedom ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP} ${XDEBUG}"
 
 # add motd & bashrc - link sh to bash for Docker Desktop
 COPY motd /etc/jmotd
@@ -85,7 +95,7 @@ RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/sites-av
 RUN sed -ri -e "s!/var/www/!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 # copy PHP sources from previous stage
-COPY --from=jeedom:${JEEDOM_VERSION}-source app/ ${WEBSERVER_HOME}
+COPY --from=jeedom-source app/ ${WEBSERVER_HOME}
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
