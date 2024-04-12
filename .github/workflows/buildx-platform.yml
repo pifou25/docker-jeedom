@@ -128,7 +128,7 @@ jobs:
       - name: Load image
         run: |
           docker image load --input /tmp/${{ matrix.jeedom }}-source.tar
-          docker image ls -a ${{ matrix.jeedom }}-source
+          docker image ls -a
       
       - 
         name: "${{ matrix.debian }} PHP${{ matrix.php }} target ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }}"
