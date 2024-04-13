@@ -10,10 +10,7 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
-env:
-  REGISTRY_IMAGE: pifou25/jeedom
-   
+ 
 jobs:
   jeedomInitStep:
     runs-on: ubuntu-latest
@@ -54,6 +51,7 @@ jobs:
             jeedom: "beta"
 
     env:
+      REGISTRY_IMAGE: pifou25/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
       TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
     steps:
       -
@@ -128,10 +126,9 @@ jobs:
             JEEDOM_VERSION=${{ matrix.jeedom }}
             XDEBUG=${{ matrix.xdebug }}
           platforms: ${{ matrix.platform }}
-          push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          outputs: type=image,name=${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }},push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           # tags: |
           #  ${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
       -
@@ -184,7 +181,9 @@ jobs:
           - debian: "buster"
             jeedom: "beta"
 
+
     env:
+      REGISTRY_IMAGE: pifou25/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
       TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
       GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
  
@@ -204,7 +203,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          images: ${{ env.REGISTRY_IMAGE }}
       -
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
@@ -218,11 +217,11 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}@sha256:%s ' *)          
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
       -
         name: Inspect image ${{ env.TAG_NAME }}
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
 
 
       - 
@@ -236,12 +235,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       
       -
-        name: Push to ghcr.io
+        name: Push ${{ env.GHCR_NAME }}
         continue-on-error: true
         run: |
-          echo tag=${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          echo tag=${{ env.REGISTRY_IMAGE }}
           echo ghcr=${{ env.GHCR_NAME }}
-          docker image tag  ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} ${{ env.GHCR_NAME }}
+          docker image tag  ${{ env.REGISTRY_IMAGE }} ${{ env.GHCR_NAME }}
           docker image ls -a
           docker image push --quiet ${{ env.GHCR_NAME }}
           
