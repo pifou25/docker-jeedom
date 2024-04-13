@@ -49,6 +49,9 @@ jobs:
           # exclude Jeedom beta on every buster, not supported
           - debian: "buster"
             jeedom: "beta"
+          # exclude Jeedom debug on every buster, useless
+          - debian: "buster"
+            xdebug: false
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
@@ -128,9 +131,8 @@ jobs:
           platforms: ${{ matrix.platform }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+          push: false
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          # tags: |
-          #  ${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
       -
         name: Export digest
         run: |
