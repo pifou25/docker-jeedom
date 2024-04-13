@@ -53,9 +53,11 @@ jobs:
           - debian: "buster"
             jeedom: "beta"
 
+    env:
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
     steps:
       -
-        name: Prepare "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} ${{ matrix.jeedom }} ${{ matrix.xdebug && '(debug)' || '' }}:${{ matrix.platform }}"
+        name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
         run: |
           platform=${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
@@ -99,7 +101,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
       -
-        name: "${{ matrix.debian }} PHP${{ matrix.php }} target ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }}"
+        name: debug ${{ env.TAG_NAME }}:${{ matrix.platform }}
         run: |
           echo "Cache:     ${{ runner.os }}-buildx-${{ github.ref_name }}"
           echo "Labels:    ${{ steps.meta.outputs.labels }}"
@@ -109,7 +111,7 @@ jobs:
           echo "Flags:     ${{ steps.buildx.outputs.flags }}"
           echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
       - 
-        name: "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.platform }} target=${{ matrix.target }} branch=${{ matrix.jeedom }} ${{ matrix.xdebug && 'debug' || '' }}"
+        name: build ${{ env.TAG_NAME }}:${{ matrix.platform }}
         # id required for next step that check success
         id: buildJeedom
         # https://github.com/marketplace/actions/build-and-push-docker-images
@@ -129,9 +131,9 @@ jobs:
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }},push-by-digest=true,name-canonical=true,push=true
+          # tags: |
+          #  ${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
       -
         name: Export digest
         run: |
@@ -165,6 +167,27 @@ jobs:
     needs:
       - jeedomBuild
 
+    # same matrix as previous step except the platform
+    strategy:
+      fail-fast: false
+      matrix:
+        debian: ["buster", "bullseye", "bookworm"]
+        php: [7.3, 8.1]
+        jeedom: ["V4-stable", "beta"]
+        target: ["light", "full"]
+        xdebug: [true, false]
+        exclude:
+          # exclude PHP7.3 on every bookworm OS
+          - debian: "bookworm"
+            php: 7.3
+          # exclude Jeedom beta on every buster, not supported
+          - debian: "buster"
+            jeedom: "beta"
+
+    env:
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+      GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+ 
     steps:
       -
         name: Download digests
@@ -181,7 +204,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY_IMAGE }}
+          images: ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
       -
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
@@ -191,15 +214,15 @@ jobs:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       -
-        name: Create manifest list and push
+        name: Create manifest list and push ${{ env.TAG_NAME }}
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
+            $(printf '${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}@sha256:%s ' *)          
       -
-        name: Inspect image
+        name: Inspect image ${{ env.TAG_NAME }}
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}:${{ steps.meta.outputs.version }}
 
 
       - 
@@ -215,13 +238,10 @@ jobs:
       -
         name: Push to ghcr.io
         continue-on-error: true
-        env:
-          TAG: image tag  ${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
-          GHCR: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
         run: |
-          echo tag=${TAG}
-          echo ghcr=${GHCR}
-          docker image tag  ${TAG} ${GHCR}
+          echo tag=${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          echo ghcr=${{ env.GHCR_NAME }}
+          docker image tag  ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} ${{ env.GHCR_NAME }}
           docker image ls -a
-          docker image push --quiet ${GHCR}
+          docker image push --quiet ${{ env.GHCR_NAME }}
           
