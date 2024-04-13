@@ -201,8 +201,9 @@ RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available
     chmod 0444 /etc/mysql/conf.d/jeedom_my.cnf
 
 # Add the supervisord healthcheck script
-COPY --chmod=0775 standalone/healthcheck.sh /usr/local/bin/
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+COPY standalone/healthcheck.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/healthcheck.sh
+HEALTHCHECK --interval=300s --timeout=5s --retries=3 \
   CMD /usr/local/bin/healthcheck.sh
 
 # Initialisation
