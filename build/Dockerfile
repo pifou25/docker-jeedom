@@ -2,7 +2,7 @@
 ARG PHP=7.3
 
 # prepare PHP source with dependencies
-FROM composer:2.0 as vendor
+FROM composer:2.7 as vendor
 
 ARG JEEDOM_VERSION=V4-stable
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}
