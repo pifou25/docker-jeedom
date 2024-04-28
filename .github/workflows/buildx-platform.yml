@@ -55,7 +55,7 @@ jobs:
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+      TAG_NAME: tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
     steps:
       -
         name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -126,6 +126,7 @@ jobs:
           build-args: |
             DEBIAN=${{ matrix.debian }}
             PHP=${{ matrix.php }}
+            JEEDOM_REPO=pifou25/jeedom-core
             JEEDOM_VERSION=${{ matrix.jeedom }}
             XDEBUG=${{ matrix.xdebug }}
           platforms: ${{ matrix.platform }}
@@ -133,21 +134,6 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           tags: ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
-      -
-        name: Export digest
-        run: |
-          mkdir -p /tmp/digests
-          digest="${{ steps.buildJeedom.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"          
-      -
-        name: Upload digest
-        uses: actions/upload-artifact@v4
-        with:
-          # env.PLATFORM_PAIR from step 1
-          name: digests-${{ env.PLATFORM_PAIR }}
-          path: /tmp/digests/*
-          if-no-files-found: error
-          retention-days: 1
 
       - name: Check on failures
         if: steps.buildJeedom.outcome != 'success'
@@ -158,6 +144,23 @@ jobs:
           echo "Status:    ${{ steps.buildx.outputs.status }}" >> $GITHUB_STEP_SUMMARY
           echo "Flags:     ${{ steps.buildx.outputs.flags }}" >> $GITHUB_STEP_SUMMARY
           echo "Platforms: ${{ steps.buildx.outputs.platforms }}" >> $GITHUB_STEP_SUMMARY
+      -
+        name: Export digest
+        if: steps.buildJeedom.outcome == 'success'
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.buildJeedom.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"          
+      -
+        name: Upload digest
+        if: steps.buildJeedom.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          # env.PLATFORM_PAIR from step 1
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
 
   merge:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
@@ -186,8 +189,8 @@ jobs:
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
-      GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+      TAG_NAME: tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+      GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
  
     steps:
       -

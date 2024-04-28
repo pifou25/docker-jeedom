@@ -4,12 +4,13 @@ ARG PHP=7.3
 # prepare PHP source with dependencies
 FROM composer:2.7 as vendor
 
+ARG JEEDOM_REPO=jeedom/core
 ARG JEEDOM_VERSION=V4-stable
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}
 
 WORKDIR /app
 # Download and extract PHP sources
-ADD https://github.com/jeedom/core/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
+ADD https://github.com/${JEEDOM_REPO}/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
 RUN unzip -q /tmp/jeedom.zip -d /root/ && \
   cp -R /root/core-*/* /app && \
   cp -R /root/core-*/.[!.]* /app && \
@@ -38,7 +39,8 @@ ARG DEBIAN=bullseye
 ARG PHP=7.3
 FROM php:${PHP}-apache-${DEBIAN} as base
 ARG DEBIAN
-ARG PHP=7.3
+ARG PHP
+ARG JEEDOM_REPO
 # optional XDEBUG arg to add xdebug packages and configuration
 ARG XDEBUG
 
@@ -62,7 +64,7 @@ LABEL com.jeedom.version="Jeedom ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${
 # add motd & bashrc - link sh to bash for Docker Desktop
 # add sudo for www-data
 COPY motd /etc/jmotd
-ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/bashrc /root/.bashrc
+ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/bashrc /root/.bashrc
 # Use bash as the default shell - replace     ln -sf /bin/bash /bin/sh && \
 SHELL ["/bin/bash", "-c"]
 # shellcheck disable=SC2016
@@ -156,6 +158,7 @@ CMD ["/root/init.sh"]
 
 # Second final image: full standalone
 FROM base as full_jeedom
+ARG JEEDOM_REPO
 # localhost didn't work for mysql, should try 127.0.0.1
 ENV MYSQL_HOST=localhost
 
@@ -173,13 +176,13 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
   supervisor \
   && rm -rf /var/lib/apt/lists/*
 
-# customization from official jeedom/core repo
+# customization from official ${JEEDOM_REPO} repo
 COPY  standalone/supervisord.conf /etc/supervisor/supervisord.conf
 COPY  standalone/jeedom_my.cnf /etc/mysql/conf.d/jeedom_my.cnf
-ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/apache_security /etc/apache2/conf-available/security.conf
-ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/apache_remoteip /etc/apache2/conf-available/remoteip.conf
-ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/apache_default /etc/apache2/sites-available/000-default.conf
-ADD  https://raw.githubusercontent.com/jeedom/core/${JEEDOM_VERSION}/install/fail2ban.jeedom.conf /etc/fail2ban/jail.d/jeedom.conf
+ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/apache_security /etc/apache2/conf-available/security.conf
+ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/apache_remoteip /etc/apache2/conf-available/remoteip.conf
+ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/apache_default /etc/apache2/sites-available/000-default.conf
+ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/fail2ban.jeedom.conf /etc/fail2ban/jail.d/jeedom.conf
 COPY  php.ini /usr/local/etc/php/php.ini
 
 RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available/security.conf && \
