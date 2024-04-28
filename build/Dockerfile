@@ -12,7 +12,7 @@ WORKDIR /app
 # Download and extract PHP sources
 ADD https://github.com/${JEEDOM_REPO}/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
 RUN unzip -q /tmp/jeedom.zip -d /root/ && \
-  mv /root/*core-*/ /app && \
+  find /root -maxdepth 1 -type d -name '*core*' -exec mv {} /app && \
   rm /tmp/jeedom.zip && \
   rm -rf /app/vendor /app/install/.htaccess
 COPY install.htaccess ./install/.htaccess
