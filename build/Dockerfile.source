@@ -1,0 +1,23 @@
+# prepare PHP source with dependencies
+FROM composer:2.7 as vendor
+
+ARG JEEDOM_REPO=jeedom/core
+ARG JEEDOM_VERSION=V4-stable
+ENV JEEDOM_VERSION=${JEEDOM_VERSION}
+
+WORKDIR /app
+# Download and extract PHP sources
+ADD https://github.com/${JEEDOM_REPO}/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
+RUN unzip -q /tmp/jeedom.zip -d /root/ && \
+  find /root -maxdepth 1 -type d -name '*core*' -exec mv {} /app && \
+  rm /tmp/jeedom.zip && \
+  rm -rf /app/vendor /app/install/.htaccess
+COPY install.htaccess ./install/.htaccess
+
+# run composer for dependancies
+RUN ls -alsh && composer install \
+    --no-interaction \
+    --no-plugins \
+    --no-scripts \
+    --no-dev \
+    --prefer-dist
