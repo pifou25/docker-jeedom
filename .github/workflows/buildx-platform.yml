@@ -155,7 +155,7 @@ jobs:
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.buildJeedom.outputs.digest }}"
-          echo "DIGEST-${{ env.TAG_NAME }}=${digest#sha256:}" >> $GITHUB_ENV
+          echo "DIGEST=${digest#sha256:}" >> $GITHUB_ENV
           touch "/tmp/digests/${digest#sha256:}"
           ls /tmp/digests
       -
@@ -166,7 +166,7 @@ jobs:
           # env.PLATFORM_PAIR from step 1
           # get DIGEST-${TAG_NAME} env variable from previous step
           name: digests-${{ env.TAG_NAME }}-${{ env.PLATFORM_PAIR }}
-          path: "/tmp/digests/${DIGEST-${{ env.TAG_NAME }}}"
+          path: /tmp/digests/${{ env.DIGEST }}
           if-no-files-found: error
           retention-days: 1
 
