@@ -57,7 +57,7 @@ jobs:
             xdebug: false
 
     env:
-      REGISTRY_IMAGE: pifou25/jeedom
+      REGISTRY_IMAGE: pifou25/jeedom-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
       TAG_NAME: tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
     steps:
       -
@@ -136,7 +136,7 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          tags: ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          # tags: ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
 
       - name: Check on failures
         if: steps.buildJeedom.outcome != 'success'
@@ -191,7 +191,8 @@ jobs:
 
 
     env:
-      REGISTRY_IMAGE: pifou25/jeedom
+      
+      REGISTRY_IMAGE: pifou25/jeedom-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
       TAG_NAME: tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
       GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
  
@@ -230,7 +231,6 @@ jobs:
         name: Inspect image ${{ env.TAG_NAME }}
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
-
 
       - 
         name: Login to GitHub Container Registry
