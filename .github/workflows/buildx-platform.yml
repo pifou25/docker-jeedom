@@ -160,7 +160,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           # env.PLATFORM_PAIR from step 1
-          name: digests-${{ env.PLATFORM_PAIR }}
+          name: digests-${{ env.TAG_NAME }}-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -202,7 +202,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests-*
+          pattern: digests-${{ env.TAG_NAME }}-*
           merge-multiple: true
       -
         name: Set up Docker Buildx
