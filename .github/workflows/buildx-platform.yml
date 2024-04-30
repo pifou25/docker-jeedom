@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
  
 jobs:
-  jeedomInitStep:
+  initStep:
     runs-on: ubuntu-latest
     steps:
       -
@@ -26,20 +26,20 @@ jobs:
           no-fail: true
           verbose: true
 
-  jeedomBuild:
+  jbuild:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
     # distributebuild across multiple runners
     # This step  build the same image on different runners / platforms
     runs-on: ubuntu-latest
-    needs: jeedomInitStep
+    needs: initStep
     strategy:
       fail-fast: false
       matrix:
-        debian: ["buster", "bullseye", "bookworm"]
-        php: [7.3, 8.1]
+        debian: ["bullseye"] # ["buster", "bullseye", "bookworm"]
+        php: [7.3] # [7.3, 8.1]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
         platform: ["linux/amd64", "linux/arm64", "linux/arm/v6", "linux/arm/v7"]
-        jeedom: ["V4-stable", "beta"]
+        jeedom: ["V4-stable"] # ["V4-stable", "beta"]
         target: ["light", "full"]
         xdebug: [true, false]
         exclude:
@@ -58,7 +58,7 @@ jobs:
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
-      TAG_NAME: tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}-tst
     steps:
       -
         name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -149,7 +149,7 @@ jobs:
           echo "Platforms: ${{ steps.buildx.outputs.platforms }}" >> $GITHUB_STEP_SUMMARY
           exit 1
       -
-        name: Export digest
+        name: Export digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
         # export the digest file name into env var named DIGEST-${TAG_NAME} for next step
         if: steps.buildJeedom.outcome == 'success'
         run: |
@@ -157,15 +157,14 @@ jobs:
           digest="${{ steps.buildJeedom.outputs.digest }}"
           echo "DIGEST=${digest#sha256:}" >> $GITHUB_ENV
           touch "/tmp/digests/${digest#sha256:}"
-          ls /tmp/digests
       -
-        name: Upload digest
+        name: Upload digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           # env.PLATFORM_PAIR from step 1
           # get DIGEST-${TAG_NAME} env variable from previous step
-          name: digests-${{ env.TAG_NAME }}-${{ env.PLATFORM_PAIR }}
+          name: digests1-${{ env.TAG_NAME }}-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/${{ env.DIGEST }}
           if-no-files-found: error
           retention-days: 1
@@ -175,30 +174,35 @@ jobs:
     # merge previous builds from different runners &platforms into one common docker image
     runs-on: ubuntu-latest
     needs:
-      - jeedomBuild
+      - jbuild
 
     # same matrix as previous step except the platform
     strategy:
       fail-fast: false
       matrix:
-        debian: ["buster", "bullseye", "bookworm"]
-        php: [7.3, 8.1]
-        jeedom: ["V4-stable", "beta"]
+        debian: ["bullseye"] # ["buster", "bullseye", "bookworm"]
+        php: [7.3] # [7.3, 8.1]
+        jeedom: ["V4-stable"] # ["V4-stable", "beta"]
         target: ["light", "full"]
         xdebug: [true, false]
         exclude:
           # exclude PHP7.3 on every bookworm OS
           - debian: "bookworm"
             php: 7.3
+          # exclude PHP8 on every buster OS
+          - debian: "buster"
+            php: 8.1
           # exclude Jeedom beta on every buster, not supported
           - debian: "buster"
             jeedom: "beta"
-
+          # exclude Jeedom debug on every buster, useless
+          - debian: "buster"
+            xdebug: false
 
     env:
       
       REGISTRY_IMAGE: pifou25/jeedom-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
-      TAG_NAME: tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}-tst
       GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
  
     steps:
@@ -207,7 +211,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests-${{ env.TAG_NAME }}-*
+          pattern: digests1-${{ env.TAG_NAME }}-*
           merge-multiple: true
       -
         name: Set up Docker Buildx
