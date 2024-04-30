@@ -15,6 +15,11 @@ jobs:
   initStep:
     runs-on: ubuntu-latest
     steps:
+      - name: Remove old artifacts
+        # https://github.com/marketplace/actions/remove-artifacts
+        uses: c-hive/gha-remove-artifacts@v1
+        with:
+          age: '10 seconds'
       -
         name: Checkout
         uses: actions/checkout@v4.1.2
@@ -57,8 +62,8 @@ jobs:
             xdebug: false
 
     env:
-      REGISTRY_IMAGE: pifou25/jeedom-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}-tst
+      REGISTRY_IMAGE: pifou25/jeedom-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}-tst
     steps:
       -
         name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -201,9 +206,9 @@ jobs:
 
     env:
       
-      REGISTRY_IMAGE: pifou25/jeedom-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}-tst
-      GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+      REGISTRY_IMAGE: pifou25/jeedom-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}-tst
+      GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
  
     steps:
       -
