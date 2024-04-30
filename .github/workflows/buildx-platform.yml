@@ -123,12 +123,8 @@ jobs:
         id: cache
         with:
           path: /tmp/.buildx-cache
-          key: buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}-${{matrix.php }}-${{ matrix.target }}-${{ matrix.jeedom }}-${{ matrix.xdebug }}
+          key: buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}
           restore-keys: |
-            buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}-${{matrix.php }}-${{ matrix.target }}-${{ matrix.jeedom }}-${{ matrix.xdebug }}
-            buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}-${{matrix.php }}-${{ matrix.target }}-${{ matrix.jeedom }}
-            buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}-${{matrix.php }}-${{ matrix.target }}
-            buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}-${{matrix.php }}
             buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}
             buildx-${{ runner.os }}-${{ matrix.platform }}
             buildx-${{ runner.os }}
