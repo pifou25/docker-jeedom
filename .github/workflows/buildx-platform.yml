@@ -63,7 +63,7 @@ jobs:
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-tst' || '' }}
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.jeedom == 'V4-stable' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
     steps:
       -
@@ -223,7 +223,7 @@ jobs:
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-tst' || '' }}
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.jeedom == 'V4-stable' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
  
@@ -267,17 +267,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      -
-        name: Create manifest list and push ${{ env.TAG_NAME }}
-        working-directory: /tmp/digests
-        run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
-      -
-        name: Inspect image ${{ env.TAG_NAME }}
-        run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
-
       - 
         name: Login to GitHub Container Registry
         # push to multi-registry
@@ -289,12 +278,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       
       -
-        name: Push ${{ env.GHCR_NAME }}
-        continue-on-error: true
+        name: Create manifest list and push ${{ env.TAG_NAME }}
+        working-directory: /tmp/digests
         run: |
-          echo tag=${{ env.REGISTRY_IMAGE }}
-          echo ghcr=${{ env.GHCR_NAME }}
-          docker image tag  ${{ env.REGISTRY_IMAGE }} ${{ env.GHCR_NAME }}
-          docker image ls -a
-          docker image push --quiet ${{ env.GHCR_NAME }}
-          
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
+      -
+        name: Inspect image ${{ env.TAG_NAME }}
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
