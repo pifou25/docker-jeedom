@@ -40,11 +40,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        debian: ["bullseye"] # ["buster", "bullseye", "bookworm"]
-        php: [7.3] # [7.3, 8.1]
+        debian: ["buster", "bullseye", "bookworm"]
+        php: [7.3, 8.1]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
         platform: ["amd64", "arm64", "arm/v6", "arm/v7"]
-        jeedom: ["V4-stable"] # ["V4-stable", "beta"]
+        jeedom: ["V4-stable", "beta"]
         target: ["light", "full"]
         xdebug: [true, false]
         exclude:
@@ -123,9 +123,15 @@ jobs:
         id: cache
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.ref_name }}
+          key: buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}-${{matrix.php }}-${{ matrix.target }}-${{ matrix.jeedom }}-${{ matrix.xdebug }}
           restore-keys: |
-            ${{ runner.os }}-buildx-
+            buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}-${{matrix.php }}-${{ matrix.target }}-${{ matrix.jeedom }}-${{ matrix.xdebug }}
+            buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}-${{matrix.php }}-${{ matrix.target }}-${{ matrix.jeedom }}
+            buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}-${{matrix.php }}-${{ matrix.target }}
+            buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}-${{matrix.php }}
+            buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}
+            buildx-${{ runner.os }}-${{ matrix.platform }}
+            buildx-${{ runner.os }}
       -
         name: debug ${{ env.TAG_NAME }}:${{ matrix.platform }}
         run: |
@@ -202,9 +208,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        debian: ["bullseye"] # ["buster", "bullseye", "bookworm"]
-        php: [7.3] # [7.3, 8.1]
-        jeedom: ["V4-stable"] # ["V4-stable", "beta"]
+        debian: ["buster", "bullseye", "bookworm"]
+        php: [7.3, 8.1]
+        jeedom: ["V4-stable", "beta"]
         target: ["light", "full"]
         xdebug: [true, false]
         exclude:
@@ -275,7 +281,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_SECRET }}
       
       -
         name: Create manifest list and push ${{ env.TAG_NAME }}
