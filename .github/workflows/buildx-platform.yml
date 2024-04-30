@@ -43,7 +43,7 @@ jobs:
         debian: ["bullseye"] # ["buster", "bullseye", "bookworm"]
         php: [7.3] # [7.3, 8.1]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
-        platform: ["linux/amd64", "linux/arm64", "linux/arm/v6", "linux/arm/v7"]
+        platform: ["amd64", "arm64", "arm/v6", "arm/v7"]
         jeedom: ["V4-stable"] # ["V4-stable", "beta"]
         target: ["light", "full"]
         xdebug: [true, false]
@@ -62,13 +62,15 @@ jobs:
             xdebug: false
 
     env:
-      REGISTRY_IMAGE: pifou25/jeedom-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}-tst
+      REGISTRY_IMAGE: pifou25/jeedom
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-tst' || '' }}
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.jeedom == 'V4-stable' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
     steps:
       -
         name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
+        # replace /  by - in platform value
         run: |
-          platform=${{ matrix.platform }}
+          platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
       -
         name: Checkout
@@ -76,9 +78,24 @@ jobs:
       -
         name: Docker meta
         id: meta
+        # https://github.com/marketplace/actions/docker-metadata-action
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY_IMAGE }}
+          # list of Docker images to use as base name for tags
+          images: |
+            ${{ env.REGISTRY_IMAGE }}
+            ghcr.io/${{ env.REGISTRY_IMAGE }}
+          # generate Docker tags based on the following events/attributes
+          tags: |
+            type=raw,value=${{ env.TAG_NAME }}
+            # set latest tag for default branch
+            type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
+          # label chadburn for the "cron" container
+          labels: |
+            chadburn.enabled=true
+            chadburn.job-exec.jeedom-cron.schedule=@every 1m
+            chadburn.job-exec.jeedom-cron.command=/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1
+
       -
         name: Set up QEMU
         # https://github.com/marketplace/actions/docker-setup-qemu
@@ -137,10 +154,10 @@ jobs:
             JEEDOM_REPO=pifou25/jeedom-core
             JEEDOM_VERSION=${{ matrix.jeedom }}
             XDEBUG=${{ matrix.xdebug }}
-          platforms: ${{ matrix.platform }}
+          platforms: linux/${{ matrix.platform }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }}-${{ env.TAG_NAME }},push-by-digest=true,name-canonical=true,push=true
           # tags: ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
 
       - name: Check on failures
@@ -169,7 +186,7 @@ jobs:
         with:
           # env.PLATFORM_PAIR from step 1
           # get DIGEST-${TAG_NAME} env variable from previous step
-          name: digests1-${{ env.TAG_NAME }}-${{ env.PLATFORM_PAIR }}
+          name: digests-${{ env.TAG_NAME }}-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/${{ env.DIGEST }}
           if-no-files-found: error
           retention-days: 1
@@ -205,10 +222,10 @@ jobs:
             xdebug: false
 
     env:
-      
-      REGISTRY_IMAGE: pifou25/jeedom-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}-tst
-      GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:tst-${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+      REGISTRY_IMAGE: pifou25/jeedom
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-tst' || '' }}
+      GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.jeedom == 'V4-stable' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
  
     steps:
       -
@@ -216,7 +233,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests1-${{ env.TAG_NAME }}-*
+          pattern: digests-${{ env.TAG_NAME }}-*
           merge-multiple: true
       -
         name: Set up Docker Buildx
@@ -224,9 +241,24 @@ jobs:
       -
         name: Docker meta
         id: meta
+        # https://github.com/marketplace/actions/docker-metadata-action
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY_IMAGE }}
+          # list of Docker images to use as base name for tags
+          images: |
+            ${{ env.REGISTRY_IMAGE }}
+            ghcr.io/${{ env.REGISTRY_IMAGE }}
+          # generate Docker tags based on the following events/attributes
+          tags: |
+            type=raw,value=${{ env.TAG_NAME }}
+            # set latest tag for default branch
+            type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
+          # label chadburn for the "cron" container
+          labels: |
+            chadburn.enabled=true
+            chadburn.job-exec.jeedom-cron.schedule=@every 1m
+            chadburn.job-exec.jeedom-cron.command=/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1
+
       -
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
