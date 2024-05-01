@@ -1,10 +1,11 @@
 ﻿ARG DEBIAN=bullseye
 ARG PHP=7.3
+ARG JEEDOM_REPO=jeedom/core
 
 # prepare PHP source with dependencies
 FROM composer:2.7 as vendor
 
-ARG JEEDOM_REPO=jeedom/core
+ARG JEEDOM_REPO
 ARG JEEDOM_VERSION=V4-stable
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}
 
@@ -74,7 +75,7 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
 # common packages intall
 # alphabetical order for better compare
 RUN apt-get update && \
-  apt-get install --no-install-recommends --no-install-suggests -q -y software-properties-common && \
+  apt-get install --no-install-recommends --no-install-suggests -q -y tzdata software-properties-common && \
   add-apt-repository non-free && \
   apt-get update && \
   apt-get install --no-install-recommends --no-install-suggests -q -y \
@@ -100,7 +101,6 @@ RUN apt-get update && \
   mariadb-client \
   python3 python3-dev python3-pip python3-virtualenv \
   smbclient \
-  software-properties-common \
   ssl-cert \
   sudo \
   wget \
