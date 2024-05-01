@@ -225,9 +225,6 @@ jobs:
           # exclude Jeedom debug on every buster, useless
           - debian: "buster"
             xdebug: false
-          # exclude platform arm/v6 for Buster...
-          - debian: "buster"
-            platform: "arm/v6"
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
