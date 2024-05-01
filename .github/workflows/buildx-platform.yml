@@ -131,16 +131,7 @@ jobs:
             buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}
             buildx-${{ runner.os }}-${{ matrix.platform }}
             buildx-${{ runner.os }}
-      -
-        name: debug ${{ env.TAG_NAME }}:${{ matrix.platform }}
-        run: |
-          echo "Cache:     ${{ runner.os }}-buildx-${{ github.ref_name }}"
-          echo "Labels:    ${{ steps.meta.outputs.labels }}"
-          echo "Name:      ${{ steps.buildx.outputs.name }}"
-          echo "Endpoint:  ${{ steps.buildx.outputs.endpoint }}"
-          echo "Status:    ${{ steps.buildx.outputs.status }}"
-          echo "Flags:     ${{ steps.buildx.outputs.flags }}"
-          echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
+
       - 
         name: build ${{ env.TAG_NAME }}:${{ matrix.platform }}
         # id required for next step that check success
@@ -165,16 +156,14 @@ jobs:
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           # tags: ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
 
-      - name: Check on failures
+      - name: Check on failures ${{ env.TAG_NAME }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome != 'success'
+        # some debug information in case of error
         run: |
           echo "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
-          echo "Name:      ${{ steps.buildx.outputs.name }}" >> $GITHUB_STEP_SUMMARY
-          echo "Endpoint:  ${{ steps.buildx.outputs.endpoint }}" >> $GITHUB_STEP_SUMMARY
-          echo "Status:    ${{ steps.buildx.outputs.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "Flags:     ${{ steps.buildx.outputs.flags }}" >> $GITHUB_STEP_SUMMARY
-          echo "Platforms: ${{ steps.buildx.outputs.platforms }}" >> $GITHUB_STEP_SUMMARY
-          exit 1
+          echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.cache.outputs.cache-hit }}"
+          echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
+
       -
         name: Export digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
         # export the digest file name into env var named DIGEST-${TAG_NAME} for next step
