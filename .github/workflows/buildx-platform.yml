@@ -49,4 +49,4 @@ jobs:
         run: |
           platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-          echo ${TAG_NAME}:${PLATFORM_PAIR} >> >> $GITHUB_STEP_SUMMARY
+          echo "${TAG_NAME}:${PLATFORM_PAIR}" >> $GITHUB_STEP_SUMMARY
