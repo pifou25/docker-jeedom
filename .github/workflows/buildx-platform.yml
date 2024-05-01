@@ -46,7 +46,7 @@ jobs:
       TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.jeedom == 'V4-stable' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
 
-    runs-on: self-hosted # ${{ matrix.os }}
+    runs-on: ${{ matrix.platform == 'arm64' && 'ARM64' || matrix.platform == 'arm/v7' && 'ARM' || 'self-hosted' }}
     steps:
       -
         name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
