@@ -12,7 +12,6 @@ jobs:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
     # distributebuild across multiple runners
     # This step  build the same image on different runners / platforms
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -20,6 +19,7 @@ jobs:
         # php: [7.3, 8.1]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
         platform: ["amd64", "arm64", "arm/v6", "arm/v7"]
+        os: ["ubuntu-latest"]
         jeedom: ["V4-stable", "beta"]
         target: ["light", "full"]
         xdebug: [true, false]
@@ -32,6 +32,12 @@ jobs:
             php: 7.4
           - debian: "bullseye"
             php: 8.1
+          - platform: "arm/v6"
+            os: "self-hosted ARM"
+          - platform: "arm/v7"
+            os: "self-hosted ARM"
+          - platform: "arm64"
+            os: "self-hosted ARM64"
         exclude:
           # exclude Jeedom beta on every buster, not supported
           - debian: "buster"
@@ -44,11 +50,13 @@ jobs:
       REGISTRY_IMAGE: pifou25/jeedom
       TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.jeedom == 'V4-stable' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
+
+    runs-on: ${{ matrix.os }}
     steps:
       -
-        name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
+        name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}:${{ matrix.os }}
         # replace /  by - in platform value
         run: |
           platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-          echo "${TAG_NAME}:${PLATFORM_PAIR}" >> $GITHUB_STEP_SUMMARY
+          echo "${TAG_NAME}:${PLATFORM_PAIR}:${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
