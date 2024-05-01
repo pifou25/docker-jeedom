@@ -10,11 +10,16 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-      
+ 
 jobs:
-  jeedomInitStep:
+  initStep:
     runs-on: ubuntu-latest
     steps:
+      - name: Remove old artifacts
+        # https://github.com/marketplace/actions/remove-artifacts
+        uses: c-hive/gha-remove-artifacts@v1
+        with:
+          age: '10 seconds'
       -
         name: Checkout
         uses: actions/checkout@v4.1.2
@@ -26,15 +31,19 @@ jobs:
           no-fail: true
           verbose: true
 
-  jeedomBuild:
+  jbuild:
+    # https://docs.docker.com/build/ci/github-actions/multi-platform/
+    # distributebuild across multiple runners
+    # This step  build the same image on different runners / platforms
     runs-on: ubuntu-latest
-    needs: jeedomInitStep
+    needs: initStep
     strategy:
+      fail-fast: false
       matrix:
         debian: ["buster", "bullseye", "bookworm"]
         php: [7.3, 8.1]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
-        platform: ["linux/amd64", "linux/arm64", "linux/arm/v7"]
+        platform: ["amd64", "arm64", "arm/v6", "arm/v7"]
         jeedom: ["V4-stable", "beta"]
         target: ["light", "full"]
         xdebug: [true, false]
@@ -42,14 +51,54 @@ jobs:
           # exclude PHP7.3 on every bookworm OS
           - debian: "bookworm"
             php: 7.3
+          # exclude PHP8 on every buster and bullseye OS
+          - debian: "buster"
+            php: 8.1
           # exclude Jeedom beta on every buster, not supported
           - debian: "buster"
             jeedom: "beta"
+          # exclude Jeedom debug on every buster, useless
+          - debian: "buster"
+            xdebug: false
+          # exclude platform arm/v6 for Buster...
+          - debian: "buster"
+            platform: "arm/v6"
 
+    env:
+      REGISTRY_IMAGE: pifou25/jeedom
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.jeedom == 'V4-stable' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
     steps:
+      -
+        name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
+        # replace /  by - in platform value
+        run: |
+          platform=linux/${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
       -
         name: Checkout
         uses: actions/checkout@v4.1.2
+      -
+        name: Docker meta
+        id: meta
+        # https://github.com/marketplace/actions/docker-metadata-action
+        uses: docker/metadata-action@v5
+        with:
+          # list of Docker images to use as base name for tags
+          images: |
+            ${{ env.REGISTRY_IMAGE }}
+            ghcr.io/${{ env.REGISTRY_IMAGE }}
+          # generate Docker tags based on the following events/attributes
+          tags: |
+            type=raw,value=${{ env.TAG_NAME }}
+            # set latest tag for default branch
+            type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
+          # label chadburn for the "cron" container
+          labels: |
+            chadburn.enabled=true
+            chadburn.job-exec.jeedom-cron.schedule=@every 1m
+            chadburn.job-exec.jeedom-cron.command=/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1
+
       -
         name: Set up QEMU
         # https://github.com/marketplace/actions/docker-setup-qemu
@@ -77,19 +126,14 @@ jobs:
         id: cache
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.ref_name }}
+          key: buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}
           restore-keys: |
-            ${{ runner.os }}-buildx-
-      -
-        name: "${{ matrix.debian }} PHP${{ matrix.php }} target ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }}"
-        run: |
-          echo "Name:      ${{ steps.buildx.outputs.name }}"
-          echo "Endpoint:  ${{ steps.buildx.outputs.endpoint }}"
-          echo "Status:    ${{ steps.buildx.outputs.status }}"
-          echo "Flags:     ${{ steps.buildx.outputs.flags }}"
-          echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
+            buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}
+            buildx-${{ runner.os }}-${{ matrix.platform }}
+            buildx-${{ runner.os }}
+
       - 
-        name: "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.platform }} target=${{ matrix.target }} branch=${{ matrix.jeedom }} ${{ matrix.xdebug && 'debug' || '' }}"
+        name: build ${{ env.TAG_NAME }}:${{ matrix.platform }}
         # id required for next step that check success
         id: buildJeedom
         # https://github.com/marketplace/actions/build-and-push-docker-images
@@ -98,19 +142,125 @@ jobs:
         continue-on-error: true
         with:
           context: build
+          labels: ${{ steps.meta.outputs.labels }}
           target: ${{ matrix.target }}_jeedom
           build-args: |
             DEBIAN=${{ matrix.debian }}
             PHP=${{ matrix.php }}
+            JEEDOM_REPO=pifou25/jeedom-core
             JEEDOM_VERSION=${{ matrix.jeedom }}
             XDEBUG=${{ matrix.xdebug }}
-          platforms: ${{ matrix.platform }}
-          push: true
+          platforms: linux/${{ matrix.platform }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: |
-            ${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          # tags: ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
 
+      - name: Check on failures ${{ env.TAG_NAME }}:${{ matrix.platform }}
+        if: steps.buildJeedom.outcome != 'success'
+        # some debug information in case of error
+        run: |
+          echo "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.cache.outputs.cache-hit }}"
+          echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
+
+      -
+        name: Export digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
+        # export the digest file name into env var named DIGEST-${TAG_NAME} for next step
+        if: steps.buildJeedom.outcome == 'success'
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.buildJeedom.outputs.digest }}"
+          echo "DIGEST=${digest#sha256:}" >> $GITHUB_ENV
+          touch "/tmp/digests/${digest#sha256:}"
+      -
+        name: Upload digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
+        if: steps.buildJeedom.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          # env.PLATFORM_PAIR from step 1
+          # get DIGEST-${TAG_NAME} env variable from previous step
+          name: digests-${{ env.TAG_NAME }}-${{ env.PLATFORM_PAIR }}
+          path: /tmp/digests/${{ env.DIGEST }}
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    # https://docs.docker.com/build/ci/github-actions/multi-platform/
+    # merge previous builds from different runners &platforms into one common docker image
+    runs-on: ubuntu-latest
+    needs:
+      - jbuild
+
+    # same matrix as previous step except the platform
+    strategy:
+      fail-fast: false
+      matrix:
+        debian: ["buster", "bullseye", "bookworm"]
+        php: [7.3, 8.1]
+        jeedom: ["V4-stable", "beta"]
+        target: ["light", "full"]
+        xdebug: [true, false]
+        exclude:
+          # exclude PHP7.3 on every bookworm OS
+          - debian: "bookworm"
+            php: 7.3
+          # exclude PHP8 on every buster and bullseye OS
+          - debian: "buster"
+            php: 8.1
+          # exclude Jeedom beta on every buster, not supported
+          - debian: "buster"
+            jeedom: "beta"
+          # exclude Jeedom debug on every buster, useless
+          - debian: "buster"
+            xdebug: false
+
+    env:
+      REGISTRY_IMAGE: pifou25/jeedom
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
+      GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.jeedom == 'V4-stable' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
+ 
+    steps:
+      -
+        name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ env.TAG_NAME }}-*
+          merge-multiple: true
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      -
+        name: Docker meta
+        id: meta
+        # https://github.com/marketplace/actions/docker-metadata-action
+        uses: docker/metadata-action@v5
+        with:
+          # list of Docker images to use as base name for tags
+          images: |
+            ${{ env.REGISTRY_IMAGE }}
+            ghcr.io/${{ env.REGISTRY_IMAGE }}
+          # generate Docker tags based on the following events/attributes
+          tags: |
+            type=raw,value=${{ env.TAG_NAME }}
+            # set latest tag for default branch
+            type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
+          # label chadburn for the "cron" container
+          labels: |
+            chadburn.enabled=true
+            chadburn.job-exec.jeedom-cron.schedule=@every 1m
+            chadburn.job-exec.jeedom-cron.command=/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1
+
+      -
+        name: Login to DockerHub
+        # https://github.com/marketplace/actions/docker-login
+        # login to DockerHub with secrets login & token
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
       - 
         name: Login to GitHub Container Registry
         # push to multi-registry
@@ -119,26 +269,15 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_SECRET }}
       
       -
-        name: Push to ghcr.io
-        continue-on-error: true
+        name: Create manifest list and push ${{ env.TAG_NAME }}
+        working-directory: /tmp/digests
         run: |
-          TAG=image tag  ${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
-          echo tag=${TAG}
-          GHCR=ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'full' && '' || '-light' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}
-          echo ghcr=${GHCR}
-          docker image tag  ${TAG} ${GHCR}
-          docker image ls -a
-          docker image push --quiet ${GHCR}
-
-      - name: Check on failures
-        if: steps.buildJeedom.outcome != 'success'
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
+      -
+        name: Inspect image ${{ env.TAG_NAME }}
         run: |
-          echo "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
-          echo "Name:      ${{ steps.buildx.outputs.name }}" >> $GITHUB_STEP_SUMMARY
-          echo "Endpoint:  ${{ steps.buildx.outputs.endpoint }}" >> $GITHUB_STEP_SUMMARY
-          echo "Status:    ${{ steps.buildx.outputs.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "Flags:     ${{ steps.buildx.outputs.flags }}" >> $GITHUB_STEP_SUMMARY
-          echo "Platforms: ${{ steps.buildx.outputs.platforms }}" >> $GITHUB_STEP_SUMMARY
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
