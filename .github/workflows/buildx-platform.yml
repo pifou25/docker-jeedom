@@ -39,10 +39,10 @@ jobs:
         xdebug: [true, false]
         exclude:
           # exclude Jeedom beta on every buster, not supported
-          - debian: "buster"
+          - os.debian: "buster"
             jeedom: "beta"
           # exclude Jeedom debug on every buster, useless
-          - debian: "buster"
+          - os.debian: "buster"
             xdebug: false
 
     env:
