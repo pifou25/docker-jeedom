@@ -50,12 +50,11 @@ jobs:
     env:
       REGISTRY_IMAGE: pifou25/jeedom
       TAG_NAME: ${{ matrix.os.debian }}-${{ matrix.os.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
-      TAG_LATEST_ENABLED: ${{ (matrix.os.debian == 'bullseye' && matrix.os.php == 7.3 && matrix.target == 'full' && matrix.jeedom == 'V4-stable' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
 
     runs-on: ${{ matrix.os }}
     steps:
       -
-        name: Prepare ${{ env.TAG_LATEST_ENABLED && 'LATEST' ||'' }} ${{ env.TAG_NAME }}:${{ matrix.platform.name }}:${{ matrix.os }}
+        name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform.name }}:${{ matrix.os }}
         # replace /  by - in platform value
         run: |
           platform=linux/${{ matrix.platform.name }}
