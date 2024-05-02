@@ -5,6 +5,7 @@ on:
     branches:
       - 'master'
       - 'develop'
+      - 'feature/php_versions'
 
 # no concurrency, cancel previous running workflow
 concurrency:
@@ -68,8 +69,8 @@ jobs:
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
-      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.jeedom == 'V4-stable' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
     steps:
       -
         name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -149,7 +150,7 @@ jobs:
             DEBIAN=${{ matrix.debian }}
             PHP=${{ matrix.php }}
             JEEDOM_REPO=${{ env.JEEDOM_REPO }}
-            JEEDOM_VERSION=${{ matrix.jeedom }}
+            JEEDOM_VERSION=master_php${{ matrix.php }}
             XDEBUG=${{ matrix.xdebug }}
           platforms: linux/${{ matrix.platform }}
           cache-from: type=local,src=/tmp/.buildx-cache
@@ -161,7 +162,7 @@ jobs:
         if: steps.buildJeedom.outcome != 'success'
         # some debug information in case of error
         run: |
-          echo "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch master_php${{ matrix.php }} debug ${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
           echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.cache.outputs.cache-hit }}"
           echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
           exit 1
@@ -221,9 +222,9 @@ jobs:
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom
-      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.jeedom == 'V4-stable' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
  
     steps:
       -

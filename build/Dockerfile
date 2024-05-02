@@ -1,45 +1,16 @@
-﻿ARG DEBIAN=bullseye
-ARG PHP=7.3
-ARG JEEDOM_REPO=jeedom/core
-
-# prepare PHP source with dependencies
-FROM composer:2.7 as vendor
-
-ARG JEEDOM_REPO
-ARG JEEDOM_VERSION=V4-stable
-ENV JEEDOM_VERSION=${JEEDOM_VERSION}
-
-WORKDIR /app
-# Download and extract PHP sources
-ADD https://github.com/${JEEDOM_REPO}/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
-RUN unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
-  find /tmp/source/ -maxdepth 1 -type d -name '*core*' -exec sh -c 'mv -T {} /app' {} \; && \
-  rm /tmp/jeedom.zip && \
-  rm -rf /app/vendor /app/install/.htaccess
-COPY install.htaccess ./install/.htaccess
-
-# run composer for dependancies
-RUN composer install \
-    --no-interaction \
-    --no-plugins \
-    --no-scripts \
-    --no-dev \
-    --prefer-dist
-
-
-# Build with 3 stages, 2 targets :
+﻿# Build with 3 stages, 2 targets :
 # first stage 'base' is common to 2 following targets
 # 'light_jeedom': no daemon, only apache+php
 # 'full_jeedom': standalone with all required daemons
 #
 # Debian version: buster / bullseye / bookworm
-ARG DEBIAN
-# PHP version required for bookworm is 8 minimum
-ARG PHP
+ARG DEBIAN=bullseye
+# PHP version required for bookworm is 8.2
+# bullseye and buster : 7.3
+ARG PHP=7.3
 FROM php:${PHP}-apache-${DEBIAN} as base
 ARG DEBIAN
 ARG PHP
-ARG JEEDOM_REPO
 # optional XDEBUG arg to add xdebug packages and configuration
 ARG XDEBUG
 
@@ -48,6 +19,10 @@ LABEL org.opencontainers.image.source https://github.com/pifou25/docker-jeedom
 LABEL org.opencontainers.artifact.description "Jeedom Home Automation in Docker"
 LABEL org.opencontainers.image.authors pifou25
 
+# repo: jeedom/core or pifou25/jeedom-core
+ARG JEEDOM_REPO=jeedom/core
+# branch name: V4-stable or beta
+# or master_php7.3 master_php8.2
 ARG JEEDOM_VERSION=V4-stable
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}
 ENV MYSQL_JEEDOM_DATABASE=jeedom
@@ -116,8 +91,18 @@ RUN install-php-extensions\
 
 WORKDIR /var/www/html
 VOLUME /var/www/html
-# copy PHP sources from previous stage
-COPY --from=vendor app/ .
+
+# Download and extract PHP sources from $repo:$branch
+ADD https://github.com/${JEEDOM_REPO}/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
+RUN unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
+  find /tmp/source/ -maxdepth 1 -type d -name '*core*' -exec sh -c 'mv -T {} /var/www/html' {} \; && \
+  rm /tmp/jeedom.zip && \
+  rm -rf /app/vendor /app/install/.htaccess
+COPY install.htaccess ./install/.htaccess
+
+# download & run composer for dependancies
+COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
+RUN composer install --no-progress --no-interaction --no-dev 
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
@@ -129,7 +114,8 @@ RUN usermod -u 1000 www-data \
 VOLUME /var/www/html/backup
 VOLUME /var/www/html/log
 
-# install xdebug : check compatibility https://xdebug.org/docs/compat
+# install xdebug-3.0.4 for php7.3 and 3.3.2 for php8.2
+# check https://xdebug.org/docs/compat
 COPY xdebug.ini /tmp/xdebug.ini
 RUN if [[ ${XDEBUG} == "true" ]] ; then \
   pecl install redis-5.3.4 \
@@ -138,8 +124,6 @@ RUN if [[ ${XDEBUG} == "true" ]] ; then \
   && mv /tmp/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini ; \
   fi
 
-
-#
 # First final image: light Jeedom with /without xdebug
 #
 FROM base as light_jeedom
@@ -175,7 +159,7 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
   supervisor \
   && rm -rf /var/lib/apt/lists/*
 
-# customization from official ${JEEDOM_REPO} repo
+# customization from ${JEEDOM_REPO} repo
 COPY  standalone/supervisord.conf /etc/supervisor/supervisord.conf
 COPY  standalone/jeedom_my.cnf /etc/mysql/conf.d/jeedom_my.cnf
 ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/apache_security /etc/apache2/conf-available/security.conf
