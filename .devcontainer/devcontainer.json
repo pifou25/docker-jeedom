@@ -15,8 +15,8 @@
 			"PHP": "8.2",
 			// jeedom/core is the default repository
 			"JEEDOM_REPO": "pifou25/jeedom-core",
-			// branch name of the core repo: V4-stable beta alpha ...
-			"JEEDOM_VERSION": "V4-stable",
+			// branch name of the core repo: master beta alpha ...
+			"JEEDOM_VERSION": "master",
 			// enable xdebug
 			"XDEBUG": true
 		},

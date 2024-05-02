@@ -82,7 +82,7 @@ You may edit the yml to build your own Jeedom container with these parameters:
       context: ./build
       target: light_jeedom # add target if required
       args:
-        JEEDOM_VERSION: V4-stable
+        JEEDOM_VERSION: master
         XDEBUG: true
 ```
 ... or let the default jeedom:light version.

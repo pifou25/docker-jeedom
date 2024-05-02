@@ -1,16 +1,16 @@
 ## Docker Build
 
 After cloning the git repository, one may build the desired Docker image using the `--target` option to have the right image
- and the `--build-arg` for the Git Branch i.e. the Jeedom version (V4-stable or beta)
+ and the `--build-arg` for the Git Branch i.e. the Jeedom version (master or beta)
 ```
 cd build
-docker build --target full_xdebug --build-arg JEEDOM_VERSION=V4-stable --tag jeedom:debug .
+docker build --target full_xdebug --build-arg JEEDOM_VERSION=master --tag jeedom:debug .
 ```
 * Available targets are: light_jeedom, full_jeedom
 * $DEBIAN is buster, bullseye or bookworm
 * for bookworm: add $PHP with minimal version 8. $PHP=7.3 is the default value for previous Debian versions
 * $XDEBUG = true / false
-* $JEEDOM_VERSION is beta or V4-stable (default) (or master for the unsupported Jeedom v3)
+* $JEEDOM_VERSION is beta or master (default) (or master for the unsupported Jeedom v3)
 
 ## Github Workflow
 
