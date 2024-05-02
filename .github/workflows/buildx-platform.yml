@@ -41,7 +41,7 @@ jobs:
       fail-fast: false
       matrix:
         debian: [buster, bullseye, bookworm]
-        php: [7.3, 8.2]
+        php: [7.3, 8.0, 8.2]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
         platform: [amd64, arm64, arm/v6, arm/v7]
         jeedom: ["V4-stable", "beta"]
@@ -56,9 +56,15 @@ jobs:
             xdebug: false
           # exclude php version for each debian
           - debian: buster
+            php: 8.0
+          - debian: buster
+            php: 8.2
+          - debian: bullseye
             php: 8.2
           - debian: bookworm
             php: 7.3
+          - debian: bookworm
+            php: 8.0
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
@@ -122,9 +128,8 @@ jobs:
         id: cache
         with:
           path: /tmp/.buildx-cache
-          key: buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}
+          key: buildx-${{ runner.os }}-${{ matrix.platform }}
           restore-keys: |
-            buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }}
             buildx-${{ runner.os }}-${{ matrix.platform }}
             buildx-${{ runner.os }}
 
@@ -195,9 +200,7 @@ jobs:
       max-parallel: 2
       matrix:
         debian: [buster, bullseye, bookworm]
-        php: [7.3, 8.2]
-        # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
-        platform: [amd64, arm64, arm/v6, arm/v7]
+        php: [7.3, 8.0, 8.2]
         jeedom: ["V4-stable", "beta"]
         target: ["light", "full"]
         xdebug: [true, false]
@@ -210,9 +213,15 @@ jobs:
             xdebug: false
           # exclude php version for each debian
           - debian: buster
+            php: 8.0
+          - debian: buster
+            php: 8.2
+          - debian: bullseye
             php: 8.2
           - debian: bookworm
             php: 7.3
+          - debian: bookworm
+            php: 8.0
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
