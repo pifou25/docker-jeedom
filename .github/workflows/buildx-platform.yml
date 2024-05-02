@@ -40,29 +40,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        debian: ["buster", "bullseye", "bookworm"]
-        php: [7.3, 8.1]
+        debian: [buster, bullseye, bookworm]
+        php: [7.3, 8.2]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
-        platform: ["amd64", "arm64", "arm/v6", "arm/v7"]
+        platform: [amd64, arm64, arm/v6, arm/v7]
         jeedom: ["V4-stable", "beta"]
         target: ["light", "full"]
         xdebug: [true, false]
         exclude:
-          # exclude PHP7.3 on every bookworm OS
-          - debian: "bookworm"
-            php: 7.3
-          # exclude PHP8 on every buster and bullseye OS
-          - debian: "buster"
-            php: 8.1
           # exclude Jeedom beta on every buster, not supported
           - debian: "buster"
             jeedom: "beta"
           # exclude Jeedom debug on every buster, useless
           - debian: "buster"
             xdebug: false
-          # exclude platform arm/v6 for Buster...
-          - debian: "buster"
-            platform: "arm/v6"
+          # exclude php version for each debian
+          - debian: buster
+            php: 8.2
+          - debian: bookworm
+            php: 7.3
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
@@ -195,25 +191,28 @@ jobs:
     # same matrix as previous step except the platform
     strategy:
       fail-fast: false
+      # limit to avoid error HTTP 409: too many requests
+      max-parallel: 2
       matrix:
-        debian: ["buster", "bullseye", "bookworm"]
-        php: [7.3, 8.1]
+        debian: [buster, bullseye, bookworm]
+        php: [7.3, 8.2]
+        # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
+        platform: [amd64, arm64, arm/v6, arm/v7]
         jeedom: ["V4-stable", "beta"]
         target: ["light", "full"]
         xdebug: [true, false]
         exclude:
-          # exclude PHP7.3 on every bookworm OS
-          - debian: "bookworm"
-            php: 7.3
-          # exclude PHP8 on every buster and bullseye OS
-          - debian: "buster"
-            php: 8.1
           # exclude Jeedom beta on every buster, not supported
           - debian: "buster"
             jeedom: "beta"
           # exclude Jeedom debug on every buster, useless
           - debian: "buster"
             xdebug: false
+          # exclude php version for each debian
+          - debian: buster
+            php: 8.2
+          - debian: bookworm
+            php: 7.3
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
@@ -279,5 +278,7 @@ jobs:
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
       -
         name: Inspect image ${{ env.TAG_NAME }}
+        # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          sleep 1m
