@@ -33,9 +33,9 @@ RUN composer install \
 # 'full_jeedom': standalone with all required daemons
 #
 # Debian version: buster / bullseye / bookworm
-ARG DEBIAN=bullseye
+ARG DEBIAN
 # PHP version required for bookworm is 8 minimum
-ARG PHP=7.3
+ARG PHP
 FROM php:${PHP}-apache-${DEBIAN} as base
 ARG DEBIAN
 ARG PHP
@@ -58,7 +58,8 @@ ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_ROOT_PASSWORD
 ENV DEBIAN_FRONTEND=noninteractive
 
-LABEL com.jeedom.version="Jeedom ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
+LABEL com.jeedom.version="${JEEDOM_REPO} ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
+LABEL org.opencontainers.image.description "Jeedom Home Automation in Docker. ${JEEDOM_REPO} ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
 
 # add motd & bashrc - link sh to bash for Docker Desktop
 # add sudo for www-data
@@ -82,6 +83,7 @@ RUN apt-get update && \
   apt-transport-https \
   apt-utils \
   at \
+  bc \
   ccze \
   curl \
   dos2unix \
@@ -133,12 +135,11 @@ RUN usermod -u 1000 www-data \
 VOLUME ${WEBSERVER_HOME}/backup
 VOLUME ${WEBSERVER_HOME}/log
 
-# install xdebug
+# install xdebug : check compatibility https://xdebug.org/docs/compat
 COPY xdebug.ini /tmp/xdebug.ini
-RUN if [[ -N "$XDEBUG" ]] ; then \
-  echo "XDebug Build" && \
+RUN if [[ ${XDEBUG} == "true" ]] ; then \
   pecl install redis-5.3.4 \
-	&& pecl install xdebug-3.0.4 \
+	&& pecl install "$(if [[ $(echo "${PHP} >= 8.0" | bc) == 1 ]] ; then echo xdebug-3.3.2 ; else echo xdebug-3.0.4 ; fi)" \
 	&& docker-php-ext-enable redis xdebug \
   && mv /tmp/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini ; \
   fi
