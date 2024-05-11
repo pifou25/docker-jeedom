@@ -68,38 +68,42 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
 
 # common packages intall
 # alphabetical order for better compare
-RUN apt-get update && \
-  apt-get install --no-install-recommends --no-install-suggests -q -y tzdata software-properties-common && \
-  add-apt-repository non-free && \
-  apt-get update && \
-  apt-get install --no-install-recommends --no-install-suggests -q -y \
-  apt-transport-https \
-  apt-utils \
-  at \
-  bc \
-  ccze \
-  curl \
-  dos2unix \
-  ffmpeg \
-  gettext \
-  git \
-  iproute2 \
-  librsync-dev \
-  libssh2-1 \
-  libssh2-1-dev \
-  libzip-dev \
-  locales \
-  net-tools \
-  nmap \
-  ntp \
-  ntpdate \
-  mariadb-client \
-  python3 python3-dev python3-pip python3-virtualenv \
-  smbclient \
-  ssl-cert \
-  sudo \
-  wget \
-  zip unzip
+RUN apt-get update 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y tzdata  
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y software-properties-common
+RUN add-apt-repository non-free 
+RUN apt-get update
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y apt-transport-https 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y apt-utils 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y at 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y bc 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y ccze 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y curl 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y dos2unix 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y ffmpeg 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y gettext 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y git 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y iproute2 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y librsync-dev 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y libssh2-1 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y libssh2-1-dev 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y libzip-dev 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y locales 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y net-tools 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y nmap 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y ntp 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y ntpdate 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y mariadb-client 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y python3
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y python3-dev
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y python3-pip 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y python3-virtualenv 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y smbclient 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y ssl-cert 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y sudo 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y wget 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y zip 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y unzip
 
 # add php extension
 # shellcheck disable=DL3022

@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - 'master'
-      - 'develop'
+      - 'feature/safe_apt_install'
 
 # no concurrency, cancel previous running workflow
 concurrency:
@@ -289,4 +289,4 @@ jobs:
         # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
-          sleep 1m
+          sleep 30s
