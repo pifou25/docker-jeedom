@@ -50,8 +50,6 @@ LABEL org.opencontainers.image.authors pifou25
 
 ARG JEEDOM_VERSION=V4-stable
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}
-ARG WEBSERVER_HOME=/var/www/html
-ENV WEBSERVER_HOME=${WEBSERVER_HOME}
 ENV MYSQL_JEEDOM_DATABASE=jeedom
 ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_JEEDOM_PASSWD
@@ -66,7 +64,7 @@ LABEL org.opencontainers.image.description "Jeedom Home Automation in Docker. ${
 COPY motd /etc/jmotd
 ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/bashrc /root/.bashrc
 # Use bash as the default shell - replace     ln -sf /bin/bash /bin/sh && \
-SHELL ["/bin/bash", "-c"]
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # shellcheck disable=SC2016
 RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd && cat /etc/jmotd' \
     >> /etc/bash.bashrc && \
@@ -116,14 +114,10 @@ RUN install-php-extensions\
     mbstring mysqli pcntl pdo_mysql \
     soap sockets xmlrpc zip gd opcache ssh2
 
-# change doc root apache configuration
-RUN sed -ri -e "s!/var/www/html!${WEBSERVER_HOME}!g" /etc/apache2/sites-available/*.conf && \
-    sed -ri -e "s!/var/www/!${WEBSERVER_HOME}!g" /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-
-WORKDIR ${WEBSERVER_HOME}
-VOLUME ${WEBSERVER_HOME}
+WORKDIR /var/www/html
+VOLUME /var/www/html
 # copy PHP sources from previous stage
-COPY --from=vendor app/ ${WEBSERVER_HOME}
+COPY --from=vendor app/ .
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
@@ -132,8 +126,8 @@ RUN usermod -u 1000 www-data \
    && chmod 777 -R /tmp/jeedom \
    && chown www-data:www-data -R /tmp/jeedom
 
-VOLUME ${WEBSERVER_HOME}/backup
-VOLUME ${WEBSERVER_HOME}/log
+VOLUME /var/www/html/backup
+VOLUME /var/www/html/log
 
 # install xdebug : check compatibility https://xdebug.org/docs/compat
 COPY xdebug.ini /tmp/xdebug.ini
@@ -144,8 +138,12 @@ RUN if [[ ${XDEBUG} == "true" ]] ; then \
   && mv /tmp/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini ; \
   fi
 
+
+#
 # First final image: light Jeedom with /without xdebug
+#
 FROM base as light_jeedom
+# the mysql hostname is another environment variable
 ENV MYSQL_HOST=db
 
 # Healthcheck for the 'light' image, just check if apache is running
@@ -155,7 +153,9 @@ COPY --chmod=0775 init.sh /root/init.sh
 CMD ["/root/init.sh"]
 
 
+#
 # Second final image: full standalone
+#
 FROM base as full_jeedom
 ARG JEEDOM_REPO
 # localhost didn't work for mysql, should try 127.0.0.1
@@ -165,7 +165,7 @@ ENV MYSQL_HOST=localhost
 RUN groupadd -r mysql && useradd -r -g mysql mysql
 
 RUN mkdir -p '/var/run/mysqld' && \
-    chown root:mysql '/var/run/mysqld' && \
+    chown www-data:mysql '/var/run/mysqld' && \
     chmod 774 '/var/run/mysqld'
 
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
@@ -184,12 +184,9 @@ ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/
 ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/fail2ban.jeedom.conf /etc/fail2ban/jail.d/jeedom.conf
 COPY  php.ini /usr/local/etc/php/php.ini
 
-RUN sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available/security.conf && \
-    sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/conf-available/remoteip.conf && \
-    rm /etc/apache2/conf-enabled/security.conf > /dev/null 2>&1 && \
+RUN rm /etc/apache2/conf-enabled/security.conf > /dev/null 2>&1 && \
     ln -s /etc/apache2/conf-available/security.conf /etc/apache2/conf-enabled/ && \
     ln -s /etc/apache2/conf-available/remoteip.conf /etc/apache2/conf-enabled/ && \
-    sed -i -e "s%WEBSERVER_HOME%${WEBSERVER_HOME}%g" /etc/apache2/sites-available/000-default.conf && \
     rm /etc/apache2/sites-enabled/000-default.conf > /dev/null 2>&1 && \
     ln -s /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-enabled/ && \
     rm /etc/apache2/conf-available/other-vhosts-access-log.conf > /dev/null 2>&1 && \

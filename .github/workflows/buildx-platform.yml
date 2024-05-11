@@ -10,7 +10,12 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
- 
+
+env:
+  # used to download jeedom source
+  JEEDOM_REPO: "pifou25/jeedom-core"
+
+
 jobs:
   initStep:
     runs-on: ubuntu-latest
@@ -41,10 +46,11 @@ jobs:
       fail-fast: false
       matrix:
         debian: [buster, bullseye, bookworm]
-        php: [7.3, 8.0, 8.2]
+        php: [7.3, 8.2]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
         platform: [amd64, arm64, arm/v6, arm/v7]
-        jeedom: ["V4-stable", "beta"]
+        # no beta version for now
+        jeedom: ["V4-stable"]
         target: ["light", "full"]
         xdebug: [true, false]
         exclude:
@@ -56,15 +62,9 @@ jobs:
             xdebug: false
           # exclude php version for each debian
           - debian: buster
-            php: 8.0
-          - debian: buster
-            php: 8.2
-          - debian: bullseye
             php: 8.2
           - debian: bookworm
             php: 7.3
-          - debian: bookworm
-            php: 8.0
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
@@ -148,7 +148,7 @@ jobs:
           build-args: |
             DEBIAN=${{ matrix.debian }}
             PHP=${{ matrix.php }}
-            JEEDOM_REPO=pifou25/jeedom-core
+            JEEDOM_REPO=${{ env.JEEDOM_REPO }}
             JEEDOM_VERSION=${{ matrix.jeedom }}
             XDEBUG=${{ matrix.xdebug }}
           platforms: linux/${{ matrix.platform }}
@@ -164,6 +164,7 @@ jobs:
           echo "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
           echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.cache.outputs.cache-hit }}"
           echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
+          exit 1
 
       -
         name: Export digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -200,8 +201,9 @@ jobs:
       max-parallel: 2
       matrix:
         debian: [buster, bullseye, bookworm]
-        php: [7.3, 8.0, 8.2]
-        jeedom: ["V4-stable", "beta"]
+        php: [7.3, 8.2]
+        # no beta version for now
+        jeedom: ["V4-stable"]
         target: ["light", "full"]
         xdebug: [true, false]
         exclude:
@@ -213,15 +215,9 @@ jobs:
             xdebug: false
           # exclude php version for each debian
           - debian: buster
-            php: 8.0
-          - debian: buster
-            php: 8.2
-          - debian: bullseye
             php: 8.2
           - debian: bookworm
             php: 7.3
-          - debian: bookworm
-            php: 8.0
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom

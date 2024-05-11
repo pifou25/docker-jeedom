@@ -66,21 +66,21 @@ if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
 
   log_info "first run of jeedom container : configuration"
   cp ${WEBSERVER_HOME}/core/config/common.config.sample.php ${WEBSERVER_HOME}/core/config/common.config.php
-  sed -i "s/'host'/'unix_socket'/g" ${WEBSERVER_HOME}/core/config/common.config.php
   sed -i "s/#PASSWORD#/${MYSQL_JEEDOM_PASSWD}/g" ${WEBSERVER_HOME}/core/config/common.config.php
   sed -i "s/#DBNAME#/${MYSQL_JEEDOM_DATABASE}/g" ${WEBSERVER_HOME}/core/config/common.config.php
   sed -i "s/#USERNAME#/${MYSQL_JEEDOM_USER}/g" ${WEBSERVER_HOME}/core/config/common.config.php
   sed -i "s/#PORT#/3306/g" ${WEBSERVER_HOME}/core/config/common.config.php
-  sed -i "s/#HOST#/\/run\/mysqld\/mysqld.sock/g" ${WEBSERVER_HOME}/core/config/common.config.php
-  
+  sed -i "s/#HOST#/${MYSQL_HOST}/g" ${WEBSERVER_HOME}/core/config/common.config.php
+  # changes for mysql socket instead of tcp for local use
+  # sed -i "s/'host'/'unix_socket'/g" ${WEBSERVER_HOME}/core/config/common.config.php
+  # sed -i "s/#HOST#/\/run\/mysqld\/mysqld.sock/g" ${WEBSERVER_HOME}/core/config/common.config.php
+
+
   chmod 770 -R ${WEBSERVER_HOME}
   chown -R www-data:www-data ${WEBSERVER_HOME}
   mkdir -p /tmp/jeedom
   chmod 770 -R /tmp/jeedom
   chown www-data:www-data -R /tmp/jeedom
-
-  # start database
-  supervisorctl start mysql
 
   # wait until db is up and running
   while ! mysqladmin ping -h"$MYSQL_HOST" --silent; do
@@ -89,11 +89,16 @@ if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
   done
 
   log_info " ___ Création de la database SQL ${MYSQL_JEEDOM_DATABASE} pour '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}' ... ___"
-  mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}';"
-  mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
   mysql_sql "DROP DATABASE IF EXISTS ${MYSQL_JEEDOM_DATABASE};"
   mysql_sql "CREATE DATABASE ${MYSQL_JEEDOM_DATABASE};"
-  mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}';"
+  mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'*';"
+  mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'*' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
+  mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'*';"
+  # user for @localhost
+  mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'localhost';"
+  mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'localhost' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
+  mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'localhost';"
+
 
   log_info "jeedom clean install"
   php ${WEBSERVER_HOME}/install/install.php mode=force
@@ -134,7 +139,8 @@ if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
 
 fi
 
-sysctl vm.swappiness=10
+# does NOT work inside docker container!
+# sysctl vm.swappiness=10
 
 a2dismod status
 a2enmod headers

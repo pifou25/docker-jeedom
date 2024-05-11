@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
@@ -8,7 +8,8 @@ healthcheck() {
         return 1
     fi
     # check that all managed process are running
-    if ! supervisorctl status | grep RUNNING; then
+    RUNNING=$(supervisorctl status | grep RUNNING | wc -l)
+    if [[ $RUNNING -ne 5 ]] ; then
         return 1
     fi
     return 0
