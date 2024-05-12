@@ -42,7 +42,10 @@ jobs:
     # This step  build the same image on different runners / platforms
     runs-on: ubuntu-latest
     needs: initStep
+    # continue to next job even if there are some errors in jbuild job
+    continue-on-error: true
     strategy:
+      # do every matrix combination, don't stop on errors
       fail-fast: false
       matrix:
         debian: [buster, bullseye, bookworm]
@@ -139,7 +142,7 @@ jobs:
         id: buildJeedom
         # https://github.com/marketplace/actions/build-and-push-docker-images
         uses: docker/build-push-action@v5
-        # do every matrix combination, don't stop on errors
+        # continue to next step even in case of error
         continue-on-error: true
         with:
           context: build
@@ -159,7 +162,7 @@ jobs:
 
       - name: Check on failures ${{ env.TAG_NAME }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome != 'success'
-        # some debug information in case of error
+        # some debug information in case of error, exit with error
         run: |
           echo "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
           echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.cache.outputs.cache-hit }}"
