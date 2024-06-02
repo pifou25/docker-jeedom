@@ -43,19 +43,19 @@ mysql_sql() {
 # ___________________________
 
 log_info "starting jeedom ${JEEDOM_VERSION}"
-cd ${WEBSERVER_HOME}
+cd /var/www/html
 
 # ___________________________
 #   first start: download sources
 # ___________________________
 
-if [ ! -f "${WEBSERVER_HOME}/index.php" ]; then
+if [ ! -f "/var/www/html/index.php" ]; then
     log_error "Can not install jeedom (no jeedom source)"
     exit 1
 fi
 
-if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
-  if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.sample.php" ]; then
+if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
+  if [ ! -f "/var/www/html/core/config/common.config.sample.php" ]; then
     log_error "Can not install jeedom (no config.sample file)"
     exit 1
   fi
@@ -65,19 +65,19 @@ if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
   # ___________________________
 
   log_info "first run of jeedom container : configuration"
-  cp ${WEBSERVER_HOME}/core/config/common.config.sample.php ${WEBSERVER_HOME}/core/config/common.config.php
-  sed -i "s/#PASSWORD#/${MYSQL_JEEDOM_PASSWD}/g" ${WEBSERVER_HOME}/core/config/common.config.php
-  sed -i "s/#DBNAME#/${MYSQL_JEEDOM_DATABASE}/g" ${WEBSERVER_HOME}/core/config/common.config.php
-  sed -i "s/#USERNAME#/${MYSQL_JEEDOM_USER}/g" ${WEBSERVER_HOME}/core/config/common.config.php
-  sed -i "s/#PORT#/3306/g" ${WEBSERVER_HOME}/core/config/common.config.php
-  sed -i "s/#HOST#/${MYSQL_HOST}/g" ${WEBSERVER_HOME}/core/config/common.config.php
+  cp /var/www/html/core/config/common.config.sample.php /var/www/html/core/config/common.config.php
+  sed -i "s/#PASSWORD#/${MYSQL_JEEDOM_PASSWD}/g" /var/www/html/core/config/common.config.php
+  sed -i "s/#DBNAME#/${MYSQL_JEEDOM_DATABASE}/g" /var/www/html/core/config/common.config.php
+  sed -i "s/#USERNAME#/${MYSQL_JEEDOM_USER}/g" /var/www/html/core/config/common.config.php
+  sed -i "s/#PORT#/3306/g" /var/www/html/core/config/common.config.php
+  sed -i "s/#HOST#/${MYSQL_HOST}/g" /var/www/html/core/config/common.config.php
   # changes for mysql socket instead of tcp for local use
-  # sed -i "s/'host'/'unix_socket'/g" ${WEBSERVER_HOME}/core/config/common.config.php
-  # sed -i "s/#HOST#/\/run\/mysqld\/mysqld.sock/g" ${WEBSERVER_HOME}/core/config/common.config.php
+  # sed -i "s/'host'/'unix_socket'/g" /var/www/html/core/config/common.config.php
+  # sed -i "s/#HOST#/\/run\/mysqld\/mysqld.sock/g" /var/www/html/core/config/common.config.php
 
 
-  chmod 770 -R ${WEBSERVER_HOME}
-  chown -R www-data:www-data ${WEBSERVER_HOME}
+  chmod 770 -R /var/www/html
+  chown -R www-data:www-data /var/www/html
   mkdir -p /tmp/jeedom
   chmod 770 -R /tmp/jeedom
   chown www-data:www-data -R /tmp/jeedom
@@ -101,20 +101,20 @@ if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
 
 
   log_info "jeedom clean install"
-  php ${WEBSERVER_HOME}/install/install.php mode=force
+  php /var/www/html/install/install.php mode=force
   if [ $? -ne 0 ]; then
     log_error "Can not install jeedom (error in install.php, see log)"
     exit 1
   fi
 
   log_warn "vérification de jeedom"
-  echo "* * * * * www-data /usr/bin/php ${WEBSERVER_HOME}/core/php/jeeCron.php >> /dev/null" > /etc/cron.d/jeedom
+  echo "* * * * * www-data /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null" > /etc/cron.d/jeedom
   if [ $? -ne 0 ]; then
     log_error "Ne peut installer le cron de jeedom - Annulation"
     exit 1
   fi
 
-  echo "*/5 * * * * root /usr/bin/php ${WEBSERVER_HOME}/core/php/watchdog.php >> /dev/null" > /etc/cron.d/jeedom_watchdog
+  echo "*/5 * * * * root /usr/bin/php /var/www/html/core/php/watchdog.php >> /dev/null" > /etc/cron.d/jeedom_watchdog
   if [ $? -ne 0 ]; then
     log_error "Ne peut installer le cron de jeedom - Annulation"
     exit 1
@@ -127,13 +127,13 @@ if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
   fi
 
   log_warn "vérification de jeedom"
-  php ${WEBSERVER_HOME}/sick.php
+  php /var/www/html/sick.php
 
   # find latest backup and try to restore at the first container launch
-  if [ -d "${WEBSERVER_HOME}/backup" ] && [ "$(ls -A ${WEBSERVER_HOME}/backup)" ]; then
-     filename=$(ls -Art ${WEBSERVER_HOME}/backup)
+  if [ -d "/var/www/html/backup" ] && [ "$(ls -A /var/www/html/backup)" ]; then
+     filename=$(ls -Art /var/www/html/backup)
      log_info "found a backup, try to restore: ${filename}"
-     php ${WEBSERVER_HOME}/install/restore.php backup=${filename}
+     php /var/www/html/install/restore.php backup=${filename}
   fi
   log_info " ___ successfull new installation ! ___"
 
@@ -147,8 +147,8 @@ a2enmod headers
 a2enmod remoteip
 
 # required for fail2ban starting
-touch ${WEBSERVER_HOME}/log/http.error
-chown -R www-data:www-data ${WEBSERVER_HOME}
+touch /var/www/html/log/http.error
+chown -R www-data:www-data /var/www/html
 
 # start apache2 cron and fail2ban
 supervisorctl start apache2

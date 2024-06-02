@@ -1,48 +1,45 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.231.5/containers/python-3
 {
-	"name": "Python 3",
+	"name": "Jeedom Debug",
+	// image OR build, but not both
+	"image": "pifou25/jeedom:bookworm-8.2-debug",
+	/*
 	"build": {
 		"dockerfile": "Dockerfile",
-		"context": "../jeedom/plugins/lgthinq/resources",
+		"context": "./build",
 		"args": { 
-			// Update 'VARIANT' to pick a Python version: 3, 3.10, 3.9, 3.8, 3.7, 3.6
-			// Append -bullseye or -buster to pin to an OS version.
-			// Use -bullseye variants on local on arm64/Apple Silicon.
-			"VARIANT": "3.10-bullseye",
-			// Options
-			"NODE_VERSION": "lts/*"
-		}
+			// buster bullseye or bookworm
+			"DEBIAN": "bookworm",
+			// 7.3 or 8.2
+			"PHP": "8.2",
+			// jeedom/core is the default repository
+			"JEEDOM_REPO": "pifou25/jeedom-core",
+			// branch name of the core repo: V4-stable beta alpha ...
+			"JEEDOM_VERSION": "V4-stable",
+			// enable xdebug
+			"XDEBUG": true
+		},
+		// target of Dockerfile: 
+		// light_jeedom without db, full_jeedom for all-inclusive
+		"target": "light_jeedom"
 	},
-
-	// Set *default* container specific settings.json values on container create.
-	"settings": { 
-		"python.defaultInterpreterPath": "/usr/local/bin/python",
-		"python.linting.enabled": true,
-		"python.linting.pylintEnabled": true,
-		"python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
-		"python.formatting.blackPath": "/usr/local/py-utils/bin/black",
-		"python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
-		"python.linting.banditPath": "/usr/local/py-utils/bin/bandit",
-		"python.linting.flake8Path": "/usr/local/py-utils/bin/flake8",
-		"python.linting.mypyPath": "/usr/local/py-utils/bin/mypy",
-		"python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
-		"python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
-		"python.linting.pylintPath": "/usr/local/py-utils/bin/pylint"
-	},
-
-	// Add the IDs of extensions you want installed when the container is created.
-	"extensions": [
-		"ms-python.python",
-		"ms-python.vscode-pylance"
-	],
+	*/
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
+	"forwardPorts": ["8080:80", 9003],
+	// https://containers.dev/implementors/json_reference/#port-attributes
+	"portsAttributes": {
+		"9003": {"label": "XDebug forwoarding port"}
+
+	},
+
+	// Default path to open when attaching to a new container.
+	"workspaceFolder": "/www/var/html",
 
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// "postCreateCommand": "pip3 install --user -r requirements.txt",
 
 	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-	"remoteUser": "vscode"
+	"remoteUser": "www-data"
 }

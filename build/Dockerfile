@@ -159,7 +159,6 @@ CMD ["/root/init.sh"]
 FROM base as full_jeedom
 ARG JEEDOM_REPO
 ARG JEEDOM_VERSION
-# localhost didn't work for mysql, should try 127.0.0.1
 ENV MYSQL_HOST=localhost
 
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
