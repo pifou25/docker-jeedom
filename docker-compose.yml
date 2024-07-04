@@ -114,7 +114,6 @@ services:
       - /tmp/jeedom
 
 
-
   # Scheduler Service: mcuadros/ofelia or premoweb/chadburn
   scheduler:
     image: premoweb/chadburn
