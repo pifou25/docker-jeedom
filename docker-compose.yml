@@ -1,6 +1,4 @@
-﻿# version: '2.3'
-
-services:
+﻿services:
 
   nginx:
     image: jc21/nginx-proxy-manager:2
@@ -54,7 +52,6 @@ services:
         max-file: "1"
 
 
-
   jeedom:
     # build: ./php
     image: pifou25/jeedom:light
@@ -83,7 +80,7 @@ services:
       chadburn.job-exec.jeedom-cron.schedule: "@every 1m"
       chadburn.job-exec.jeedom-cron.command: "/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
       # label for watchtower: don't check
-      com.centurylinklabs.watchtower.enable: false
+      # com.centurylinklabs.watchtower.enable: false
     depends_on:
       - db
       - scheduler
@@ -93,7 +90,6 @@ services:
         max-file: "1"
     tmpfs:
       - /tmp/jeedom
-
 
 
   # Scheduler Service: mcuadros/ofelia or premoweb/chadburn
@@ -119,6 +115,12 @@ services:
         max-size: "10m"
         max-file: "1"
 
+
+  redis:
+    image: redis:alpine
+    ports:
+      - '6379:6379'
+  
 
   portainer:
     image: portainer/portainer-ce
