@@ -79,7 +79,7 @@
       chadburn.enabled: "true"
       chadburn.job-exec.jeedom-cron.schedule: "@every 1m"
       chadburn.job-exec.jeedom-cron.command: "/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
-      # label for watchtower: don't check
+      # label for watchtower for automatic image update: don't check
       # com.centurylinklabs.watchtower.enable: false
     depends_on:
       - db
@@ -141,7 +141,7 @@
 
 
   zwave:
-    image: zwavejs/zwave-js-ui:8
+    image: zwavejs/zwave-js-ui:9
     ports:
       - 3000:3000 # Z-Wave JS websocket server
       - 8091:8091 # Web Interface
@@ -157,7 +157,7 @@
     depends_on:
       - mqtt
     healthcheck: # check if both mqtt and zwave client are connected
-      test: 'wget --no-verbose --spider --no-check-certificate --header "Accept: text/plain" http://localhost:8091/health || exit 1'
+      test: 'wget --no-verbose --spider --no-check-certificate --header "Accept: text/plain" http://127.0.0.1:8091/health || exit 1'
       interval: 2m
       retries: 3
       start_period: 40s
