@@ -1,6 +1,4 @@
-﻿version: '3.8'
-
-networks:
+﻿networks:
   default:
     name: jeedom_network
 
@@ -126,3 +124,18 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  # redis service for cache
+  redis:
+    image: redis
+    volumes:
+    - ./volumes/cache:/data
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Paris
+    ports:
+      - 6379:6379

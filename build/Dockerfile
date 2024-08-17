@@ -19,12 +19,7 @@ RUN unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
 COPY install.htaccess ./install/.htaccess
 
 # run composer for dependancies
-RUN composer install \
-    --no-interaction \
-    --no-plugins \
-    --no-scripts \
-    --no-dev \
-    --prefer-dist
+RUN composer install --no-progress --no-interaction --no-dev 
 
 
 # Build with 3 stages, 2 targets :
