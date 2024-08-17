@@ -169,7 +169,7 @@ services:
     depends_on:
       - mqtt
     healthcheck: # check if both mqtt and zwave client are connected
-      test: 'wget --no-verbose --spider --no-check-certificate --header "Accept: text/plain" http://localhost:8091/health || exit 1'
+      test: 'wget --no-verbose --spider --no-check-certificate --header "Accept: text/plain" http://127.0.0.1:8091/health || exit 1'
       interval: 2m
       retries: 3
       start_period: 40s
