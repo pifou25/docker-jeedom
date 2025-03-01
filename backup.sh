@@ -4,7 +4,7 @@ cd /home/pi/dev/nginx
 # remove previous backups
 rm data/*.sql.gz
 
-# get evry env configuration: usernames and passwords
+# get every env configuration: usernames and passwords
 source .env
 
 NOW=$(date +%Y%m%d-%H%M%S)
@@ -39,15 +39,17 @@ tar czf $FILE --exclude={"data/mosquitto/log","data/nginx/hivemq.si","data/nginx
 # or
 # tar -xvf -C destination file
 
-# send to FTP backup site
-HOST='mafreebox.freebox.fr'
-REMOTEPATH='/Freebox/PiBackup/jeedom'
+# remove older data_* archives older than 7 days
+find $PWD -type f -mtime +7 -name 'data_*.gz' -execdir rm -- '{}' \;
 
-ftp -n ${HOST} <<END_SCRIPT
+# send to FTP backup site
+ftp -n ${FTP_HOST} <<END_SCRIPT
 quote USER ${FTP_USER}
 quote PASS ${FTP_PASSWORD}
-cd ${REMOTEPATH}
+cd ${FTP_REMOTEPATH}
 put ${FILE}
 quit
 END_SCRIPT
+
+echo backup $FILE successfully
 exit 0
