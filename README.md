@@ -3,13 +3,16 @@ Stack Docker All-In-One pour Jeedom !
 
 Contient :
 * Ninx Proxy Manager : Reverse-Proxy
-* MariaDB
-* Jeedom (version FROM apache-php)
+* MariaDB : la bdd
+* Jeedom (version light FROM apache-php)
 * Scheduler : le cron
-* MQTT Brocker
-* ZWaveJS2MQTT
+* Redis : le cache
+* mosquiuto : MQTT Brocker
+* zwave-js-ui
 * PhpMyAdmin
 * Portainer
+* Vaultwarden : le coffre-fort
+* Watchtower : la maj des autres containers
 
 # Installation
 

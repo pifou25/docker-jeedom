@@ -68,6 +68,8 @@
     volumes:
       - ./jeedom:/var/www/html
       - ./backup:/tmp/backup
+    devices:
+      - /sys/devices:/sys/devices:ro # for access to the temperature sensor
     healthcheck:
       test: ["CMD-SHELL", "curl -so /tmp/status http://localhost/here.html || exit 1"]
       interval: 1m30s
@@ -107,7 +109,7 @@
 
 
   phpmyadmin:
-    image: phpmyadmin:5.0
+    image: phpmyadmin:5.2
     depends_on:
       - db
     logging:
@@ -149,7 +151,7 @@
       - TZ=${TIME_ZONE}
     devices:
     #  - "/dev/ttyUSB0"
-    #  - "/dev/ttyUSB1"
+    #  - /dev/serial/by-id/usb-0658_0200-if00
       - "/dev/ttyACM0"
     volumes:
       - ./data/zwave:/usr/src/app/store
@@ -200,5 +202,7 @@
       - ./data/vaultwarden:/data
     environment:
       - DATABASE_URL=mysql://${MYSQL_VAULT_USER}:${MYSQL_VAULT_PASSWORD}@db/${MYSQL_VAULT_USER}
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - EXPERIMENTAL_CLIENT_FEATURE_FLAGS=ssh-key-vault-item,ssh-agent
     depends_on:
       - db
