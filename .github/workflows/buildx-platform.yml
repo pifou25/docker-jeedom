@@ -5,6 +5,7 @@ on:
     branches:
       - 'master'
       - 'develop'
+      - 'feature/php_versions'
 
 # no concurrency, cancel previous running workflow
 concurrency:
@@ -48,31 +49,22 @@ jobs:
       # do every matrix combination, don't stop on errors
       fail-fast: false
       matrix:
-        debian: [buster, bullseye, bookworm]
-        php: [7.3, 8.2]
+        debian: [bullseye, bookworm]
+        php: [7.4, 8.2]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
         platform: [amd64, arm64, arm/v6, arm/v7]
         # no beta version for now
-        jeedom: ["V4-stable"]
+        branch: ["master"]
         target: ["light", "full"]
         xdebug: [true, false]
         exclude:
-          # exclude Jeedom beta on every buster, not supported
-          - debian: "buster"
-            jeedom: "beta"
-          # exclude Jeedom debug on every buster, useless
-          - debian: "buster"
-            xdebug: false
-          # exclude php version for each debian
-          - debian: buster
-            php: 8.2
           - debian: bookworm
-            php: 7.3
+            php: 7.4
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
-      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.jeedom == 'V4-stable' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
     steps:
       -
         name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -80,6 +72,7 @@ jobs:
         run: |
           platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+          docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_SECRET }}
       -
         name: Checkout
         uses: actions/checkout@v4.1.2
@@ -152,7 +145,7 @@ jobs:
             DEBIAN=${{ matrix.debian }}
             PHP=${{ matrix.php }}
             JEEDOM_REPO=${{ env.JEEDOM_REPO }}
-            JEEDOM_VERSION=${{ matrix.jeedom }}
+            JEEDOM_VERSION=${{ matrix.branch }}
             XDEBUG=${{ matrix.xdebug }}
           platforms: linux/${{ matrix.platform }}
           cache-from: type=local,src=/tmp/.buildx-cache
@@ -164,7 +157,7 @@ jobs:
         if: steps.buildJeedom.outcome != 'success'
         # some debug information in case of error, exit with error
         run: |
-          echo "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ matrix.jeedom }} debug ${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch master_php${{ matrix.php }} debug ${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
           echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.cache.outputs.cache-hit }}"
           echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
           exit 1
@@ -203,30 +196,21 @@ jobs:
       # limit to avoid error HTTP 409: too many requests
       max-parallel: 2
       matrix:
-        debian: [buster, bullseye, bookworm]
-        php: [7.3, 8.2]
+        debian: [bullseye, bookworm]
+        php: [7.4, 8.2]
         # no beta version for now
-        jeedom: ["V4-stable"]
+        jeedom: ["master"]
         target: ["light", "full"]
         xdebug: [true, false]
         exclude:
-          # exclude Jeedom beta on every buster, not supported
-          - debian: "buster"
-            jeedom: "beta"
-          # exclude Jeedom debug on every buster, useless
-          - debian: "buster"
-            xdebug: false
-          # exclude php version for each debian
-          - debian: buster
-            php: 8.2
           - debian: bookworm
-            php: 7.3
+            php: 7.4
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.jeedom == 'beta' && '-beta' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom
-      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.jeedom == 'V4-stable' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
  
     steps:
       -

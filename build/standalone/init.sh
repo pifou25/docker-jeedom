@@ -72,12 +72,11 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
   sed -i "s/#PORT#/3306/g" /var/www/html/core/config/common.config.php
   sed -i "s/#HOST#/${MYSQL_HOST}/g" /var/www/html/core/config/common.config.php
   # changes for mysql socket instead of tcp for local use
-  # sed -i "s/'host'/'unix_socket'/g" /var/www/html/core/config/common.config.php
-  # sed -i "s/#HOST#/\/run\/mysqld\/mysqld.sock/g" /var/www/html/core/config/common.config.php
-
-
-  chmod 770 -R /var/www/html
-  chown -R www-data:www-data /var/www/html
+  # sed -i "s/'host'/'unix_socket'/g" ${WEBSERVER_HOME}/core/config/common.config.php
+  # sed -i "s/#HOST#/\/run\/mysqld\/mysqld.sock/g" ${WEBSERVER_HOME}/core/config/common.config.php
+  
+  chmod 770 -R ${WEBSERVER_HOME}
+  chown -R www-data:www-data ${WEBSERVER_HOME}
   mkdir -p /tmp/jeedom
   chmod 770 -R /tmp/jeedom
   chown www-data:www-data -R /tmp/jeedom
@@ -98,7 +97,6 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
   mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'localhost';"
   mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'localhost' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
   mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'localhost';"
-
 
   log_info "jeedom clean install"
   php /var/www/html/install/install.php mode=force
