@@ -5,6 +5,12 @@ on:
     branches:
       - 'master'
       - 'develop'
+  # this is to manually trigger the worklow
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Reason'     
+        default: 'Manual launch'
 
 # no concurrency, cancel previous running workflow
 concurrency:
