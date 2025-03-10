@@ -6,6 +6,13 @@ on:
       - 'master'
       - 'develop'
       - 'feature/php_versions'
+      - 'fix/install_packages'
+  # this is to manually trigger the worklow
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Reason'     
+        default: 'Manual launch'
 
 # no concurrency, cancel previous running workflow
 concurrency:
@@ -18,6 +25,7 @@ env:
 
 
 jobs:
+  # clean runner and Lint the Dockerfile
   initStep:
     runs-on: ubuntu-latest
     steps:
@@ -60,11 +68,14 @@ jobs:
         exclude:
           - debian: bookworm
             php: 7.4
+          - debian: bullseye
+            php: 8.2
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
       TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
+      CACHE_NAME: ${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
     steps:
       -
         name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -72,7 +83,44 @@ jobs:
         run: |
           platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
           docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_SECRET }}
+
+        # prepare image cache for Dockerfile buildx
+        # https://github.com/marketplace/actions/cache
+      - id: image-cache
+        uses: actions/cache@v4.2.2
+        with:
+          path: ~/image-cache
+          # Adjust key to meet your cache time requirements e.g.
+          # ${{ hashFiles(*) }} can be useful here to invalidate
+          # cache on file changes
+          key: image-cache-${{ runner.os }}${{ matrix.php }}${{ matrix.debian }}${{ matrix.platform }}
+
+      - if: steps.image-cache.outputs.cache-hit != 'true'
+        name: Pull images for ${{ env.CACHE_NAME }} and save in cache
+        # pull from docker hub if not in cache and save in cache
+        run: |
+            CACHE_NAME=${CACHE_NAME//'/'/}
+            echo "pull images for ${CACHE_NAME}"
+            mkdir -p ~/image-cache # create cache directory
+            docker pull --platform linux/${{ matrix.platform }} php:${{ matrix.php }}-apache-${{ matrix.debian }}
+            docker pull --platform linux/${{ matrix.platform }} composer/composer:latest-bin
+            docker pull --platform linux/${{ matrix.platform }} mlocati/php-extension-installer
+            docker save -o ~/image-cache/php.${CACHE_NAME}.tar php:${{ matrix.php }}-apache-${{ matrix.debian }}
+            docker save -o ~/image-cache/php-extension-installer-${CACHE_NAME}.tar mlocati/php-extension-installer
+            docker save -o ~/image-cache/composer-${CACHE_NAME}.tar composer/composer:latest-bin
+
+      - if: steps.image-cache.outputs.cache-hit == 'true'
+        name: Load images from cache for ${{ env.CACHE_NAME }}
+        # load from cache
+        run: |
+          CACHE_NAME=${CACHE_NAME//'/'/}
+          echo "load images from cache for ${CACHE_NAME}"
+          docker load -i ~/image-cache/php.${CACHE_NAME}.tar
+          docker load -i ~/image-cache/php-extension-installer-${CACHE_NAME}.tar
+          docker load -i ~/image-cache/composer-${CACHE_NAME}.tar
+        
       -
         name: Checkout
         uses: actions/checkout@v4.1.2
@@ -157,9 +205,9 @@ jobs:
         if: steps.buildJeedom.outcome != 'success'
         # some debug information in case of error, exit with error
         run: |
-          echo "${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch master_php${{ matrix.php }} debug ${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "${{ matrix.platform}} ${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ matrix.branch }} debug=${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
           echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.cache.outputs.cache-hit }}"
-          echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
+          # echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
           exit 1
 
       -
@@ -205,6 +253,8 @@ jobs:
         exclude:
           - debian: bookworm
             php: 7.4
+          - debian: bullseye
+            php: 8.2
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
