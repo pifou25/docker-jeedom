@@ -1,49 +1,24 @@
-﻿ARG DEBIAN=bullseye
-ARG PHP=7.3
-ARG JEEDOM_REPO=jeedom/core
-
-# prepare PHP source with dependencies
-FROM composer:2.7 as vendor
-
-ARG JEEDOM_REPO
-ARG JEEDOM_VERSION=V4-stable
-ENV JEEDOM_VERSION=${JEEDOM_VERSION}
-
-WORKDIR /app
-# Download and extract PHP sources
-ADD https://github.com/${JEEDOM_REPO}/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
-RUN unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
-  find /tmp/source/ -maxdepth 1 -type d -name '*core*' -exec sh -c 'mv -T {} /app' {} \; && \
-  rm /tmp/jeedom.zip && \
-  rm -rf /app/vendor /app/install/.htaccess
-COPY install.htaccess ./install/.htaccess
-
-# run composer for dependancies
-RUN composer install --no-progress --no-interaction --no-dev 
-
-
 # Build with 3 stages, 2 targets :
 # first stage 'base' is common to 2 following targets
 # 'light_jeedom': no daemon, only apache+php
 # 'full_jeedom': standalone with all required daemons
 #
-# Debian version: buster / bullseye / bookworm
+# Debian version: bullseye / bookworm
+ARG DEBIAN=bullseye
+# PHP version required for bookworm is 8.2
+# bullseye : 7.4
+# base images are copied from ghcr.io/pifou25
+ARG PHP=7.4
+FROM php:${PHP}-apache-${DEBIAN} AS base
 ARG DEBIAN
-# PHP version required for bookworm is 8 minimum
 ARG PHP
-FROM php:${PHP}-apache-${DEBIAN} as base
-ARG DEBIAN
-ARG PHP
-ARG JEEDOM_REPO
 # optional XDEBUG arg to add xdebug packages and configuration
 ARG XDEBUG
 
-# GitHub use this label to connect Git repo and Docker images in ghcr.io
-LABEL org.opencontainers.image.source https://github.com/pifou25/docker-jeedom
-LABEL org.opencontainers.artifact.description "Jeedom Home Automation in Docker"
-LABEL org.opencontainers.image.authors pifou25
-
-ARG JEEDOM_VERSION=V4-stable
+# repo: jeedom/core or pifou25/jeedom-core
+ARG JEEDOM_REPO=jeedom/core
+# branch name: master or beta
+ARG JEEDOM_VERSION=master
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}
 ENV MYSQL_JEEDOM_DATABASE=jeedom
 ENV MYSQL_JEEDOM_USER=jeedom
@@ -51,6 +26,31 @@ ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_ROOT_PASSWORD
 ENV DEBIAN_FRONTEND=noninteractive
 
+# common packages intall
+# alphabetical order for better compare
+RUN apt-get update 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y tzdata software-properties-common 
+RUN add-apt-repository non-free 
+RUN apt-get update 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y apt-transport-https 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y apt-utils at bc ccze
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y curl dos2unix 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y ffmpeg gettext git 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y iproute2 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y librsync-dev libssh2-1 libssh2-1-dev libzip-dev 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y locales net-tools 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y nmap ntp ntpdate
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y mariadb-client 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y python3 python3-dev python3-pip python3-virtualenv 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y smbclient 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y ssl-cert sudo wget
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y zip unzip
+
+
+# GitHub use this label to connect Git repo and Docker images in ghcr.io
+LABEL org.opencontainers.image.source https://github.com/pifou25/docker-jeedom
+LABEL org.opencontainers.artifact.description "Jeedom Home Automation in Docker"
+LABEL org.opencontainers.image.authors pifou25
 LABEL com.jeedom.version="${JEEDOM_REPO} ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
 LABEL org.opencontainers.image.description "Jeedom Home Automation in Docker. ${JEEDOM_REPO} ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
 
@@ -66,41 +66,6 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
 	mkdir -p /etc/sudoers.d && \
     echo "www-data ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/90-mysudoers
 
-# common packages intall
-# alphabetical order for better compare
-RUN apt-get update && \
-  apt-get install --no-install-recommends --no-install-suggests -q -y tzdata software-properties-common && \
-  add-apt-repository non-free && \
-  apt-get update && \
-  apt-get install --no-install-recommends --no-install-suggests -q -y \
-  apt-transport-https \
-  apt-utils \
-  at \
-  bc \
-  ccze \
-  curl \
-  dos2unix \
-  ffmpeg \
-  gettext \
-  git \
-  iproute2 \
-  librsync-dev \
-  libssh2-1 \
-  libssh2-1-dev \
-  libzip-dev \
-  locales \
-  net-tools \
-  nmap \
-  ntp \
-  ntpdate \
-  mariadb-client \
-  python3 python3-dev python3-pip python3-virtualenv \
-  smbclient \
-  ssl-cert \
-  sudo \
-  wget \
-  zip unzip
-
 # add php extension
 # shellcheck disable=DL3022
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
@@ -111,8 +76,18 @@ RUN install-php-extensions\
 
 WORKDIR /var/www/html
 VOLUME /var/www/html
-# copy PHP sources from previous stage
-COPY --from=vendor app/ .
+
+# Download and extract PHP sources from $repo:$branch
+ADD https://github.com/${JEEDOM_REPO}/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
+RUN unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
+  find /tmp/source/ -maxdepth 1 -type d -name '*core*' -exec sh -c 'mv -T {} /var/www/html' {} \; && \
+  rm /tmp/jeedom.zip && \
+  rm -rf /app/vendor /app/install/.htaccess
+COPY install.htaccess ./install/.htaccess
+
+# download & run composer for dependancies
+COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
+RUN composer install --no-progress --no-interaction --no-dev 
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
@@ -124,20 +99,19 @@ RUN usermod -u 1000 www-data \
 VOLUME /var/www/html/backup
 VOLUME /var/www/html/log
 
-# install xdebug : check compatibility https://xdebug.org/docs/compat
+# install xdebug-3.1.6 for php7.4 and 3.3.2 for php8.2
+# check https://xdebug.org/docs/compat
 COPY xdebug.ini /tmp/xdebug.ini
 RUN if [[ ${XDEBUG} == "true" ]] ; then \
   pecl install redis-5.3.4 \
-	&& pecl install "$(if [[ $(echo "${PHP} >= 8.0" | bc) == 1 ]] ; then echo xdebug-3.3.2 ; else echo xdebug-3.0.4 ; fi)" \
+	&& pecl install "$(if [[ $(echo "${PHP} >= 8.0" | bc) == 1 ]] ; then echo xdebug-3.3.2 ; else echo xdebug-3.1.6 ; fi)" \
 	&& docker-php-ext-enable redis xdebug \
   && mv /tmp/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini ; \
   fi
 
-
-#
 # First final image: light Jeedom with /without xdebug
 #
-FROM base as light_jeedom
+FROM base AS light_jeedom
 # the mysql hostname is another environment variable
 ENV MYSQL_HOST=db
 
@@ -151,7 +125,7 @@ CMD ["/root/init.sh"]
 #
 # Second final image: full standalone
 #
-FROM base as full_jeedom
+FROM base AS full_jeedom
 ARG JEEDOM_REPO
 ARG JEEDOM_VERSION
 ENV MYSQL_HOST=localhost
@@ -169,7 +143,7 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
   supervisor \
   && rm -rf /var/lib/apt/lists/*
 
-# customization from official ${JEEDOM_REPO} repo
+# customization from ${JEEDOM_REPO} repo
 COPY  standalone/supervisord.conf /etc/supervisor/supervisord.conf
 COPY  standalone/jeedom_my.cnf /etc/mysql/conf.d/jeedom_my.cnf
 ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/apache_security /etc/apache2/conf-available/security.conf

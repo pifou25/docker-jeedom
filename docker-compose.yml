@@ -40,7 +40,7 @@ services:
     #  context: ./build
     #  target: light_jeedom # add target if required
     #  args:
-    #    JEEDOM_VERSION: V4-stable
+    #    JEEDOM_VERSION: master
     #    XDEBUG: true
     # OR use existing ready-to-go image:
     image: pifou25/jeedom:light
@@ -50,7 +50,7 @@ services:
       - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
       - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
       - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
-      - JEEDOM_VERSION=${JEEDOM_VERSION:-V4-stable}
+      - JEEDOM_VERSION=${JEEDOM_VERSION:-master}
       - MYSQL_HOST=db
       - TZ=${TZ:-Europe/Paris}
     restart: unless-stopped
