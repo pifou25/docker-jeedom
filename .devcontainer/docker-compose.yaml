@@ -1,0 +1,83 @@
+# run pifou25/jeedom image with xdebug
+# this stack launches jeedom light with xdebug
+# a mariadb database and phpmyadmin
+# it also includes a scheduler service to run cron jobs
+
+services:
+  jeedom:
+    image: pifou25/jeedom:bookworm-8.2-light-beta-debug
+    container_name: jeedom
+    ports:
+      - "80:80"
+      - "443:443"
+      - "9003:9003" # Xdebug port
+    volumes:
+      - ..:/var/www/html
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - XDEBUG_MODE=debug,develop,coverage
+      - XDEBUG_CONFIG=client_host=host.docker.internal client_port=9003 start_with_request=yes stop_on_error=yes force_display_errors=yes
+      - PHP_IDE_CONFIG=serverName=jeedom
+      # sql env variables
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - MARIADB_JEEDOM_PASSWD=jeedom_password
+    restart: unless-stopped
+    depends_on:
+      - mariadb
+      - scheduler
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/jeedom/index.php"]
+      interval: 90s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    labels:
+      # label chadburn for the "cron" container
+      chadburn.enabled: "true"
+      chadburn.job-exec.jeedom-backup.schedule: "@every 1d"
+      chadburn.job-exec.jeedom-backup.command: "mysqldump -d${MYSQL_JEEDOM_DB:-jeedom} -u${MYSQL_JEEDOM_USER:-jeedom} -p\"${MYSQL_JEEDOM_PASSWD:-jeedom}\"' > /backup/jeedom.sql"
+
+  mariadb:
+    image: mariadb:latest
+    volumes:
+      - ../backup/mariadb:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: jeedom
+      MYSQL_USER: jeedom
+      MYSQL_PASSWORD: jeedom_password
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping"]
+      interval: 90s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+  
+  phpmyadmin:
+    image: phpmyadmin:latest
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mariadb
+      PMA_USER: jeedom
+      PMA_PASSWORD: jeedom_password
+    restart: unless-stopped
+
+  # Scheduler Service: mcuadros/ofelia or premoweb/chadburn
+  scheduler:
+  # pinned version until issue #116 is fixed
+  # https://github.com/PremoWeb/chadburn/issues/116
+    image: premoweb/chadburn:1.0.7
+    environment:
+      - TZ=${tz:-Europe/Paris}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: daemon
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+    restart: unless-stopped
