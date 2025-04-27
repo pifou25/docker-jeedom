@@ -12,7 +12,7 @@ services:
       - "443:443"
       - "9003:9003" # Xdebug port
     volumes:
-      - ..:/var/www/html
+      - ../../jeedom-core:/var/www/html
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - XDEBUG_MODE=debug,develop,coverage
@@ -41,7 +41,7 @@ services:
   mariadb:
     image: mariadb:latest
     volumes:
-      - ../backup/mariadb:/var/lib/mysql
+      - ../../jeedom-core/backup/mariadb:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: jeedom

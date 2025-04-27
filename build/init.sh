@@ -73,7 +73,7 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
     chown www-data:www-data -R /tmp/jeedom
 
     # wait until db is up and running
-    while ! mysqladmin ping -h"$MYSQL_HOST" --silent; do
+    while ! mysqladmin ping -h"$MYSQL_HOST" -u"$MYSQL_JEEDOM_USER" -p"$MYSQL_JEEDOM_PASSWD" --silent; do
       log_warn "Wait 2 seconds for MariaDB to start..."
       sleep 2
     done
