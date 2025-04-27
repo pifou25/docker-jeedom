@@ -1,4 +1,4 @@
-﻿<img align="right" src="img/jeedom_logo.png" width="200" height="200">
+<img align="right" src="https://raw.githubusercontent.com/pifou25/docker-jeedom/master/img/jeedom_logo.png" width="100" height="100">
 
 [![Docker Multiplatform Build ci](https://github.com/pifou25/docker-jeedom/actions/workflows/buildx-platform.yml/badge.svg)](https://github.com/pifou25/docker-jeedom/actions/workflows/buildx-platform.yml)
 ![Docker Pulls](https://img.shields.io/docker/pulls/pifou25/jeedom)
@@ -19,7 +19,7 @@
 ## Jeedom As A Service (full)
 
 A complete standalone `full` Docker container including every PHP packages, Apache server,
- Python, and also many daemons: MariaDB, Cron scheduler, atd, fail2ban, supervisor....
+ Python, and also many daemons: MariaDB, Cron scheduler, atd, (fail2ban), (supervisor)....
 
 ## Jeedom as simple as possible (light)
 
@@ -33,21 +33,18 @@ complete installation.
 ### Meaning of any keywords
 
 * `Full` = standalone
-* `Light` = without extra daemon
+* `Light` = without extra daemon, use with other services
 * bullseye, buster, or bookworm is the Debian base version. The current default is `bullseye`
-* Jeedom Version `stable` (current = v4.3 = latest) or `beta` (future v4.4), see jeedom Git branches.
-* `debug` when the image also contains XDebug packages for PHP debug
+* Jeedom Version `stable` (current = v4.4 = latest) or `dev` (future v4.5 or v5 ?), see jeedom Git branches.
+The `dev` is not from official Jeedom `alpha` or `beta` but from my specific repo. This dev version has
+`xdebug` activated.
 
 ### List of generated Tags
 
 * full-stable full latest
-* full-beta beta
-* debug-full-stable debug-full debug
-* debug-full-beta debug-beta
+* full-dev dev
 * light-stable light
-* light-beta 
-* debug-light-stable debug-light
-* debug-light-beta
+* light-dev
 
 ## Jeedom Plugins
 

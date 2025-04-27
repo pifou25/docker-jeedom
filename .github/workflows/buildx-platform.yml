@@ -1,4 +1,6 @@
 name: Docker Multiplatform Build ci
+# master branch build image from jeedom/core:master repo
+# develop branch build image from pifou25/jeedom-core:develop repo
 
 on:
   push:
@@ -19,8 +21,14 @@ concurrency:
 
 env:
   # used to download jeedom source
-  JEEDOM_REPO: "pifou25/jeedom-core"
-
+  JEEDOM_REPO: ${{ github.ref_name == 'master' && 'jeedom/core' || 'pifou25/jeedom-core' }}
+  # docker registry image name
+  REGISTRY_IMAGE: pifou25/jeedom
+  # branch to use: master if the current branch is master, develop if not
+  # this is used to set the jeedom version in the Dockerfile
+  JEEDOM_BRANCH: ${{ github.ref_name == 'master' && 'master' || 'develop' }}
+  # XDEBUG enabled by default for develop branch
+  XDEBUG: ${{ github.ref_name == 'master' && 'false' || 'true' }}
 
 jobs:
   # clean runner and Lint the Dockerfile
@@ -61,10 +69,7 @@ jobs:
         php: [7.4, 8.2]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
         platform: [amd64, arm64, arm/v6, arm/v7]
-        # no beta version for now
-        branch: ["master"]
         target: ["light", "full"]
-        xdebug: [true, false]
         exclude:
           - debian: bookworm
             php: 7.4
@@ -72,10 +77,11 @@ jobs:
             php: 8.2
 
     env:
-      REGISTRY_IMAGE: pifou25/jeedom
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
-      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
+      # tag name de la forme: debian-php-light-debug-dev e.g. bullseye-8.2-light-debug-dev
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
       CACHE_NAME: ${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
+    
     steps:
       -
         name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -195,8 +201,8 @@ jobs:
             DEBIAN=${{ matrix.debian }}
             PHP=${{ matrix.php }}
             JEEDOM_REPO=${{ env.JEEDOM_REPO }}
-            JEEDOM_VERSION=${{ matrix.branch }}
-            XDEBUG=${{ matrix.xdebug }}
+            JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }}
+            XDEBUG=${{ env.XDEBUG }}
           platforms: linux/${{ matrix.platform }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
@@ -207,7 +213,7 @@ jobs:
         if: steps.buildJeedom.outcome != 'success'
         # some debug information in case of error, exit with error
         run: |
-          echo "${{ matrix.platform}} ${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ matrix.branch }} debug=${{ matrix.xdebug }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "${{ matrix.platform}} ${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ env.JEEDOM_BRANCH }} debug=${{ env.XDEBUG }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
           echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.cache.outputs.cache-hit }}"
           # echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
           exit 1
@@ -251,7 +257,6 @@ jobs:
         # no beta version for now
         jeedom: ["master"]
         target: ["light", "full"]
-        xdebug: [true, false]
         exclude:
           - debian: bookworm
             php: 7.4
@@ -260,9 +265,9 @@ jobs:
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ matrix.xdebug && '-debug' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom
-      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && matrix.xdebug == 'false' && github.ref_name == 'master') }}
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
  
     steps:
       -

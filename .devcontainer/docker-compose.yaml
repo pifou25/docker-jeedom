@@ -41,7 +41,7 @@ services:
   mariadb:
     image: mariadb:latest
     volumes:
-      - ../../jeedom-core/backup/mariadb:/var/lib/mysql
+      - ../volumes/mariadb:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: jeedom
