@@ -28,13 +28,13 @@ No other daemon nor database, this single container should work with others serv
 The `docker-compose.yml` is an example of the complete service stack used for a 
 complete installation.
 
- ## List of Docker available images
+## List of Docker available images
 
 ### Meaning of any keywords
 
 * `Full` = standalone
 * `Light` = without extra daemon, use with other services
-* bullseye, buster, or bookworm is the Debian base version. The current default is `bullseye`
+* bullseye, or bookworm is the Debian base version. The current default is `bullseye`
 * Jeedom Version `stable` (current = v4.4 = latest) or `dev` (future v4.5 or v5 ?), see jeedom Git branches.
 The `dev` is not from official Jeedom `alpha` or `beta` but from my specific repo. This dev version has
 `xdebug` activated.
@@ -77,7 +77,6 @@ You may edit the yml to build your own Jeedom container with these parameters:
     # build your own image first with build-args and target:
     build:
       context: ./build
-      target: light_jeedom # add target if required
       args:
         JEEDOM_VERSION: master
         XDEBUG: true

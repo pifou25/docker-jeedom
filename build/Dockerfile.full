@@ -17,7 +17,8 @@ ARG JEEDOM_VERSION
 ENV MYSQL_HOST=localhost
 
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
-RUN groupadd -r mysql && useradd -r -g mysql mysql && \
+RUN getent group mysql &>/dev/null || groupadd -r mysql && \
+    getent passwd mysql &>/dev/null || useradd -r -g mysql mysql && \
     mkdir -p '/var/run/mysqld' && \
     usermod -a -G mysql www-data && \
     chmod 774 '/var/run/mysqld'
