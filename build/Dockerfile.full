@@ -40,10 +40,9 @@ ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/
 COPY  php.ini /usr/local/etc/php/php.ini
 
 RUN rm /etc/apache2/conf-enabled/security.conf > /dev/null 2>&1 && \
-    ln -s /etc/apache2/conf-available/security.conf /etc/apache2/conf-enabled/ && \
-    ln -s /etc/apache2/conf-available/remoteip.conf /etc/apache2/conf-enabled/ && \
-    rm /etc/apache2/sites-enabled/000-default.conf > /dev/null 2>&1 && \
-    ln -s /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-enabled/ && \
+    ln -sf /etc/apache2/conf-available/security.conf /etc/apache2/conf-enabled/ && \
+    ln -sf /etc/apache2/conf-available/remoteip.conf /etc/apache2/conf-enabled/ && \
+    ln -sf /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-enabled/ && \
     rm /etc/apache2/conf-available/other-vhosts-access-log.conf > /dev/null 2>&1 && \
     rm /etc/apache2/conf-enabled/other-vhosts-access-log.conf > /dev/null 2>&1 && \
     echo '' > /etc/apache2/mods-available/alias.conf && \
