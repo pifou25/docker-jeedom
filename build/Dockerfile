@@ -23,6 +23,10 @@ ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_JEEDOM_PASSWD
 # ENV MYSQL_ROOT_PASSWORD
 ENV DEBIAN_FRONTEND=noninteractive
+# required env var for init.sh script
+ENV WEBSERVER_HOME=/var/www/html
+
+USER root
 
 # common packages intall
 # alphabetical order for better compare
@@ -43,7 +47,8 @@ RUN apt-get install --no-install-recommends --no-install-suggests -q -y python3 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y smbclient 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y ssl-cert sudo wget
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y zip unzip
-
+# force python3 as default python
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 
 # GitHub use this label to connect Git repo and Docker images in ghcr.io
 LABEL org.opencontainers.image.source="https://github.com/pifou25/docker-jeedom"
@@ -72,13 +77,13 @@ RUN install-php-extensions\
     mbstring mysqli pcntl pdo_mysql \
     soap sockets xmlrpc zip gd opcache ssh2
 
-WORKDIR /var/www/html
-VOLUME /var/www/html
+WORKDIR ${WEBSERVER_HOME}
+VOLUME ${WEBSERVER_HOME}
 
 # Download and extract PHP sources from $repo:$branch
 ADD https://github.com/${JEEDOM_REPO}/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
 RUN unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
-  find /tmp/source/ -maxdepth 1 -type d -name '*core*' -exec sh -c 'mv -T {} /var/www/html' {} \; && \
+  find /tmp/source/ -maxdepth 1 -type d -name '*core*' -exec sh -c "mv -T {} ${WEBSERVER_HOME}" {} \; && \
   rm /tmp/jeedom.zip && \
   rm -rf /app/vendor /app/install/.htaccess
 COPY install.htaccess ./install/.htaccess
@@ -94,8 +99,8 @@ RUN usermod -u 1000 www-data \
    && chmod 777 -R /tmp/jeedom \
    && chown www-data:www-data -R /tmp/jeedom
 
-VOLUME /var/www/html/backup
-VOLUME /var/www/html/log
+VOLUME ${WEBSERVER_HOME}/backup
+VOLUME ${WEBSERVER_HOME}/log
 
 # install xdebug-3.1.6 for php7.4 and 3.3.2 for php8.2
 # check https://xdebug.org/docs/compat
@@ -115,4 +120,5 @@ ENV MYSQL_HOST=db
 HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
   CMD curl -s --fail http://localhost/here.html || exit 1
 COPY --chmod=0775 init.sh /root/init.sh
+USER www-data
 CMD ["/root/init.sh"]

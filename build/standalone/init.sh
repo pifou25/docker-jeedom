@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # ___________________________
 #   constants and functions

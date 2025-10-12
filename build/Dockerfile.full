@@ -8,7 +8,6 @@ ARG DEBIAN=bullseye
 ARG PHP=7.4
 # set XTRARGS=-debug to add xdebug packages and configuration
 ARG XTRARGS=
-
 FROM pifou25/jeedom:${DEBIAN}-${PHP}${XTRARGS}
 # repo: jeedom/core or pifou25/jeedom-core
 ARG JEEDOM_REPO
@@ -16,12 +15,15 @@ ARG JEEDOM_REPO
 ARG JEEDOM_VERSION
 ENV MYSQL_HOST=localhost
 
+USER root
+
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
 RUN getent group mysql &>/dev/null || groupadd -r mysql && \
     getent passwd mysql &>/dev/null || useradd -r -g mysql mysql && \
     mkdir -p '/var/run/mysqld' && \
     usermod -a -G mysql www-data && \
-    chmod 774 '/var/run/mysqld'
+    chmod 774 '/var/run/mysqld' && \
+    chown -R mysql:mysql '/var/run/mysqld'
 
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
   cron \
