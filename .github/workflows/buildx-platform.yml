@@ -211,7 +211,7 @@ jobs:
             JEEDOM_REPO=${{ env.JEEDOM_REPO }}
             JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }}
             XDEBUG=${{ env.XDEBUG }}
-            XTRARGS=${{ env.XDEBUG && '-xdebug' || '' }}
+            XTRARGS=${{ env.XDEBUG && '-dev' || '' }}
           platforms: linux/${{ matrix.platform }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
