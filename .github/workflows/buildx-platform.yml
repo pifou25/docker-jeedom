@@ -7,6 +7,7 @@ on:
     branches:
       - 'master'
       - 'develop'
+      - 'feat/full_fix'
   # this is to manually trigger the worklow
   workflow_dispatch:
     inputs:
@@ -48,6 +49,13 @@ jobs:
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: build/Dockerfile
+          no-fail: true
+          verbose: true
+      - name: Docker Lint
+        # https://github.com/marketplace/actions/hadolint-action
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: build/Dockerfile.full
           no-fail: true
           verbose: true
 
@@ -195,14 +203,15 @@ jobs:
         continue-on-error: true
         with:
           context: build
+          file: build/Dockerfile${{ matrix.target == 'light' && '' || '.full' }}
           labels: ${{ steps.meta.outputs.labels }}
-          target: ${{ matrix.target }}_jeedom
           build-args: |
             DEBIAN=${{ matrix.debian }}
             PHP=${{ matrix.php }}
             JEEDOM_REPO=${{ env.JEEDOM_REPO }}
             JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }}
             XDEBUG=${{ env.XDEBUG }}
+            XTRARGS=${{ env.XDEBUG && '-xdebug' || '' }}
           platforms: linux/${{ matrix.platform }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
@@ -254,8 +263,6 @@ jobs:
       matrix:
         debian: [bullseye, bookworm]
         php: [7.4, 8.2]
-        # no beta version for now
-        jeedom: ["master"]
         target: ["light", "full"]
         exclude:
           - debian: bookworm

@@ -1,0 +1,73 @@
+# second final image: full_jeedom standalone with all required daemons
+#
+# Debian version: bullseye / bookworm
+ARG DEBIAN=bullseye
+# PHP version required for bookworm is 8.2
+# bullseye : 7.4
+# base images are copied from ghcr.io/pifou25
+ARG PHP=7.4
+# set XTRARGS=-debug to add xdebug packages and configuration
+ARG XTRARGS=
+
+FROM pifou25/jeedom:${DEBIAN}-${PHP}${XTRARGS}
+# repo: jeedom/core or pifou25/jeedom-core
+ARG JEEDOM_REPO
+# branch name: master or beta
+ARG JEEDOM_VERSION
+ENV MYSQL_HOST=localhost
+
+# add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
+RUN groupadd -r mysql && useradd -r -g mysql mysql && \
+    mkdir -p '/var/run/mysqld' && \
+    usermod -a -G mysql www-data && \
+    chmod 774 '/var/run/mysqld'
+
+RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
+  cron \
+  fail2ban \
+  mariadb-common mariadb-server \
+  supervisor \
+  && rm -rf /var/lib/apt/lists/*
+
+# customization from ${JEEDOM_REPO} repo
+COPY  standalone/supervisord.conf /etc/supervisor/supervisord.conf
+COPY  standalone/jeedom_my.cnf /etc/mysql/conf.d/jeedom_my.cnf
+ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/apache_security /etc/apache2/conf-available/security.conf
+ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/apache_remoteip /etc/apache2/conf-available/remoteip.conf
+ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/apache_default /etc/apache2/sites-available/000-default.conf
+ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/fail2ban.jeedom.conf /etc/fail2ban/jail.d/jeedom.conf
+COPY  php.ini /usr/local/etc/php/php.ini
+
+RUN rm /etc/apache2/conf-enabled/security.conf > /dev/null 2>&1 && \
+    ln -s /etc/apache2/conf-available/security.conf /etc/apache2/conf-enabled/ && \
+    ln -s /etc/apache2/conf-available/remoteip.conf /etc/apache2/conf-enabled/ && \
+    rm /etc/apache2/sites-enabled/000-default.conf > /dev/null 2>&1 && \
+    ln -s /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-enabled/ && \
+    rm /etc/apache2/conf-available/other-vhosts-access-log.conf > /dev/null 2>&1 && \
+    rm /etc/apache2/conf-enabled/other-vhosts-access-log.conf > /dev/null 2>&1 && \
+    echo '' > /etc/apache2/mods-available/alias.conf && \
+    rm /etc/fail2ban/jail.d/defaults-debian.conf && \
+    mkdir -p /var/run/fail2ban && \
+    chown -R www-data /etc/apache2 && \
+    rm /var/log/apache2/error.log && touch /var/log/apache2/error.log && \
+    chown -R www-data:www-data /var/log/apache2/error.log && \
+    chmod 0444 /etc/mysql/conf.d/jeedom_my.cnf
+
+# Add the supervisord healthcheck script
+COPY standalone/healthcheck.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/healthcheck.sh
+HEALTHCHECK --interval=300s --timeout=5s --retries=3 \
+  CMD /usr/local/bin/healthcheck.sh
+
+# Initialisation
+COPY --chmod=0775 standalone/init.sh /root/init.sh
+
+#volume for mariadb data
+VOLUME  /var/lib/mysql
+
+# env config for supervisord
+ENV PYTHONUNBUFFERED=True 
+ENV PYTHONIOENCODING=UTF-8
+
+# ENTRYPOINT ["/root/init.sh"]
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
