@@ -39,17 +39,16 @@ ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/
 ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/fail2ban.jeedom.conf /etc/fail2ban/jail.d/jeedom.conf
 COPY  php.ini /usr/local/etc/php/php.ini
 
-RUN rm /etc/apache2/conf-enabled/security.conf > /dev/null 2>&1 && \
-    ln -sf /etc/apache2/conf-available/security.conf /etc/apache2/conf-enabled/ && \
+RUN ln -sf /etc/apache2/conf-available/security.conf /etc/apache2/conf-enabled/ && \
     ln -sf /etc/apache2/conf-available/remoteip.conf /etc/apache2/conf-enabled/ && \
     ln -sf /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-enabled/ && \
-    rm /etc/apache2/conf-available/other-vhosts-access-log.conf > /dev/null 2>&1 && \
-    rm /etc/apache2/conf-enabled/other-vhosts-access-log.conf > /dev/null 2>&1 && \
+    rm -f /etc/apache2/conf-available/other-vhosts-access-log.conf && \
+    rm -f /etc/apache2/conf-enabled/other-vhosts-access-log.conf && \
     echo '' > /etc/apache2/mods-available/alias.conf && \
-    rm /etc/fail2ban/jail.d/defaults-debian.conf && \
+    rm -f /etc/fail2ban/jail.d/defaults-debian.conf && \
     mkdir -p /var/run/fail2ban && \
-    chown -R www-data /etc/apache2 && \
-    rm /var/log/apache2/error.log && touch /var/log/apache2/error.log && \
+    chown -R www-data:www-data /etc/apache2 && \
+    rm -f /var/log/apache2/error.log && touch /var/log/apache2/error.log && \
     chown -R www-data:www-data /var/log/apache2/error.log && \
     chmod 0444 /etc/mysql/conf.d/jeedom_my.cnf
 
