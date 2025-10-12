@@ -1,5 +1,5 @@
 # prepare PHP source with dependencies
-FROM composer:2.7 as vendor
+FROM composer:2.7 AS vendor
 
 ARG JEEDOM_REPO=jeedom/core
 ARG JEEDOM_VERSION=master
