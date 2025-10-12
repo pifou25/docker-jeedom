@@ -27,7 +27,7 @@ services:
       - mariadb
       - scheduler
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/jeedom/index.php"]
+      test: ["CMD", "curl", "-f", "http://localhost/index.php"]
       interval: 90s
       timeout: 10s
       retries: 5

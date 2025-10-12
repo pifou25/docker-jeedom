@@ -1,15 +1,13 @@
-# Build with 3 stages, 2 targets :
-# first stage 'base' is common to 2 following targets
-# 'light_jeedom': no daemon, only apache+php
+# Base image for light jeedom: no daemon, only apache+php
 # 'full_jeedom': standalone with all required daemons
 #
 # Debian version: bullseye / bookworm
-ARG DEBIAN=bullseye
+ARG DEBIAN=bookworm
 # PHP version required for bookworm is 8.2
 # bullseye : 7.4
 # base images are copied from ghcr.io/pifou25
-ARG PHP=7.4
-FROM php:${PHP}-apache-${DEBIAN} AS base
+ARG PHP=8.2
+FROM php:${PHP}-apache-${DEBIAN}
 ARG DEBIAN
 ARG PHP
 # optional XDEBUG arg to add xdebug packages and configuration
@@ -48,11 +46,11 @@ RUN apt-get install --no-install-recommends --no-install-suggests -q -y zip unzi
 
 
 # GitHub use this label to connect Git repo and Docker images in ghcr.io
-LABEL org.opencontainers.image.source https://github.com/pifou25/docker-jeedom
-LABEL org.opencontainers.artifact.description "Jeedom Home Automation in Docker"
-LABEL org.opencontainers.image.authors pifou25
+LABEL org.opencontainers.image.source="https://github.com/pifou25/docker-jeedom"
+LABEL org.opencontainers.artifact.description="Jeedom Home Automation in Docker"
+LABEL org.opencontainers.image.authors="pifou25"
 LABEL com.jeedom.version="${JEEDOM_REPO} ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
-LABEL org.opencontainers.image.description "Jeedom Home Automation in Docker. ${JEEDOM_REPO} ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
+LABEL org.opencontainers.image.description="Jeedom Home Automation in Docker. ${JEEDOM_REPO} ${JEEDOM_VERSION} for Debian ${DEBIAN} + PHP ${PHP}"
 
 # add motd & bashrc - link sh to bash for Docker Desktop
 # add sudo for www-data
@@ -110,8 +108,6 @@ RUN if [[ ${XDEBUG} == "true" ]] ; then \
   fi
 
 # First final image: light Jeedom with /without xdebug
-#
-FROM base AS light_jeedom
 # the mysql hostname is another environment variable
 ENV MYSQL_HOST=db
 
@@ -120,68 +116,3 @@ HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
   CMD curl -s --fail http://localhost/here.html || exit 1
 COPY --chmod=0775 init.sh /root/init.sh
 CMD ["/root/init.sh"]
-
-
-#
-# Second final image: full standalone
-#
-FROM base AS full_jeedom
-ARG JEEDOM_REPO
-ARG JEEDOM_VERSION
-ENV MYSQL_HOST=localhost
-
-# add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
-RUN groupadd -r mysql && useradd -r -g mysql mysql && \
-    mkdir -p '/var/run/mysqld' && \
-    usermod -a -G mysql www-data && \
-    chmod 774 '/var/run/mysqld'
-
-RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
-  cron \
-  fail2ban \
-  mariadb-common mariadb-server \
-  supervisor \
-  && rm -rf /var/lib/apt/lists/*
-
-# customization from ${JEEDOM_REPO} repo
-COPY  standalone/supervisord.conf /etc/supervisor/supervisord.conf
-COPY  standalone/jeedom_my.cnf /etc/mysql/conf.d/jeedom_my.cnf
-ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/apache_security /etc/apache2/conf-available/security.conf
-ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/apache_remoteip /etc/apache2/conf-available/remoteip.conf
-ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/apache_default /etc/apache2/sites-available/000-default.conf
-ADD  https://raw.githubusercontent.com/${JEEDOM_REPO}/${JEEDOM_VERSION}/install/fail2ban.jeedom.conf /etc/fail2ban/jail.d/jeedom.conf
-COPY  php.ini /usr/local/etc/php/php.ini
-
-RUN rm /etc/apache2/conf-enabled/security.conf > /dev/null 2>&1 && \
-    ln -s /etc/apache2/conf-available/security.conf /etc/apache2/conf-enabled/ && \
-    ln -s /etc/apache2/conf-available/remoteip.conf /etc/apache2/conf-enabled/ && \
-    rm /etc/apache2/sites-enabled/000-default.conf > /dev/null 2>&1 && \
-    ln -s /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-enabled/ && \
-    rm /etc/apache2/conf-available/other-vhosts-access-log.conf > /dev/null 2>&1 && \
-    rm /etc/apache2/conf-enabled/other-vhosts-access-log.conf > /dev/null 2>&1 && \
-    echo '' > /etc/apache2/mods-available/alias.conf && \
-    rm /etc/fail2ban/jail.d/defaults-debian.conf && \
-    mkdir -p /var/run/fail2ban && \
-    chown -R www-data /etc/apache2 && \
-    rm /var/log/apache2/error.log && touch /var/log/apache2/error.log && \
-    chown -R www-data:www-data /var/log/apache2/error.log && \
-    chmod 0444 /etc/mysql/conf.d/jeedom_my.cnf
-
-# Add the supervisord healthcheck script
-COPY standalone/healthcheck.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/healthcheck.sh
-HEALTHCHECK --interval=300s --timeout=5s --retries=3 \
-  CMD /usr/local/bin/healthcheck.sh
-
-# Initialisation
-COPY --chmod=0775 standalone/init.sh /root/init.sh
-
-#volume for mariadb data
-VOLUME  /var/lib/mysql
-
-# env config for supervisord
-ENV PYTHONUNBUFFERED=True 
-ENV PYTHONIOENCODING=UTF-8
-
-# ENTRYPOINT ["/root/init.sh"]
-CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
