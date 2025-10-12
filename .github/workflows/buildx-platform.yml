@@ -7,6 +7,7 @@ on:
     branches:
       - 'master'
       - 'develop'
+      - 'feat/trixie'
   # this is to manually trigger the worklow
   workflow_dispatch:
     inputs:
@@ -72,16 +73,11 @@ jobs:
       # limit to avoid error HTTP 409: too many requests
       max-parallel: 5
       matrix:
-        debian: [bullseye, bookworm]
-        php: [7.4, 8.2]
+        debian: [trixie]
+        php: [8.4]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
         platform: [amd64, arm64, arm/v6, arm/v7]
         target: ["light", "full"]
-        exclude:
-          - debian: bookworm
-            php: 7.4
-          - debian: bullseye
-            php: 8.2
 
     env:
       # tag name de la forme: debian-php-light-debug-dev e.g. bullseye-8.2-light-debug-dev
@@ -260,14 +256,9 @@ jobs:
       # limit to avoid error HTTP 409: too many requests
       max-parallel: 2
       matrix:
-        debian: [bullseye, bookworm]
-        php: [7.4, 8.2]
+        debian: [trixie]
+        php: [8.4]
         target: ["light", "full"]
-        exclude:
-          - debian: bookworm
-            php: 7.4
-          - debian: bullseye
-            php: 8.2
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom

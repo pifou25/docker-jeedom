@@ -31,9 +31,10 @@ USER root
 # common packages intall
 # alphabetical order for better compare
 RUN apt-get update 
-RUN apt-get install --no-install-recommends --no-install-suggests -q -y tzdata software-properties-common 
-RUN add-apt-repository non-free 
-RUN apt-get update 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y tzdata
+# software-properties-common 
+# RUN add-apt-repository non-free 
+# RUN apt-get update 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y apt-transport-https 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y apt-utils at bc ccze
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y curl dos2unix 
@@ -41,7 +42,8 @@ RUN apt-get install --no-install-recommends --no-install-suggests -q -y ffmpeg g
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y iproute2 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y librsync-dev libssh2-1 libssh2-1-dev libzip-dev 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y locales net-tools 
-RUN apt-get install --no-install-recommends --no-install-suggests -q -y nmap ntp ntpdate
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y nmap
+# ntp ntpdate
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y mariadb-client 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y python3 python3-dev python3-pip python3-virtualenv 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y smbclient 
