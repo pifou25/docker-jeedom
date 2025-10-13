@@ -41,7 +41,7 @@ RUN apt-get install --no-install-recommends --no-install-suggests -q -y curl dos
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y ffmpeg gettext git 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y iproute2 
 # libssh2-& remplacé par libssh2-1t64
-RUN apt-get install --no-install-recommends --no-install-suggests -q -y librsync-dev libssh2-1t64 libzip-dev 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y librsync-dev libssh2-1t64 libssh2-1-dev libzip-dev 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y locales net-tools 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y nmap
 # ntp ntpdate
