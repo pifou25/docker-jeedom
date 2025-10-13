@@ -110,7 +110,7 @@ VOLUME ${WEBSERVER_HOME}/log
 COPY xdebug.ini /tmp/xdebug.ini
 RUN if [[ ${XDEBUG} == "true" ]] ; then \
   pecl install redis-5.3.4 \
-	&& pecl install "$(if [[ $(echo "${PHP} >= 8.0" | bc) == 1 ]] ; then echo xdebug-3.3.2 ; else echo xdebug-3.1.6 ; fi)" \
+	&& pecl install "$(if [[ $(echo "${PHP} >= 8.0" | bc) == 1 ]] ; then echo xdebug-3.4.5 ; else echo xdebug-3.1.6 ; fi)" \
 	&& docker-php-ext-enable redis xdebug \
   && mv /tmp/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini ; \
   fi
