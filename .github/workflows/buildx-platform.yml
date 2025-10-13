@@ -202,7 +202,7 @@ jobs:
         continue-on-error: true
         with:
           context: build
-          file: build/Dockerfile${{ matrix.target == 'light' && '' || '.full' }}
+          file: build/Dockerfile${{ matrix.target != 'light' && '.full' || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             DEBIAN=${{ matrix.debian }}
@@ -210,7 +210,7 @@ jobs:
             JEEDOM_REPO=${{ env.JEEDOM_REPO }}
             JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }}
             XDEBUG=${{ env.XDEBUG }}
-            XTRARGS=${{ env.XDEBUG && '-dev' || '' }}
+            XTRARGS=${{ env.XDEBUG && '-light-dev' || '-light' }}
           platforms: linux/${{ matrix.platform }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
