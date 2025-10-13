@@ -106,10 +106,11 @@ VOLUME ${WEBSERVER_HOME}/backup
 VOLUME ${WEBSERVER_HOME}/log
 
 # install xdebug-3.1.6 for php7.4 and 3.3.2 for php8.2
+# install redis-6.2.0 and xdebug-3.4.5 for php8.4/trixie
 # check https://xdebug.org/docs/compat
 COPY xdebug.ini /tmp/xdebug.ini
 RUN if [[ ${XDEBUG} == "true" ]] ; then \
-  pecl install redis-5.3.4 \
+  pecl install redis-6.2.0 \
 	&& pecl install "$(if [[ $(echo "${PHP} >= 8.0" | bc) == 1 ]] ; then echo xdebug-3.4.5 ; else echo xdebug-3.1.6 ; fi)" \
 	&& docker-php-ext-enable redis xdebug \
   && mv /tmp/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini ; \
