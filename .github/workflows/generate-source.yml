@@ -1,0 +1,63 @@
+name: Generate Jeedom PHP sources
+
+on:
+  push:
+    branches: [ master, develop]
+  pull_request:
+    branches: [ master, develop]
+  # this is to manually trigger the worklow
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Reason'     
+        default: 'Manual launch'
+
+jobs:
+
+  build:
+  # this step use only simple scripts commands
+    strategy:
+      # do every matrix combination, don't stop on errors
+      fail-fast: false
+      # limit to avoid error HTTP 409: too many requests
+      max-parallel: 5
+      matrix:
+        php: [7.4, 8.2, 8.4]
+        version:
+          # - master does not work as of 4.4.20
+          - beta
+          - develop
+        repo:
+          - jeedom/core
+          - pifou25/jeedom-core
+        exclude:
+          - version: beta
+            repo: pifou25/jeedom-core
+          - version: develop
+            repo: jeedom/core
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4.1.2
+
+    - name: docker login
+      run: |
+        docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }} 
+        docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_SECRET }}
+
+    - name: Build Jeedom ${{ matrix.repo }}:${{ matrix.php }}-${{ matrix.version }}
+      # docker build [directory] --file [file] --tag [tag]
+      run: |
+        docker build --build-arg JEEDOM_REPO=${{ matrix.repo }} \
+        --build-arg JEEDOM_VERSION=${{ matrix.version }} \
+        --build-arg PHP=${{ matrix.php }} \
+        --file build/Dockerfile.source --tag ${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }} build 
+      
+    - name: Docker Push Docker Hub
+      run: docker push ${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }}
+
+    - name: Docker Push ghcr.io
+      run: |
+        docker tag ${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }} ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }}
+        docker push ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }}
