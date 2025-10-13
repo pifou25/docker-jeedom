@@ -198,7 +198,7 @@ jobs:
         continue-on-error: true
         with:
           context: build
-          file: build/Dockerfile${{ matrix.target == 'light' && '' || '.full' }}
+          file: build/Dockerfile${{ matrix.target != 'light' && '.full' || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             DEBIAN=${{ matrix.debian }}
