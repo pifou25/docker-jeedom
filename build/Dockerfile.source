@@ -1,5 +1,10 @@
 # prepare PHP source with dependencies
-FROM composer:2.7 AS vendor
+ARG PHP=8.2
+FROM php:${PHP}
+
+RUN apt-get update && \
+   apt-get install --no-install-recommends --no-install-suggests -q -y unzip
+COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 ARG JEEDOM_REPO=jeedom/core
 ARG JEEDOM_VERSION=master
@@ -10,9 +15,15 @@ WORKDIR /app
 ADD https://github.com/${JEEDOM_REPO}/archive/${JEEDOM_VERSION}.zip /tmp/jeedom.zip
 RUN unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
   find /tmp/source/ -maxdepth 1 -type d -name '*core*' -exec sh -c 'mv -T {} /app' {} \; && \
-  rm /tmp/jeedom.zip && \
-  rm -rf /app/vendor /app/install/.htaccess
-COPY install.htaccess ./install/.htaccess
+  rm /tmp/jeedom.zip
 
 # run composer for dependancies
 RUN composer install --no-progress --no-interaction --no-dev 
+
+# next step:
+# COPY --from=ghcr.io/pifou25/jeedom:source-8.2-dev /app /var/www/html
+# or with variables:
+# ARG PHP=8.2
+# ARG branch=beta
+# FROM ghcr.io/pifou25/jeedom:source-${PHP}-${branch} AS source
+# COPY --from=source /app /var/www/html

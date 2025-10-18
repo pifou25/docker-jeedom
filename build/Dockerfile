@@ -22,7 +22,7 @@ ENV MYSQL_JEEDOM_DATABASE=jeedom
 ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_JEEDOM_PASSWD
 # ENV MYSQL_ROOT_PASSWORD
-ENV DEBIAN_FRONTEND=noninteractive
+ARG DEBIAN_FRONTEND=noninteractive
 # required env var for init.sh script
 ENV WEBSERVER_HOME=/var/www/html
 
