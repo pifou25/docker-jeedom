@@ -73,11 +73,26 @@ jobs:
       # limit to avoid error HTTP 409: too many requests
       max-parallel: 5
       matrix:
-        debian: [trixie]
-        php: [8.4]
+        debian: [bullseye, bookworm, trixie]
+        php: [7.4, 8.2, 8.4]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
         platform: [amd64, arm64, arm/v6, arm/v7]
         target: ["light" , "full"]
+        # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
+        exclude:
+          - debian: bookworm
+            php: 7.4
+          - debian: bookworm
+            php: 8.4
+          - debian: bullseye
+            php: 8.2
+          - debian: bullseye
+            php: 8.4
+          - debian: trixie
+            php: 8.2
+          - debian: trixie
+            php: 7.4
+
 
     env:
       # tag name de la forme: debian-php-light-debug-dev e.g. bullseye-8.2-light-debug-dev

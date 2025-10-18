@@ -9,6 +9,7 @@ ARG PHP=8.4
 FROM php:${PHP}-apache-${DEBIAN}
 ARG DEBIAN
 ARG PHP
+ARG TARGETPLATFORM
 # optional XDEBUG arg to add xdebug packages and configuration
 ARG XDEBUG
 
@@ -43,7 +44,7 @@ RUN apt-get install --no-install-recommends --no-install-suggests -q -y ffmpeg g
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y iproute2 
 # trixie: libssh2-1 replaced by libssh2-1t64
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y $([ ${DEBIAN} = trixie ] && echo libssh2-1t64 || echo libssh2-1 )
-RUN apt-get install --no-install-recommends --no-install-suggests -q -y librsync-dev libssh2-1t64 libssh2-1-dev libzip-dev 
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y librsync-dev libssh2-1-dev libzip-dev 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y locales net-tools 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y nmap
 # trixie: ntp ntpdate replaced by ntpsec
@@ -78,7 +79,12 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 # RUN install-php-extensions bcmath
 RUN install-php-extensions "$([ ${DEBIAN} ne trixie ] && echo bcmath)" calendar
-RUN install-php-extensions imap
+RUN if [ "${TARGETPLATFORM}" != "linux/arm/v6" ] && [ "${TARGETPLATFORM}" != "linux/arm/v7" ]; then \
+      install-php-extensions imap; \
+    else \
+      echo "Skipping imap extension on ${TARGETPLATFORM}"; \
+    fi
+
 RUN install-php-extensions intl
 RUN install-php-extensions ldap
 RUN install-php-extensions mbstring
@@ -107,8 +113,10 @@ COPY install.htaccess ./install/.htaccess
 # download & run composer for dependancies
 COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
 # for master branch (i.e. Jeedom:4.4.x) we still need to update composer.lock
-RUN $([ ${JEEDOM_VERSION} = master ] && composer update) \
-  && composer install --no-progress --no-interaction --no-dev 
+RUN if [ "${JEEDOM_VERSION}" = "master" ]; then \
+      composer update; \
+    fi; \
+    composer install --no-progress --no-interaction --no-dev
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
