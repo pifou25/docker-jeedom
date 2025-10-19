@@ -11,12 +11,12 @@ ARG DEBIAN
 ARG PHP
 ARG TARGETPLATFORM
 # optional XDEBUG arg to add xdebug packages and configuration
-ARG XDEBUG
+ARG XDEBUG=true
 
 # repo: jeedom/core or pifou25/jeedom-core
-ARG JEEDOM_REPO=jeedom/core
-# branch name: master or beta (or develop)
-ARG JEEDOM_VERSION=master
+ARG JEEDOM_REPO=pifou25/jeedom-core
+# branch name: master or beta
+ARG JEEDOM_VERSION=develop
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}
 ENV MYSQL_JEEDOM_DATABASE=jeedom
 ENV MYSQL_JEEDOM_USER=jeedom
@@ -34,11 +34,23 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # alphabetical order for better compare
 RUN apt-get update 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y tzdata
-# software-properties-common 
-# RUN add-apt-repository non-free 
-# RUN apt-get update 
+# trixie: software-properties-common is unavaiable
+RUN if [ "${DEBIAN}" != "trixie" ]; then \
+      apt-get install --no-install-recommends --no-install-suggests -q -y software-properties-common; \
+      add-apt-repository non-free; \
+      apt-get update; \
+    else \
+      echo "Skipping software-properties-common on ${DEBIAN}"; \
+    fi
+
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y apt-transport-https 
-RUN apt-get install --no-install-recommends --no-install-suggests -q -y apt-utils at bc ccze
+# bullseye + arm/v6: Package apt-utils is not available, but is referred to by another package.
+RUN if [ "${TARGETPLATFORM}" = "linux/arm/v6" ] && [ "${DEBIAN}" = "bullseye" ]; then \
+      echo "Skipping apt-utils package for ${DEBIAN} / ${TARGETPLATFORM}"; \
+    else \
+      apt-get install --no-install-recommends --no-install-suggests -q -y apt-utils; \
+    fi
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y at bc ccze
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y curl dos2unix 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y ffmpeg gettext git 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y iproute2 

@@ -271,9 +271,23 @@ jobs:
       # limit to avoid error HTTP 409: too many requests
       max-parallel: 2
       matrix:
-        debian: [trixie]
-        php: [8.4]
-        target: ["light", "full"]
+        debian: [bullseye, bookworm, trixie]
+        php: [7.4, 8.2, 8.4]
+        target: ["light" , "full"]
+        # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
+        exclude:
+          - debian: bookworm
+            php: 7.4
+          - debian: bookworm
+            php: 8.4
+          - debian: bullseye
+            php: 8.2
+          - debian: bullseye
+            php: 8.4
+          - debian: trixie
+            php: 8.2
+          - debian: trixie
+            php: 7.4
 
     env:
       REGISTRY_IMAGE: pifou25/jeedom

@@ -1,18 +1,18 @@
 # second final image: full_jeedom standalone with all required daemons
 #
 # Debian version: bullseye / bookworm
-ARG DEBIAN=bullseye
+ARG DEBIAN=trixie
 # PHP version required for bookworm is 8.2
 # bullseye : 7.4
 # base images are copied from ghcr.io/pifou25
-ARG PHP=7.4
+ARG PHP=8.4
 # set XTRARGS=-debug to add xdebug packages and configuration
 ARG XTRARGS=
 FROM pifou25/jeedom:${DEBIAN}-${PHP}${XTRARGS}
 # repo: jeedom/core or pifou25/jeedom-core
-ARG JEEDOM_REPO
+ARG JEEDOM_REPO=pifou25/jeedom-core
 # branch name: master or beta
-ARG JEEDOM_VERSION
+ARG JEEDOM_VERSION=develop
 ENV MYSQL_HOST=localhost
 
 USER root
