@@ -44,13 +44,12 @@ RUN if [ "${DEBIAN}" != "trixie" ]; then \
     fi
 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y apt-transport-https 
-# bullseye + arm/v6: Package apt-utils is not available, but is referred to by another package.
+# bullseye + arm/v6: Packages (apt-utils at bc ccze) is not available, but is referred to by another package.
 RUN if [ "${TARGETPLATFORM}" = "linux/arm/v6" ] && [ "${DEBIAN}" = "bullseye" ]; then \
-      echo "Skipping apt-utils package for ${DEBIAN} / ${TARGETPLATFORM}"; \
+      echo "Skipping apt-utils at bc ccze package for ${DEBIAN} / ${TARGETPLATFORM}"; \
     else \
-      apt-get install --no-install-recommends --no-install-suggests -q -y apt-utils; \
+      apt-get install --no-install-recommends --no-install-suggests -q -y apt-utils at bc ccze; \
     fi
-RUN apt-get install --no-install-recommends --no-install-suggests -q -y at bc ccze
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y curl dos2unix 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y ffmpeg gettext git 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y iproute2 
