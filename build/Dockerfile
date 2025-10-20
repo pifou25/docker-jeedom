@@ -44,12 +44,7 @@ RUN if [ "${DEBIAN}" != "trixie" ]; then \
     fi
 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y apt-transport-https 
-# bullseye + arm/v6: Packages (apt-utils at bc ccze) is not available, but is referred to by another package.
-RUN if [ "${TARGETPLATFORM}" = "linux/arm/v6" ] && [ "${DEBIAN}" = "bullseye" ]; then \
-      echo "Skipping apt-utils at bc ccze package for ${DEBIAN} / ${TARGETPLATFORM}"; \
-    else \
-      apt-get install --no-install-recommends --no-install-suggests -q -y apt-utils at bc ccze; \
-    fi
+RUN apt-get install --no-install-recommends --no-install-suggests -q -y apt-utils at bc ccze
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y curl dos2unix 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y ffmpeg gettext git 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y iproute2 
@@ -65,8 +60,13 @@ RUN apt-get install --no-install-recommends --no-install-suggests -q -y python3 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y smbclient 
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y ssl-cert sudo wget
 RUN apt-get install --no-install-recommends --no-install-suggests -q -y zip unzip
-# force python3 as default python: usefull when no python2 installed
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+# trixie: force python3 as default python: usefull when no python2 installed
+RUN if [ "${DEBIAN}" = "trixie" ]; then \
+      update-alternatives --install /usr/bin/python python /usr/bin/python3 10; \
+    else \
+      echo "Skipping alternative python on ${DEBIAN}"; \
+    fi
+RUN 
 
 # GitHub use this label to connect Git repo and Docker images in ghcr.io
 LABEL org.opencontainers.image.source="https://github.com/pifou25/docker-jeedom"
