@@ -7,7 +7,7 @@ on:
     branches:
       - 'master'
       - 'develop'
-      - 'feat/trixie'
+      - 'feat/arm6_bullseye'
   # this is to manually trigger the worklow
   workflow_dispatch:
     inputs:
@@ -92,6 +92,8 @@ jobs:
             php: 8.2
           - debian: trixie
             php: 7.4
+          - debian: bullseye
+            platform: 'arm/v6'
 
 
     env:
