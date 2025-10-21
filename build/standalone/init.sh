@@ -82,9 +82,19 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
   chown www-data:www-data -R /tmp/jeedom
 
   # wait until db is up and running
+  wait_time=2
+  max_wait=300  # (optionnel) temps max entre deux essais
+
   while ! mysqladmin ping -h"$MYSQL_HOST" --silent; do
-    log_warn "Wait 2 seconds for MariaDB to start..."
-    sleep 2
+    log_warn "Wait ${wait_time}s for MariaDB to start..."
+    sleep "$wait_time"
+    # double le temps d’attente, mais limite à max_wait
+    wait_time=$(( wait_time * 2 ))
+    if [ "$wait_time" -gt "$max_wait" ]; then
+      # end script with error
+      log_error "No database available, check your configuration: $MYSQL_HOST"
+      exit 1
+    fi
   done
 
   log_info " ___ Création de la database SQL ${MYSQL_JEEDOM_DATABASE} pour '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}' ... ___"
