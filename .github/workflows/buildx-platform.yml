@@ -5,9 +5,9 @@ name: Docker Multiplatform Build ci
 on:
   push:
     branches:
-      - master
-      - develop
-      - feat/improvment
+      - 'master'
+      - 'develop'
+      - 'feat/service_registry2'
   # this is to manually trigger the worklow
   workflow_dispatch:
     inputs:
@@ -60,57 +60,21 @@ jobs:
           dockerfile: build/Dockerfile.full
           no-fail: true
           verbose: true
-      -
-        name: Login to DockerHub
-        # https://github.com/marketplace/actions/docker-login
-        # login to DockerHub with login & secrets token - for pull to avoid error HTTP 429 Too many requests
-        uses: docker/login-action@v3
+
+        # prepare image cache for local registry
+        # https://github.com/marketplace/actions/cache
+      - id: image-cache
+        uses: actions/cache@v4.2.2
         with:
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          path: /tmp/registry-cache
+          key: registry-cache
 
-      - name: check Docker.io rate limit
+      # 3️⃣ Configure le cache proxy Docker Hub
+      - name: Configure Docker to use local registry mirror
         run: |
-          #!/usr/bin/env bash
-          # Vérifie la limite et le nombre de pulls restants sur Docker Hub
-
-          # Dépendances : curl + jq
-          if ! command -v jq >/dev/null 2>&1; then
-            echo "❌ jq est requis (sudo apt install jq ou brew install jq)"
-            exit 1
-          fi
-
-          # 1️⃣ Récupère un token d'authentification pour une image publique
-          TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" \
-            | jq -r '.token')
-
-          if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
-            echo "❌ Impossible d'obtenir un token Docker Hub"
-            exit 1
-          fi
-
-          # 2️⃣ Interroge le registre pour obtenir les infos de quota
-          HEADERS=$(curl -s -I -H "Authorization: Bearer $TOKEN" \
-            https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest)
-
-          # Exemple de lignes :
-          # RateLimit-Limit: 100;w=21600
-          # RateLimit-Remaining: 73;w=21600
-
-          # Extraire limite + fenêtre
-          read LIMIT WINDOW < <(echo "$HEADERS" | grep -i "RateLimit-Limit" | sed -E 's/.*: ([0-9]+);w=([0-9]+)/\1 \2/')
-          # Extraire le nombre restant
-          read REMAINING _ < <(echo "$HEADERS" | grep -i "RateLimit-Remaining" | sed -E 's/.*: ([0-9]+);w=([0-9]+)/\1 \2/')
-
-          # 3️⃣ Affiche un résumé propre
-          if [[ -n "$LIMIT" && -n "$REMAINING" && -n "$WINDOW" ]]; then
-            CURRENT_DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-            HOURS=$(awk "BEGIN {printf \"%.1f\", $WINDOW/3600}")
-            echo "✅ Pulls restants au ${CURRENT_DATETIME} : $REMAINING / $LIMIT (fenêtre de ${HOURS}h)"
-          else
-            echo "⚠️ Impossible de lire les en-têtes RateLimit"
-            echo "$HEADERS"
-          fi
+          echo '{ "registry-mirrors": ["http://localhost:5000"] }' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+          docker info | grep -A5 Mirrors || true
 
   jbuild:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
@@ -167,57 +131,8 @@ jobs:
         run: |
           platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-          # echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
-          echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_ENV
-          # echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_STEP_SUMMARY
-
-      # prepare image cache for Dockerfile buildx
-      # https://github.com/marketplace/actions/cache
-      - id: image-cache
-        uses: actions/cache@v4.2.2
-        with:
-          path: ~/image-cache
-          # Adjust key to meet your cache time requirements e.g.
-          # ${{ hashFiles(*) }} can be useful here to invalidate
-          # cache on file changes
-          key: image-cache-${{ runner.os }}${{ matrix.php }}${{ matrix.debian }}${{ matrix.platform }}
-
-      -
-        name: Login to DockerHub
-        # https://github.com/marketplace/actions/docker-login
-        # login to DockerHub with secrets login & token - for pull to avoid error HTTP 429 Too many requests
-        uses: docker/login-action@v3
-        with:
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - if: steps.image-cache.outputs.cache-hit != 'true'
-        name: Pull images for ${{ env.CACHE_NAME }} and save in cache
-        # pull from docker hub if not in cache and save in cache
-        run: |
-          # trim '/' from the cache name
-          CACHE_NAME=${CACHE_NAME//'/'/}
-          # echo "pull images for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
-          mkdir -p ~/image-cache # create cache directory
-          docker pull --platform linux/${{ matrix.platform }} php:${{ matrix.php }}-apache-${{ matrix.debian }}
-          docker pull --platform linux/${{ matrix.platform }} composer/composer:latest-bin
-          docker pull --platform linux/${{ matrix.platform }} mlocati/php-extension-installer
-          docker save -o ~/image-cache/php.${CACHE_NAME}.tar php:${{ matrix.php }}-apache-${{ matrix.debian }}
-          docker save -o ~/image-cache/php-extension-installer-${CACHE_NAME}.tar mlocati/php-extension-installer
-          docker save -o ~/image-cache/composer-${CACHE_NAME}.tar composer/composer:latest-bin
-          # sleep to avoid HTTP 429 error (too many requests...)
-          # sleep 1m
-
-      - if: steps.image-cache.outputs.cache-hit == 'true'
-        name: Load images from cache for ${{ env.CACHE_NAME }}
-        # load from cache
-        run: |
-          # trim '/' from the cache name
-          CACHE_NAME=${CACHE_NAME//'/'/}
-          # echo "load images from cache for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
-          docker load -i ~/image-cache/php.${CACHE_NAME}.tar
-          docker load -i ~/image-cache/php-extension-installer-${CACHE_NAME}.tar
-          docker load -i ~/image-cache/composer-${CACHE_NAME}.tar
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
+          # docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_SECRET }}
 
       -
         name: Checkout
@@ -251,7 +166,7 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            ${{ env.REGISTRY_IMAGE }}
+            localhost:5000/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -336,6 +251,18 @@ jobs:
     needs:
       - jbuild
 
+    # this registry service is a cache for the build job
+    services:
+      docker-cache:
+        image: registry:2
+        ports:
+          - 5000:5000
+        env:
+          REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
+        options: >-
+          --name registry-cache
+          --volume /tmp/registry-cache:/var/lib/registry
+
     # same matrix as previous step except the platform
     strategy:
       fail-fast: false
@@ -396,7 +323,7 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            ${{ env.REGISTRY_IMAGE }}
+            localhost:5000/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
