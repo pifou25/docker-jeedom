@@ -29,6 +29,9 @@ env:
   JEEDOM_BRANCH: ${{ github.ref_name == 'master' && 'master' || 'develop' }}
   # XDEBUG enabled by default for develop branch
   XDEBUG: ${{ github.ref_name == 'master' && 'false' || 'true' }}
+  # source and destination registry: empty for docker hub
+  REGISTRY_NAME: quay.io/
+
 
 jobs:
   # clean runner and Lint the Dockerfile
@@ -147,8 +150,9 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            ${{ env.REGISTRY_IMAGE }}
-            ghcr.io/${{ env.REGISTRY_IMAGE }}
+            ${{ env.REGISTRY_NAME }}${{ env.REGISTRY_IMAGE }}
+            # ${{ env.REGISTRY_IMAGE }}
+            # ghcr.io/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -215,7 +219,6 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          # tags: ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
 
       - name: Check on failures ${{ env.TAG_NAME }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome != 'success'
@@ -268,11 +271,15 @@ jobs:
             php: 7.4
           - debian: bullseye
             php: 8.2
+          - debian: bullseye
+            php: 8.4
+          - debian: trixie
+            php: 8.2
+          - debian: trixie
+            php: 7.4
 
     env:
-      REGISTRY_IMAGE: pifou25/jeedom
       TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
-      GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
  
     steps:
@@ -294,8 +301,9 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            ${{ env.REGISTRY_IMAGE }}
-            ghcr.io/${{ env.REGISTRY_IMAGE }}
+            ${{ env.REGISTRY_NAME }}${{ env.REGISTRY_NAME }}
+            # ${{ env.REGISTRY_IMAGE }}
+            # ghcr.io/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -330,10 +338,10 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
+            $(printf '${{ env.REGISTRY_NAME }}${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
       -
         name: Inspect image ${{ env.TAG_NAME }}
         # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.REGISTRY_NAME }}${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
           sleep 1m

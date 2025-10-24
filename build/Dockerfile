@@ -102,7 +102,8 @@ RUN usermod -u 1000 www-data \
 VOLUME ${WEBSERVER_HOME}/backup
 VOLUME ${WEBSERVER_HOME}/log
 
-# install xdebug-3.1.6 for php7.4 and 3.3.2 for php8.2
+# install redis-5.3.4 + xdebug-3.1.6 for php7.4 and 3.3.2 for php8.2
+# install redis-6.2.0 and xdebug-3.4.0 for php8.4/trixie
 # check https://xdebug.org/docs/compat
 COPY xdebug.ini /tmp/xdebug.ini
 RUN if [[ ${XDEBUG} == "true" ]] ; then \
