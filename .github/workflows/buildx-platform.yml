@@ -59,32 +59,12 @@ jobs:
           no-fail: true
           verbose: true
 
-        # prepare image cache for local registry
-        # https://github.com/marketplace/actions/cache
-      - id: image-cache
-        uses: actions/cache@v4.2.2
-        with:
-          path: /tmp/registry-cache
-          key: registry-cache
-
   jbuild:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
     # distributebuild across multiple runners
     # This step  build the same image on different runners / platforms
     runs-on: ubuntu-latest
     needs: initStep
-
-    # this registry service is a cache for the build job
-    services:
-      docker-cache:
-        image: registry:2
-        ports:
-          - 5000:5000
-        env:
-          REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
-        options: >-
-          --name registry-cache
-          --volume /tmp/registry-cache:/var/lib/registry
 
     # continue to next job even if there are some errors in jbuild job
     continue-on-error: true
@@ -133,12 +113,28 @@ jobs:
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
           # docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_SECRET }}
 
+      # prepare image cache for local registry
+      # https://github.com/marketplace/actions/cache
+      - id: image-cache
+        uses: actions/cache@v4.2.2
+        with:
+          path: /tmp/registry-cache
+          key: registry-cache
+
+      # local registry for docker cache
+      - name: Start local Docker registry (mirror/cache)
+        run: |
+          docker run -d -p 5000:5000 --restart=always --name registry \
+            -v /tmp/docker-registry:/var/lib/registry \
+            -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
+            registry:2
+          npx wait-on tcp:5000
       -
         name: test docker-cache registry
         run: |
           docker pull php:${{ matrix.php }}-apache-${{ matrix.debian }}
-          docker tag php:${{ matrix.php }}-apache-${{ matrix.debian }} docker-cache:5000/php:${{ matrix.php }}-apache-${{ matrix.debian }}
-          docker push docker-cache:5000/php:${{ matrix.php }}-apache-${{ matrix.debian }}
+          docker tag php:${{ matrix.php }}-apache-${{ matrix.debian }} localhost:5000/php:${{ matrix.php }}-apache-${{ matrix.debian }}
+          docker push localhost:5000/php:${{ matrix.php }}-apache-${{ matrix.debian }}
 
       -
         name: Checkout
@@ -151,7 +147,7 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            docker-cache:5000/${{ env.REGISTRY_IMAGE }}
+            localhost:5000/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -216,10 +212,10 @@ jobs:
             XTRARGS=${{ env.XDEBUG && '-light-dev' || '-light' }}
           platforms: linux/${{ matrix.platform }}
           cache-from: |
-            type=registry,ref=docker-cache:5000/${{ env.REGISTRY_IMAGE }}:buildcache
+            type=registry,ref=localhost:5000/${{ env.REGISTRY_IMAGE }}:buildcache
             type=local,src=/tmp/.buildx-cache
           cache-to: |
-            type=registry,ref=docker-cache:5000/${{ env.REGISTRY_IMAGE }}:buildcache,mode=max
+            type=registry,ref=localhost:5000/${{ env.REGISTRY_IMAGE }}:buildcache,mode=max
             type=local,dest=/tmp/.buildx-cache
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           # tags: ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
@@ -263,18 +259,6 @@ jobs:
     needs:
       - jbuild
 
-    # this registry service is a cache for the build job
-    services:
-      docker-cache:
-        image: registry:2
-        ports:
-          - 5000:5000
-        env:
-          REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
-        options: >-
-          --name registry-cache
-          --volume /tmp/registry-cache:/var/lib/registry
-
     # same matrix as previous step except the platform
     strategy:
       fail-fast: false
@@ -306,6 +290,22 @@ jobs:
  
     steps:
 
+      # prepare image cache for local registry
+      # https://github.com/marketplace/actions/cache
+      - id: image-cache
+        uses: actions/cache@v4.2.2
+        with:
+          path: /tmp/registry-cache
+          key: registry-cache
+
+      # local registry for docker cache
+      - name: Start local Docker registry (mirror/cache)
+        run: |
+          docker run -d -p 5000:5000 --restart=always --name registry \
+            -v /tmp/docker-registry:/var/lib/registry \
+            -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
+            registry:2
+          npx wait-on tcp:5000
       -
         name: Download digests
         uses: actions/download-artifact@v4
@@ -324,7 +324,7 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            docker-cache:5000/${{ env.REGISTRY_IMAGE }}
+            localhost:5000/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -371,7 +371,7 @@ jobs:
         name: push to ghcr.io
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf 'docker-cache:5000/${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
+            $(printf 'localhost:5000/${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
       -
         name: Inspect image ${{ env.TAG_NAME }}
         # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
@@ -383,12 +383,12 @@ jobs:
       -
         name: push to docker.io
         run: |
-          docker tag docker-cache:5000/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          docker tag localhost:5000/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
           docker push ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
 
         # duplicate the tag for ghcr.io
       -
         name: push to docker.io
         run: |
-          docker tag docker-cache:5000/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          docker tag localhost:5000/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
           docker push ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
