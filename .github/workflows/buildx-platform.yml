@@ -140,7 +140,7 @@ jobs:
         run: |
           docker pull php:${{ matrix.php }}-apache-${{ matrix.debian }}
           docker tag php:${{ matrix.php }}-apache-${{ matrix.debian }} localhost:5000/php:${{ matrix.php }}-apache-${{ matrix.debian }}
-          docker push localhost:5000/php:${{ matrix.php }}-apache-${{ matrix.debian }}
+          docker push localhost:5000/library/php:${{ matrix.php }}-apache-${{ matrix.debian }}
 
       -
         name: Checkout
