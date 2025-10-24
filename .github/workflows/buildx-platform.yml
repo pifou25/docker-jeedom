@@ -141,7 +141,7 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            localhost:5000/${{ env.REGISTRY_IMAGE }}
+            ${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -318,7 +318,7 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            localhost:5000/${{ env.REGISTRY_IMAGE }}
+            ${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -365,7 +365,7 @@ jobs:
         name: push to ghcr.io
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf 'localhost:5000/${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
       -
         name: Inspect image ${{ env.TAG_NAME }}
         # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
@@ -373,16 +373,9 @@ jobs:
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
           sleep 1m
 
-        # duplicate the tag for docker.io
-      -
-        name: push to docker.io
-        run: |
-          docker tag localhost:5000/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
-          docker push ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
-
         # duplicate the tag for ghcr.io
       -
         name: push to docker.io
         run: |
-          docker tag localhost:5000/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          docker tag ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
           docker push ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
