@@ -136,16 +136,6 @@ jobs:
       -
         name: test docker-cache registry
         run: |
-          for i in $(seq 1 30); do
-            if curl -fsS http://docker-cache:5000/v2/ >/dev/null 2>&1; then
-              echo "registry-cache ready"
-              break
-            fi
-            echo "waiting for registry-cache..."
-            sleep 2
-          done
-          # fail if not ready
-          curl -fsS http://docker-cache:5000/v2/ || (echo "registry-cache not responding" && exit 1)
           docker pull php:${{ matrix.php }}-apache-${{ matrix.debian }}
           docker tag php:${{ matrix.php }}-apache-${{ matrix.debian }} docker-cache:5000/php:${{ matrix.php }}-apache-${{ matrix.debian }} || true
 
