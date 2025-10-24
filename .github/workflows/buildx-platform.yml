@@ -61,14 +61,6 @@ jobs:
           no-fail: true
           verbose: true
 
-        # prepare image cache for local registry
-        # https://github.com/marketplace/actions/cache
-      - id: image-cache
-        uses: actions/cache@v4.2.2
-        with:
-          path: /tmp/registry-cache
-          key: registry-cache
-
   jbuild:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
     # distributebuild across multiple runners
@@ -127,12 +119,28 @@ jobs:
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
           # docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_SECRET }}
 
+      # prepare image cache for local registry
+      # https://github.com/marketplace/actions/cache
+      - id: image-cache
+        uses: actions/cache@v4.2.2
+        with:
+          path: /tmp/registry-cache
+          key: registry-cache
+
+      # local registry for docker cache
+      - name: Start local Docker registry (mirror/cache)
+        run: |
+          docker run -d -p 5000:5000 --restart=always --name registry \
+            -v /tmp/docker-registry:/var/lib/registry \
+            -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
+            registry:2
+          npx wait-on tcp:5000
       -
         name: test docker-cache registry
         run: |
           docker pull php:${{ matrix.php }}-apache-${{ matrix.debian }}
-          docker tag php:${{ matrix.php }}-apache-${{ matrix.debian }} docker-cache:5000/php:${{ matrix.php }}-apache-${{ matrix.debian }}
-          docker push docker-cache:5000/php:${{ matrix.php }}-apache-${{ matrix.debian }}
+          docker tag php:${{ matrix.php }}-apache-${{ matrix.debian }} localhost:5000/php:${{ matrix.php }}-apache-${{ matrix.debian }}
+          docker push localhost:5000/php:${{ matrix.php }}-apache-${{ matrix.debian }}
 
       -
         name: Checkout
@@ -166,7 +174,7 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            docker-cache:5000/${{ env.REGISTRY_IMAGE }}
+            localhost:5000/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -251,18 +259,6 @@ jobs:
     needs:
       - jbuild
 
-    # this registry service is a cache for the build job
-    services:
-      docker-cache:
-        image: registry:2
-        ports:
-          - 5000:5000
-        env:
-          REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
-        options: >-
-          --name registry-cache
-          --volume /tmp/registry-cache:/var/lib/registry
-
     # same matrix as previous step except the platform
     strategy:
       fail-fast: false
@@ -292,10 +288,23 @@ jobs:
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
 
     steps:
-      - name: init datetime value
-        run: |
-          echo "CURRENT_DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
 
+      # prepare image cache for local registry
+      # https://github.com/marketplace/actions/cache
+      - id: image-cache
+        uses: actions/cache@v4.2.2
+        with:
+          path: /tmp/registry-cache
+          key: registry-cache
+
+      # local registry for docker cache
+      - name: Start local Docker registry (mirror/cache)
+        run: |
+          docker run -d -p 5000:5000 --restart=always --name registry \
+            -v /tmp/docker-registry:/var/lib/registry \
+            -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
+            registry:2
+          npx wait-on tcp:5000
       -
         name: Download digests
         uses: actions/download-artifact@v4
@@ -323,7 +332,7 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            docker-cache:5000/${{ env.REGISTRY_IMAGE }}
+            localhost:5000/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
