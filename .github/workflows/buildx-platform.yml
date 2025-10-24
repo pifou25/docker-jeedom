@@ -129,12 +129,6 @@ jobs:
             -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
             registry:2
           npx wait-on tcp:5000
-      -
-        name: test docker-cache registry
-        run: |
-          docker pull php:${{ matrix.php }}-apache-${{ matrix.debian }}
-          docker tag php:${{ matrix.php }}-apache-${{ matrix.debian }} localhost:5000/library/php:${{ matrix.php }}-apache-${{ matrix.debian }}
-          docker push localhost:5000/library/php:${{ matrix.php }}-apache-${{ matrix.debian }}
 
       -
         name: Checkout
