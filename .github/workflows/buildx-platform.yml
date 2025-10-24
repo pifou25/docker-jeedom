@@ -67,13 +67,6 @@ jobs:
           path: /tmp/registry-cache
           key: registry-cache
 
-      # 3️⃣ Configure le cache proxy Docker Hub
-      - name: Configure Docker to use local registry mirror
-        run: |
-          echo '{ "registry-mirrors": ["http://localhost:5000"] }' | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker
-          docker info | grep -A5 Mirrors || true
-
   jbuild:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
     # distributebuild across multiple runners
@@ -139,6 +132,13 @@ jobs:
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
           # docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_SECRET }}
+
+      # 3️⃣ Configure le cache proxy Docker Hub
+      - name: Configure Docker to use local registry mirror
+        run: |
+          echo '{ "registry-mirrors": ["http://localhost:5000"] }' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+          docker info | grep -A5 Mirrors || true >> $GITHUB_STEP_SUMMARY
 
       -
         name: Checkout
@@ -305,6 +305,13 @@ jobs:
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
  
     steps:
+      # 3️⃣ Configure le cache proxy Docker Hub
+      - name: Configure Docker to use local registry mirror
+        run: |
+          echo '{ "registry-mirrors": ["http://localhost:5000"] }' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+          docker info | grep -A5 Mirrors || true >> $GITHUB_STEP_SUMMARY
+
       -
         name: Download digests
         uses: actions/download-artifact@v4
