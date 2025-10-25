@@ -68,7 +68,12 @@ jobs:
         uses: docker/setup-buildx-action@v3
         with:
           driver: docker-container
-          buildkitd-flags: --allow-insecure-entitlement network.host
+          name: jeedom-builder
+          buildkitd-flags: --allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host
+          buildkitd-config-inline: |
+            [registry."registry:5000"]
+              http = true
+              insecure = true
 
       - uses: actions/checkout@v4.1.2
 
@@ -80,7 +85,7 @@ jobs:
       - name: Build with cache using previous builder
         # docker build --builder [name] --build-arg [arg=value] --file [file] --tag [tag] [directory]
         run: |
-          docker buildx build --builder default  \
+          docker buildx build --builder jeedom-builder  \
             --build-arg DEBIAN=${{ env.DEBIAN }} \
             --build-arg PHP=${{ env.PHP }} \
             --build-arg JEEDOM_REPO=${{ env.JEEDOM_REPO }} \
