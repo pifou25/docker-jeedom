@@ -2,7 +2,7 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ none ]
+    branches: [ feat/service_registry2 ]
   pull_request:
     branches: [ none ]
   # this is to manually trigger the worklow
