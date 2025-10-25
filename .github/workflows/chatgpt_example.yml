@@ -1,0 +1,64 @@
+name: Build Jeedom Image with Registry Cache
+
+on:
+  push:
+    branches: [ feat/service_registry2 ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      # 🔹 Service de cache Docker Registry local (HTTP)
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+        options: >-
+          --health-cmd "wget --spider -q http://localhost:5000/v2/ || exit 1"
+          --health-interval 5s
+          --health-timeout 2s
+          --health-retries 10
+          --health-start-period 5s
+
+    env:
+      # Active BuildKit
+      DOCKER_BUILDKIT: 1
+      # Utilisé pour nommer l'image
+      REGISTRY_IMAGE: pifou25/jeedom
+      # Référence vers le cache du registre
+      REGISTRY_CACHE: registry:5000/jeedom:buildcache
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+          buildkitd-flags: --allow-insecure-entitlement network.host
+          buildkitd-config-inline: |
+            [registry."registry:5000"]
+              http = true
+              insecure = true
+
+      - name: Wait for registry
+        run: |
+          echo "⏳ Attente du registre local..."
+          until curl -fsS http://localhost:5000/v2/ >/dev/null; do sleep 1; done
+          echo "✅ Registry prêt sur http://localhost:5000"
+
+      - name: Build Jeedom image with cache
+        run: |
+          docker buildx build \
+            --builder default \
+            --file build/Dockerfile \
+            --tag registry:5000/${{ env.REGISTRY_IMAGE }}:latest \
+            --cache-from type=registry,ref=${{ env.REGISTRY_CACHE }} \
+            --cache-to type=registry,ref=${{ env.REGISTRY_CACHE }},mode=max \
+            --load \
+            build
+
+      - name: Test image
+        run: docker run --rm registry:5000/${{ env.REGISTRY_IMAGE }}:latest jeedom --version || echo "Image built successfully"
