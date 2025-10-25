@@ -126,7 +126,7 @@ COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
 # no composer update for master branch (i.e. Jeedom:4.4.x) /vendor already exists and up-to-date in git repo
 RUN if [ "${JEEDOM_VERSION}" != "master" ]; then \
     composer install --no-progress --no-interaction --no-dev; \
-    fi; \
+    fi
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \
