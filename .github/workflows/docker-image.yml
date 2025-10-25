@@ -48,8 +48,9 @@ jobs:
       # local registry for docker cache
       - name: Start local Docker registry (mirror/cache)
         run: |
+          docker network create buildnet
           docker run -d -p 5000:5000 --restart=always --name registry \
-            -v /tmp/docker-registry:/var/lib/registry \
+            --network buildnet -v /tmp/docker-registry:/var/lib/registry \
             registry:2
           npx wait-on tcp:5000
 
@@ -57,7 +58,7 @@ jobs:
 
       - name: Enable buildx
         run: |
-          docker buildx create --use --name jeedom-builder
+          docker buildx create --use --name jeedom-builder --driver docker-container --driver-opt network=buildnet
           docker buildx inspect --bootstrap
 
       - name: Build with cache using previous builder
@@ -70,18 +71,18 @@ jobs:
             --build-arg JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }} \
             --build-arg XDEBUG=false \
             --build-arg XTRARGS=-light \
-            --cache-from type=registry,ref=localhost:5000/${{ env.REGISTRY_IMAGE }}:buildcache \
-            --cache-to type=registry,ref=localhost:5000/${{ env.REGISTRY_IMAGE }}:buildcache,mode=max \
+            --cache-from type=registry,ref=registry:5000/${{ env.REGISTRY_IMAGE }}:buildcache \
+            --cache-to type=registry,ref=registry:5000/${{ env.REGISTRY_IMAGE }}:buildcache,mode=max \
             --file build/Dockerfile \
-            --tag localhost:5000/${{ env.REGISTRY_IMAGE }}:test \
+            --tag registry:5000/${{ env.REGISTRY_IMAGE }}:test \
             --load build
 
       - name: Docker Push
         run: |
-          docker push localhost:5000/${{ secrets.DOCKER_USER }}/jeedom:test
+          docker push registry:5000/${{ secrets.DOCKER_USER }}/jeedom:test
 
       - name: docker push to Docker.io
         run: |
           docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }} 
-          docker tag localhost:5000/${{ secrets.DOCKER_USER }}/jeedom:test ${{ secrets.DOCKER_USER }}/jeedom:test
+          docker tag registry:5000/${{ secrets.DOCKER_USER }}/jeedom:test ${{ secrets.DOCKER_USER }}/jeedom:test
           docker push ${{ secrets.DOCKER_USER }}/jeedom:test
