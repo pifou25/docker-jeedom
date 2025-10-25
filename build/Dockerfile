@@ -123,11 +123,10 @@ COPY install.htaccess ./install/.htaccess
 
 # download & run composer for dependancies
 COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
-# for master branch (i.e. Jeedom:4.4.x) we still need to update composer.lock
-RUN if [ "${JEEDOM_VERSION}" = "master" ]; then \
-      composer update; \
+# no composer update for master branch (i.e. Jeedom:4.4.x) /vendor already exists and up-to-date in git repo
+RUN if [ "${JEEDOM_VERSION}" != "master" ]; then \
+    composer install --no-progress --no-interaction --no-dev; \
     fi; \
-    composer install --no-progress --no-interaction --no-dev
 
 # Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
 RUN usermod -u 1000 www-data \

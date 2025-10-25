@@ -73,11 +73,11 @@ jobs:
       # limit to avoid error HTTP 409: too many requests
       max-parallel: 5
       matrix:
+        target: ["light" , "full"]
         debian: [bullseye, bookworm, trixie]
         php: [7.4, 8.2, 8.4]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
         platform: [amd64, arm64, arm/v6, arm/v7]
-        target: ["light" , "full"]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
           - debian: bookworm
@@ -127,24 +127,26 @@ jobs:
         name: Pull images for ${{ env.CACHE_NAME }} and save in cache
         # pull from docker hub if not in cache and save in cache
         run: |
-            CACHE_NAME=${CACHE_NAME//'/'/}
-            echo "pull images for ${CACHE_NAME}"
-            mkdir -p ~/image-cache # create cache directory
-            docker pull --platform linux/${{ matrix.platform }} php:${{ matrix.php }}-apache-${{ matrix.debian }}
-            docker pull --platform linux/${{ matrix.platform }} composer/composer:latest-bin
-            docker pull --platform linux/${{ matrix.platform }} mlocati/php-extension-installer
-            docker save -o ~/image-cache/php.${CACHE_NAME}.tar php:${{ matrix.php }}-apache-${{ matrix.debian }}
-            docker save -o ~/image-cache/php-extension-installer-${CACHE_NAME}.tar mlocati/php-extension-installer
-            docker save -o ~/image-cache/composer-${CACHE_NAME}.tar composer/composer:latest-bin
-            # sleep to avoid HTTP 429 error (too many requests...)
-            sleep 1m
+          # trim '/' from the cache name
+          CACHE_NAME=${CACHE_NAME//'/'/}
+          echo "pull images for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
+          mkdir -p ~/image-cache # create cache directory
+          docker pull --platform linux/${{ matrix.platform }} php:${{ matrix.php }}-apache-${{ matrix.debian }}
+          docker pull --platform linux/${{ matrix.platform }} composer/composer:latest-bin
+          docker pull --platform linux/${{ matrix.platform }} mlocati/php-extension-installer
+          docker save -o ~/image-cache/php.${CACHE_NAME}.tar php:${{ matrix.php }}-apache-${{ matrix.debian }}
+          docker save -o ~/image-cache/php-extension-installer-${CACHE_NAME}.tar mlocati/php-extension-installer
+          docker save -o ~/image-cache/composer-${CACHE_NAME}.tar composer/composer:latest-bin
+          # sleep to avoid HTTP 429 error (too many requests...)
+          # sleep 1m
 
       - if: steps.image-cache.outputs.cache-hit == 'true'
         name: Load images from cache for ${{ env.CACHE_NAME }}
         # load from cache
         run: |
+          # trim '/' from the cache name
           CACHE_NAME=${CACHE_NAME//'/'/}
-          echo "load images from cache for ${CACHE_NAME}"
+          echo "load images from cache for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
           docker load -i ~/image-cache/php.${CACHE_NAME}.tar
           docker load -i ~/image-cache/php-extension-installer-${CACHE_NAME}.tar
           docker load -i ~/image-cache/composer-${CACHE_NAME}.tar
@@ -161,7 +163,6 @@ jobs:
           # list of Docker images to use as base name for tags
           images: |
             ${{ env.REGISTRY_IMAGE }}
-            ghcr.io/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -235,7 +236,7 @@ jobs:
         # some debug information in case of error, exit with error
         run: |
           echo "${{ matrix.platform}} ${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ env.JEEDOM_BRANCH }} debug=${{ env.XDEBUG }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
-          echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.cache.outputs.cache-hit }}"
+          echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.cache.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
           # echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
           exit 1
 
@@ -262,7 +263,7 @@ jobs:
 
   merge:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
-    # merge previous builds from different runners &platforms into one common docker image
+    # merge previous builds from different runners & platforms into one common docker image
     runs-on: ubuntu-latest
     needs:
       - jbuild
@@ -273,9 +274,9 @@ jobs:
       # limit to avoid error HTTP 409: too many requests
       max-parallel: 2
       matrix:
+        target: ["light" , "full"]
         debian: [bullseye, bookworm, trixie]
         php: [7.4, 8.2, 8.4]
-        target: ["light" , "full"]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
           - debian: bookworm
@@ -317,7 +318,6 @@ jobs:
           # list of Docker images to use as base name for tags
           images: |
             ${{ env.REGISTRY_IMAGE }}
-            ghcr.io/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -358,4 +358,11 @@ jobs:
         # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
-          sleep 1m
+          # sleep 1m
+
+      -
+        name: push to ghcr.io
+        run: |
+          # GHCR_NAME
+          docker tag ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} ${{ env.GHCR_NAME }}:${{ env.TAG_NAME }}
+          docker push ${{ env.GHCR_NAME }}:${{ env.TAG_NAME }}
