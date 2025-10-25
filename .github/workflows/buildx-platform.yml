@@ -344,6 +344,9 @@ jobs:
         name: Create manifest list and push ${{ env.TAG_NAME }}
         working-directory: /tmp/digests
         run: |
+          # debug tmp directory
+          ls /tmp -alsh
+          ls /tmp/digests -alsh
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
       -
@@ -365,6 +368,7 @@ jobs:
       -
         name: push to ghcr.io
         run: |
-          # GHCR_NAME
+          # debug list of available images
+          docker image ls
           docker tag docker.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} ${{ env.GHCR_NAME }}:${{ env.TAG_NAME }}
           docker push ${{ env.GHCR_NAME }}:${{ env.TAG_NAME }}
