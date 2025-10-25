@@ -110,8 +110,8 @@ jobs:
             --build-arg JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }} \
             --build-arg XDEBUG=false \
             --build-arg XTRARGS=-light \
-            --cache-from type=registry,ref=registry:5000/${{ env.REGISTRY_IMAGE }}:buildcache \
-            --cache-to type=registry,ref=registry:5000/${{ env.REGISTRY_IMAGE }}:buildcache,mode=max \
+            --cache-from type=registry,ref=http://registry:5000/${{ env.REGISTRY_IMAGE }}:buildcache \
+            --cache-to type=registry,ref=http://registry:5000/${{ env.REGISTRY_IMAGE }}:buildcache,mode=max \
             --file build/Dockerfile \
             --tag registry:5000/${{ env.REGISTRY_IMAGE }}:test \
             --load build
