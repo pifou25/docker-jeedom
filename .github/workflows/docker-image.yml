@@ -2,7 +2,7 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ feat/service_registry2 ]
+    branches: [ none ]
   pull_request:
     branches: [ none ]
   # this is to manually trigger the worklow
@@ -64,7 +64,9 @@ jobs:
       #      --network buildnet -v /tmp/docker-registry:/var/lib/registry \
       #      registry:2
       #    npx wait-on tcp:5000
+
       - name: Set up Docker Buildx
+        # https://github.com/marketplace/actions/docker-setup-buildx
         uses: docker/setup-buildx-action@v3
         with:
           driver: docker-container
