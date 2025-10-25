@@ -2,7 +2,7 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ none ]
+    branches: [ feat/service_registry2 ]
   pull_request:
     branches: [ none ]
   # this is to manually trigger the worklow
@@ -20,15 +20,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4.1.2
 
-    - name: docker login
-      run: |
-        docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }} 
+      # prepare image cache for local registry
+      # https://github.com/marketplace/actions/cache
+      - id: image-cache
+        uses: actions/cache@v4.2.2
+        with:
+          path: /tmp/registry-cache
+          key: registry-cache
 
-    - name: Build the Docker image
-      # docker build [directory] --file [file] --tag [tag]
-      run: docker build build --file build/Dockerfile --tag ${{ secrets.DOCKER_USER }}/jeedom:test
-      
-    - name: Docker Push
-      run: docker push ${{ secrets.DOCKER_USER }}/jeedom:test
+      # local registry for docker cache
+      - name: Start local Docker registry (mirror/cache)
+        run: |
+          docker run -d -p 5000:5000 --restart=always --name registry \
+            -v /tmp/docker-registry:/var/lib/registry \
+            registry:2
+          npx wait-on tcp:5000
+
+      - uses: actions/checkout@v4.1.2
+
+      - name: Build the Docker image
+        # docker build [directory] --file [file] --tag [tag]
+        run: docker build build --file build/Dockerfile --tag localhost:5000/${{ secrets.DOCKER_USER }}/jeedom:test
+        
+      - name: Docker Push
+        run: docker push ${{ secrets.DOCKER_USER }}/jeedom:test
+
+      - name: docker push to Docker.io
+        run: |
+          docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }} 
+          docker tag localhost:5000/${{ secrets.DOCKER_USER }}/jeedom:test ${{ secrets.DOCKER_USER }}/jeedom:test
+          docker push ${{ secrets.DOCKER_USER }}/jeedom:test
