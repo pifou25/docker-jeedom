@@ -58,7 +58,7 @@ jobs:
       - name: Build the Docker image
         # docker build [directory] --file [file] --tag [tag]
         run: |
-          /usr/bin/docker buildx build --build-arg DEBIAN=${{ env.DEBIAN }} --build-arg PHP=${{ env.PHP }} --build-arg JEEDOM_REPO=${{ env.JEEDOM_REPO }} \
+          /usr/bin/docker build --build-arg DEBIAN=${{ env.DEBIAN }} --build-arg PHP=${{ env.PHP }} --build-arg JEEDOM_REPO=${{ env.JEEDOM_REPO }} \
            --build-arg JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }} --build-arg XDEBUG=false --build-arg XTRARGS=-light \
            --cache-from type=registry,ref=localhost:5000/${{ env.REGISTRY_IMAGE }}:buildcache \
            --cache-to type=registry,ref=localhost:5000/${{ env.REGISTRY_IMAGE }}:buildcache,mode=max --file build/Dockerfile \
