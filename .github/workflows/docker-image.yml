@@ -74,7 +74,7 @@ jobs:
             --cache-to type=registry,ref=localhost:5000/${{ env.REGISTRY_IMAGE }}:buildcache,mode=max \
             --file build/Dockerfile \
             --tag localhost:5000/${{ env.REGISTRY_IMAGE }}:test \
-            build
+            --load build
 
       - name: Docker Push
         run: |
