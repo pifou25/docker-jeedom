@@ -19,7 +19,7 @@ env:
   # branch to use: master if the current branch is master, develop if not
   # this is used to set the jeedom version in the Dockerfile
   # JEEDOM_BRANCH: ${{ github.ref_name == 'master' && 'master' || 'develop' }}
-  JEEDOM_BRANCH: develop
+  JEEDOM_BRANCH: master
   # destination docker registry image name
   REGISTRY_IMAGE: pifou25/jeedom
   # XDEBUG enabled by default for develop and beta branches
