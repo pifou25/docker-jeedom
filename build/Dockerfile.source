@@ -18,7 +18,10 @@ RUN unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
   rm /tmp/jeedom.zip
 
 # run composer for dependancies
-RUN composer install --no-progress --no-interaction --no-dev 
+# no composer update for master branch (i.e. Jeedom:4.4.x) /vendor already exists and up-to-date in git repo
+RUN if [ "${JEEDOM_VERSION}" != "master" ]; then \
+    composer install --no-progress --no-interaction --no-dev; \
+    fi
 
 # next step:
 # COPY --from=ghcr.io/pifou25/jeedom:source-8.2-dev /app /var/www/html

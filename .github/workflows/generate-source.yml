@@ -24,9 +24,9 @@ jobs:
       matrix:
         php: [7.4, 8.2, 8.4]
         version:
-          # - master does not work as of 4.4.20
           - beta
           - develop
+          - master
         repo:
           - jeedom/core
           - pifou25/jeedom-core
@@ -35,6 +35,8 @@ jobs:
             repo: pifou25/jeedom-core
           - version: develop
             repo: jeedom/core
+          - version: master
+            repo: pifou25/jeedom-core
 
     runs-on: ubuntu-latest
 
