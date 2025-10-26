@@ -28,7 +28,7 @@ jobs:
       # Utilisé pour nommer l'image
       REGISTRY_IMAGE: pifou25/jeedom
       # Référence vers le cache du registre
-      REGISTRY_CACHE: registry:5000/jeedom:buildcache
+      REGISTRY_CACHE: localhost:5000/jeedom:buildcache
 
     steps:
       - uses: actions/checkout@v4
@@ -55,11 +55,11 @@ jobs:
           docker buildx build \
             --builder docker-container \
             --file build/Dockerfile \
-            --tag registry:5000/${{ env.REGISTRY_IMAGE }}:latest \
+            --tag localhost:5000/${{ env.REGISTRY_IMAGE }}:latest \
             --cache-from type=registry,ref=${{ env.REGISTRY_CACHE }} \
             --cache-to type=registry,ref=${{ env.REGISTRY_CACHE }},mode=max \
             --load \
             build
 
       - name: Test image
-        run: docker run --rm registry:5000/${{ env.REGISTRY_IMAGE }}:latest jeedom --version || echo "Image built successfully"
+        run: docker run --rm localhost:5000/${{ env.REGISTRY_IMAGE }}:latest jeedom --version || echo "Image built successfully"
