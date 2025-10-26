@@ -52,7 +52,7 @@ jobs:
       - name: Build Jeedom image with cache
         run: |
           docker buildx build \
-            --builder default \
+            --builder docker-container \
             --file build/Dockerfile \
             --tag registry:5000/${{ env.REGISTRY_IMAGE }}:latest \
             --cache-from type=registry,ref=${{ env.REGISTRY_CACHE }} \
