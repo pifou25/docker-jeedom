@@ -112,7 +112,7 @@ jobs:
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
       CACHE_NAME: ${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
       # Référence vers le cache du registre
-      REGISTRY_CACHE: ghcr.io/pifou25/jeedom:buildcache
+      REGISTRY_CACHE: ghcr.io/pifou25/jeedom
 
     steps:
       -
