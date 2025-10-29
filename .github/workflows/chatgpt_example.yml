@@ -49,6 +49,19 @@ jobs:
         run: docker push ghcr.io/${{ env.REGISTRY_IMAGE }}:latest
 
       -
+        name: test Quay.io secrets
+        env:
+          username: ${{ secrets.QUAY_USER }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+        run: |
+          if [[ -z "$username" ]]; then
+            echo "username is empty"
+          fi
+          if [[ -z "$password" ]]; then
+            echo "password is empty"
+          fi
+
+      -
         name: Login to Quay.io
         uses: docker/login-action@v2
         with:
