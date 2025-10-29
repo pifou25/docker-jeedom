@@ -5,9 +5,9 @@ name: Docker Multiplatform Build ci
 on:
   push:
     branches:
-      - 'master'
-      - 'develop'
-      # - 'feat/service_registry2'
+      - master
+      - develop
+      - feat/service_registry2
   # this is to manually trigger the worklow
   workflow_dispatch:
     inputs:
@@ -30,6 +30,8 @@ env:
   REGISTRY_IMAGE: pifou25/jeedom
   # XDEBUG enabled by default for develop and beta branches
   XDEBUG: ${{ github.ref_name == 'master' && 'false' || 'true' }}
+  # Active BuildKit
+  DOCKER_BUILDKIT: 1
   # Active BuildKit
   DOCKER_BUILDKIT: 1
 
@@ -83,6 +85,9 @@ jobs:
         platform: [amd64, arm64, arm/v6, arm/v7]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
+          - target: full
+          - debian: [ bullseye, trixie]
+          - php: [7.4, 8.4]
           - debian: bookworm
             php: 7.4
           - debian: bookworm
@@ -107,7 +112,7 @@ jobs:
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
       CACHE_NAME: ${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
       # Référence vers le cache du registre
-      REGISTRY_CACHE: ghcr.io/pifou25/docker-jeedom
+      REGISTRY_CACHE: ghcr.io/pifou25/jeedom:buildcache-${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
 
     steps:
       -
@@ -119,22 +124,54 @@ jobs:
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
           # docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_SECRET }}
 
-      # prepare image cache for local registry
+      # prepare image cache for Dockerfile buildx
       # https://github.com/marketplace/actions/cache
       - id: image-cache
         uses: actions/cache@v4.2.2
         with:
-          path: /tmp/registry-cache
-          key: registry-cache
+          path: ~/image-cache
+          # Adjust key to meet your cache time requirements e.g.
+          # ${{ hashFiles(*) }} can be useful here to invalidate
+          # cache on file changes
+          key: image-cache-${{ runner.os }}${{ matrix.php }}${{ matrix.debian }}${{ matrix.platform }}
 
-      # local registry for docker cache
-      - name: Start local Docker registry (mirror/cache)
+      - if: steps.image-cache.outputs.cache-hit != 'true'
+        name: Pull images for ${{ env.CACHE_NAME }} and save in cache
+        # pull from docker hub if not in cache and save in cache
         run: |
-          docker run -d -p 5000:5000 --restart=always --name registry \
-            -v /tmp/docker-registry:/var/lib/registry \
-            registry:2
-          npx wait-on tcp:5000
+          # trim '/' from the cache name
+          CACHE_NAME=${CACHE_NAME//'/'/}
+          echo "pull images for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
+          mkdir -p ~/image-cache # create cache directory
+          docker pull --platform linux/${{ matrix.platform }} php:${{ matrix.php }}-apache-${{ matrix.debian }}
+          docker pull --platform linux/${{ matrix.platform }} composer/composer:latest-bin
+          docker pull --platform linux/${{ matrix.platform }} mlocati/php-extension-installer
+          docker save -o ~/image-cache/php.${CACHE_NAME}.tar php:${{ matrix.php }}-apache-${{ matrix.debian }}
+          docker save -o ~/image-cache/php-extension-installer-${CACHE_NAME}.tar mlocati/php-extension-installer
+          docker save -o ~/image-cache/composer-${CACHE_NAME}.tar composer/composer:latest-bin
+          # sleep to avoid HTTP 429 error (too many requests...)
+          # sleep 1m
 
+      - if: steps.image-cache.outputs.cache-hit == 'true'
+        name: Load images from cache for ${{ env.CACHE_NAME }}
+        # load from cache
+        run: |
+          # trim '/' from the cache name
+          CACHE_NAME=${CACHE_NAME//'/'/}
+          echo "load images from cache for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
+          docker load -i ~/image-cache/php.${CACHE_NAME}.tar
+          docker load -i ~/image-cache/php-extension-installer-${CACHE_NAME}.tar
+          docker load -i ~/image-cache/composer-${CACHE_NAME}.tar
+
+      - 
+        name: Login to GitHub Container Registry
+        # 🔹 Service de cache Docker Registry ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_SECRET }}
+        
       -
         name: Checkout
         uses: actions/checkout@v4.1.2
@@ -186,10 +223,8 @@ jobs:
         # set up a multi-platform builder for Docker containers
         uses: docker/setup-buildx-action@v3
         with:
-          driver-opts: network=host
-          buildkitd-flags: --debug
-          install: true
-          driver: docker-container
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - 
         name: build ${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -232,6 +267,8 @@ jobs:
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.buildJeedom.outputs.digest }}"
+          echo "DIGEST=${digest#sha256:}" >> $GITHUB_ENV
+          echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
           touch "/tmp/digests/${digest#sha256:}"
       -
         name: Upload digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -263,6 +300,9 @@ jobs:
         php: [7.4, 8.2, 8.4]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
+          - target: full
+          - debian: [ bullseye, trixie]
+          - php: [7.4, 8.4]
           - debian: bookworm
             php: 7.4
           - debian: bookworm
@@ -281,22 +321,6 @@ jobs:
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
 
     steps:
-
-      # prepare image cache for local registry
-      # https://github.com/marketplace/actions/cache
-      - id: image-cache
-        uses: actions/cache@v4.2.2
-        with:
-          path: /tmp/registry-cache
-          key: registry-cache
-
-      # local registry for docker cache
-      - name: Start local Docker registry (mirror/cache)
-        run: |
-          docker run -d -p 5000:5000 --restart=always --name registry \
-            -v /tmp/docker-registry:/var/lib/registry \
-            registry:2
-          npx wait-on tcp:5000
       -
         name: Download digests
         uses: actions/download-artifact@v4
@@ -428,43 +452,11 @@ jobs:
 
       - name: check Docker.io rate limit
         run: |
-          #!/usr/bin/env bash
-          # Vérifie la limite et le nombre de pulls restants sur Docker Hub
-
-          # Dépendances : curl + jq
-          if ! command -v jq >/dev/null 2>&1; then
-            echo "❌ jq est requis (sudo apt install jq ou brew install jq)"
-            exit 1
-          fi
-
-          # 1️⃣ Récupère un token d'authentification pour une image publique
-          TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" \
-            | jq -r '.token')
-
-          if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
-            echo "❌ Impossible d'obtenir un token Docker Hub"
-            exit 1
-          fi
-
-          # 2️⃣ Interroge le registre pour obtenir les infos de quota
-          HEADERS=$(curl -s -I -H "Authorization: Bearer $TOKEN" \
-            https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest)
-
-          # Exemple de lignes :
-          # RateLimit-Limit: 100;w=21600
-          # RateLimit-Remaining: 73;w=21600
-
-          # Extraire limite + fenêtre
-          read LIMIT WINDOW < <(echo "$HEADERS" | grep -i "RateLimit-Limit" | sed -E 's/.*: ([0-9]+);w=([0-9]+)/\1 \2/')
-          # Extraire le nombre restant
-          read REMAINING _ < <(echo "$HEADERS" | grep -i "RateLimit-Remaining" | sed -E 's/.*: ([0-9]+);w=([0-9]+)/\1 \2/')
-
-          # 3️⃣ Affiche un résumé propre
-          if [[ -n "$LIMIT" && -n "$REMAINING" && -n "$WINDOW" ]]; then
-            CURRENT_DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-            HOURS=$(awk "BEGIN {printf \"%.1f\", $WINDOW/3600}")
-            echo "✅ Pulls restants au ${CURRENT_DATETIME} : $REMAINING / $LIMIT (fenêtre de ${HOURS}h)"
-          else
-            echo "⚠️ Impossible de lire les en-têtes RateLimit"
-            echo "$HEADERS"
-          fi
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
+      -
+        name: Inspect image ${{ env.TAG_NAME }}
+        # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          # sleep 1m
