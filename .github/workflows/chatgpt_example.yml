@@ -2,7 +2,7 @@ name: Build Jeedom Image with Registry Cache
 
 on:
   push:
-    branches: [ feat/service_registry2 ]
+    branches: [ none ]
   pull_request:
 
 jobs:

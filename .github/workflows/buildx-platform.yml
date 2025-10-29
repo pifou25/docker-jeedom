@@ -5,9 +5,9 @@ name: Docker Multiplatform Build ci
 on:
   push:
     branches:
-      - 'master'
-      - 'develop'
-      # - 'feat/service_registry2'
+      - master
+      - develop
+      - feat/service_registry2
   # this is to manually trigger the worklow
   workflow_dispatch:
     inputs:
@@ -30,6 +30,8 @@ env:
   REGISTRY_IMAGE: pifou25/jeedom
   # XDEBUG enabled by default for develop and beta branches
   XDEBUG: ${{ github.ref_name == 'master' && 'false' || 'true' }}
+  # Active BuildKit
+  DOCKER_BUILDKIT: 1
 
 jobs:
   # clean runner and Lint the Dockerfile
@@ -81,6 +83,9 @@ jobs:
         platform: [amd64, arm64, arm/v6, arm/v7]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
+          - target: full
+          - debian: [ bullseye, trixie]
+          - php: [7.4, 8.4]
           - debian: bookworm
             php: 7.4
           - debian: bookworm
@@ -102,6 +107,8 @@ jobs:
       TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
       CACHE_NAME: ${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
+      # Référence vers le cache du registre
+      REGISTRY_CACHE: ghcr.io/pifou25/jeedom:buildcache-${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
 
     steps:
       -
@@ -113,22 +120,54 @@ jobs:
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
           # docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_SECRET }}
 
-      # prepare image cache for local registry
+      # prepare image cache for Dockerfile buildx
       # https://github.com/marketplace/actions/cache
       - id: image-cache
         uses: actions/cache@v4.2.2
         with:
-          path: /tmp/registry-cache
-          key: registry-cache
+          path: ~/image-cache
+          # Adjust key to meet your cache time requirements e.g.
+          # ${{ hashFiles(*) }} can be useful here to invalidate
+          # cache on file changes
+          key: image-cache-${{ runner.os }}${{ matrix.php }}${{ matrix.debian }}${{ matrix.platform }}
 
-      # local registry for docker cache
-      - name: Start local Docker registry (mirror/cache)
+      - if: steps.image-cache.outputs.cache-hit != 'true'
+        name: Pull images for ${{ env.CACHE_NAME }} and save in cache
+        # pull from docker hub if not in cache and save in cache
         run: |
-          docker run -d -p 5000:5000 --restart=always --name registry \
-            -v /tmp/docker-registry:/var/lib/registry \
-            registry:2
-          npx wait-on tcp:5000
+          # trim '/' from the cache name
+          CACHE_NAME=${CACHE_NAME//'/'/}
+          echo "pull images for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
+          mkdir -p ~/image-cache # create cache directory
+          docker pull --platform linux/${{ matrix.platform }} php:${{ matrix.php }}-apache-${{ matrix.debian }}
+          docker pull --platform linux/${{ matrix.platform }} composer/composer:latest-bin
+          docker pull --platform linux/${{ matrix.platform }} mlocati/php-extension-installer
+          docker save -o ~/image-cache/php.${CACHE_NAME}.tar php:${{ matrix.php }}-apache-${{ matrix.debian }}
+          docker save -o ~/image-cache/php-extension-installer-${CACHE_NAME}.tar mlocati/php-extension-installer
+          docker save -o ~/image-cache/composer-${CACHE_NAME}.tar composer/composer:latest-bin
+          # sleep to avoid HTTP 429 error (too many requests...)
+          # sleep 1m
 
+      - if: steps.image-cache.outputs.cache-hit == 'true'
+        name: Load images from cache for ${{ env.CACHE_NAME }}
+        # load from cache
+        run: |
+          # trim '/' from the cache name
+          CACHE_NAME=${CACHE_NAME//'/'/}
+          echo "load images from cache for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
+          docker load -i ~/image-cache/php.${CACHE_NAME}.tar
+          docker load -i ~/image-cache/php-extension-installer-${CACHE_NAME}.tar
+          docker load -i ~/image-cache/composer-${CACHE_NAME}.tar
+
+      - 
+        name: Login to GitHub Container Registry
+        # 🔹 Service de cache Docker Registry ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_SECRET }}
+        
       -
         name: Checkout
         uses: actions/checkout@v4.1.2
@@ -172,18 +211,6 @@ jobs:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Cache Docker layers
-        # https://github.com/marketplace/actions/cache
-        # this action allows caching dependancies and build output
-        uses: actions/cache@v4
-        id: buildx-cache
-        with:
-          path: /tmp/.buildx-cache
-          key: buildx-${{ runner.os }}-${{ matrix.platform }}
-          restore-keys: |
-            buildx-${{ runner.os }}-${{ matrix.platform }}
-            buildx-${{ runner.os }}
-
       - 
         name: build ${{ env.TAG_NAME }}:${{ matrix.platform }}
         # id required for next step that check success
@@ -204,12 +231,8 @@ jobs:
             XDEBUG=${{ env.XDEBUG }}
             XTRARGS=${{ env.XDEBUG && '-light-dev' || '-light' }}
           platforms: linux/${{ matrix.platform }}
-          cache-from: |
-            type=registry,ref=localhost:5000/${{ env.REGISTRY_IMAGE }}:buildcache
-            type=local,src=/tmp/.buildx-cache
-          cache-to: |
-            type=registry,ref=localhost:5000/${{ env.REGISTRY_IMAGE }}:buildcache,mode=max
-            type=local,dest=/tmp/.buildx-cache
+          cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}
+          cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }},mode=max
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           # tags: ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
 
@@ -218,7 +241,6 @@ jobs:
         # some debug information in case of error, exit with error
         run: |
           echo "${{ matrix.platform}} ${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ env.JEEDOM_BRANCH }} debug=${{ env.XDEBUG }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
-          echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.buildx-cache.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
           # echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
           exit 1
 
@@ -230,7 +252,6 @@ jobs:
           mkdir -p /tmp/digests
           digest="${{ steps.buildJeedom.outputs.digest }}"
           echo "DIGEST=${digest#sha256:}" >> $GITHUB_ENV
-          echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.buildx-cache.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
           echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
           touch "/tmp/digests/${digest#sha256:}"
       -
@@ -263,6 +284,9 @@ jobs:
         php: [7.4, 8.2, 8.4]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
+          - target: full
+          - debian: [ bullseye, trixie]
+          - php: [7.4, 8.4]
           - debian: bookworm
             php: 7.4
           - debian: bookworm
@@ -282,22 +306,6 @@ jobs:
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
  
     steps:
-
-      # prepare image cache for local registry
-      # https://github.com/marketplace/actions/cache
-      - id: image-cache
-        uses: actions/cache@v4.2.2
-        with:
-          path: /tmp/registry-cache
-          key: registry-cache
-
-      # local registry for docker cache
-      - name: Start local Docker registry (mirror/cache)
-        run: |
-          docker run -d -p 5000:5000 --restart=always --name registry \
-            -v /tmp/docker-registry:/var/lib/registry \
-            registry:2
-          npx wait-on tcp:5000
       -
         name: Download digests
         uses: actions/download-artifact@v4
@@ -342,7 +350,7 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
       -
         name: Inspect image ${{ env.TAG_NAME }}
         # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
@@ -358,7 +366,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GHCR_SECRET }}
-      
+    
       -
         name: push to ghcr.io
         run: |
@@ -369,11 +377,4 @@ jobs:
         # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
-          sleep 1m
-
-        # duplicate the tag for ghcr.io
-      -
-        name: push to docker.io
-        run: |
-          docker tag ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
-          docker push ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          # sleep 1m
