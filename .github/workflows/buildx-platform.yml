@@ -112,7 +112,7 @@ jobs:
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
       CACHE_NAME: ${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
       # Référence vers le cache du registre
-      REGISTRY_CACHE: ghcr.io/pifou25/jeedom:buildcache-${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
+      REGISTRY_CACHE: ghcr.io/pifou25/jeedom:buildcache
 
     steps:
       -
@@ -122,7 +122,8 @@ jobs:
           platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
-          # docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_SECRET }}
+          echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_ENV
+          echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_STEP_SUMMARY
 
       # prepare image cache for Dockerfile buildx
       # https://github.com/marketplace/actions/cache
