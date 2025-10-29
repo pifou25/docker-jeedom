@@ -15,7 +15,7 @@ jobs:
       # Utilisé pour nommer l'image
       REGISTRY_IMAGE: pifou25/jeedom
       # Référence vers le cache du registre
-      REGISTRY_CACHE: ghcr.io/jeedom:buildcache
+      REGISTRY_CACHE: ghcr.io/pifou25/jeedom:buildcache
 
     steps:
       - 
