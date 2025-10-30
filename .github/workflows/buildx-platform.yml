@@ -60,6 +60,51 @@ jobs:
           dockerfile: build/Dockerfile.full
           no-fail: true
           verbose: true
+      -
+        name: Login to DockerHub
+        # https://github.com/marketplace/actions/docker-login
+        # login to DockerHub with secrets login & token - for pull to avoid error HTTP 429 Too many requests
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: check Docker.io rate limit
+        run: |
+          #!/usr/bin/env bash
+          # Vérifie la limite et le nombre de pulls restants sur Docker Hub
+
+          # Dépendances : curl + jq
+          if ! command -v jq >/dev/null 2>&1; then
+            echo "❌ jq est requis (sudo apt install jq ou brew install jq)" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # 1️⃣ Récupère le token d'authentification pour une image publique
+          TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" \
+            | jq -r '.token')
+
+          if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
+            echo "❌ Impossible d'obtenir un token Docker Hub" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # 2️⃣ Interroge le registre pour obtenir les infos de quota
+          HEADERS=$(curl -s -I -H "Authorization: Bearer $TOKEN" \
+            https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest)
+
+          LIMIT=$(echo "$HEADERS" | grep -i "RateLimit-Limit" | grep -oE '[0-9]+')
+          REMAINING=$(echo "$HEADERS" | grep -i "RateLimit-Remaining" | grep -oE '[0-9]+')
+          WINDOW=$(echo "$HEADERS" | grep -i "RateLimit-Limit" | grep -oE 'w=[0-9]+' | cut -d= -f2)
+
+          # 3️⃣ Affiche un résumé propre
+          if [[ -n "$LIMIT" && -n "$REMAINING" ]]; then
+            HOURS=$(awk "BEGIN {printf \"%.1f\", $WINDOW/3600}")
+            echo "✅ Pulls restants : $REMAINING / $LIMIT (fenêtre de ${HOURS}h)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Impossible de lire les en-têtes RateLimit" >> $GITHUB_STEP_SUMMARY
+            echo "$HEADERS" >> $GITHUB_STEP_SUMMARY
+          fi
 
   jbuild:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
@@ -424,3 +469,58 @@ jobs:
             echo "Successfull pushing ${TAG_NAME} to quay.io 🚀" >> $GITHUB_STEP_SUMMARY; \
           fi
           exit 1
+
+  conclusion:
+    # login to Docker.io and check remaining rate limit
+    needs: [merge]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+
+      -
+        name: Login to DockerHub
+        # https://github.com/marketplace/actions/docker-login
+        # login to DockerHub with secrets login & token - for pull to avoid error HTTP 429 Too many requests
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: check Docker.io rate limit
+        run: |
+          #!/usr/bin/env bash
+          # Vérifie la limite et le nombre de pulls restants sur Docker Hub
+
+          # Dépendances : curl + jq
+          if ! command -v jq >/dev/null 2>&1; then
+            echo "❌ jq est requis (sudo apt install jq ou brew install jq)" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # 1️⃣ Récupère le token d'authentification pour une image publique
+          TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" \
+            | jq -r '.token')
+
+          if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
+            echo "❌ Impossible d'obtenir un token Docker Hub" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # 2️⃣ Interroge le registre pour obtenir les infos de quota
+          HEADERS=$(curl -s -I -H "Authorization: Bearer $TOKEN" \
+            https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest)
+
+          LIMIT=$(echo "$HEADERS" | grep -i "RateLimit-Limit" | grep -oE '[0-9]+')
+          REMAINING=$(echo "$HEADERS" | grep -i "RateLimit-Remaining" | grep -oE '[0-9]+')
+          WINDOW=$(echo "$HEADERS" | grep -i "RateLimit-Limit" | grep -oE 'w=[0-9]+' | cut -d= -f2)
+
+          # 3️⃣ Affiche un résumé propre
+          if [[ -n "$LIMIT" && -n "$REMAINING" ]]; then
+            HOURS=$(awk "BEGIN {printf \"%.1f\", $WINDOW/3600}")
+            echo "✅ Pulls restants : $REMAINING / $LIMIT (fenêtre de ${HOURS}h)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Impossible de lire les en-têtes RateLimit" >> $GITHUB_STEP_SUMMARY
+            echo "$HEADERS" >> $GITHUB_STEP_SUMMARY
+          fi
+
+
