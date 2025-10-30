@@ -85,7 +85,6 @@ jobs:
         platform: [amd64, arm64, arm/v6, arm/v7]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
-          - target: full
           - debian: bookworm
             php: 7.4
           - debian: bookworm
@@ -119,9 +118,9 @@ jobs:
         run: |
           platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
+          # echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
           echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_ENV
-          echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_STEP_SUMMARY
+          # echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_STEP_SUMMARY
           echo "CURRENT_DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
 
       # prepare image cache for Dockerfile buildx
@@ -150,7 +149,7 @@ jobs:
         run: |
           # trim '/' from the cache name
           CACHE_NAME=${CACHE_NAME//'/'/}
-          echo "pull images for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
+          # echo "pull images for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
           mkdir -p ~/image-cache # create cache directory
           docker pull --platform linux/${{ matrix.platform }} php:${{ matrix.php }}-apache-${{ matrix.debian }}
           docker pull --platform linux/${{ matrix.platform }} composer/composer:latest-bin
@@ -167,7 +166,7 @@ jobs:
         run: |
           # trim '/' from the cache name
           CACHE_NAME=${CACHE_NAME//'/'/}
-          echo "load images from cache for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
+          # echo "load images from cache for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
           docker load -i ~/image-cache/php.${CACHE_NAME}.tar
           docker load -i ~/image-cache/php-extension-installer-${CACHE_NAME}.tar
           docker load -i ~/image-cache/composer-${CACHE_NAME}.tar
@@ -235,7 +234,7 @@ jobs:
             type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
           # label chadburn for the "cron" container
           labels: |
-            org.opencontainers.image.created=${CURRENT_DATETIME}
+            org.opencontainers.image.created=${{ env.CURRENT_DATETIME }}
             org.opencontainers.image.revision=${{ github.sha }}
             chadburn.enabled=true
             chadburn.job-exec.jeedom-cron.schedule=@every 1m
@@ -300,7 +299,7 @@ jobs:
           mkdir -p /tmp/digests
           digest="${{ steps.buildJeedom.outputs.digest }}"
           echo "DIGEST=${digest#sha256:}" >> $GITHUB_ENV
-          echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
+          # echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
           touch "/tmp/digests/${digest#sha256:}"
       -
         name: Upload digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -320,7 +319,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - jbuild
-      - initStep
 
     # same matrix as previous step except the platform
     strategy:
@@ -333,7 +331,6 @@ jobs:
         php: [7.4, 8.2, 8.4]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
-          - target: full
           - debian: bookworm
             php: 7.4
           - debian: bookworm
@@ -408,10 +405,6 @@ jobs:
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
-      -
-        name: Inspect image ${{ env.TAG_NAME }}
-        run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }} >> $GITHUB_STEP_SUMMARY
 
       - 
         name: Login to GitHub Container Registry
@@ -545,6 +538,14 @@ jobs:
       - name: Check push into quay.io ${{ env.TAG_NAME }}
         if: steps.quay-push.outcome != 'success' || steps.ghcr-push.outcome != 'success'
         run: |
-          ${{ steps.ghcr-push.outcome != 'success' &&  'echo "Fail pushing ${TAG_NAME} to ghcr.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY' }}
-          ${{ steps.quay-push.outcome != 'success' &&  'echo "Fail pushing ${TAG_NAME} to quay.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY' }}
+          if [ "${{ steps.ghcr-push.outcome }}" != "success" ]; then \
+            echo "Fail pushing ${TAG_NAME} to ghcr.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
+          else \
+            echo "Successfull pushing ${TAG_NAME} to ghcr.io 🚀" >> $GITHUB_STEP_SUMMARY; \
+          fi
+          if [ "${{ steps.quay-push.outcome }}" != "success" ]; then \
+            echo "Fail pushing ${TAG_NAME} to quay.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
+          else \
+            echo "Successfull pushing ${TAG_NAME} to quay.io 🚀" >> $GITHUB_STEP_SUMMARY; \
+          fi
           exit 1
