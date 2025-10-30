@@ -237,12 +237,6 @@ jobs:
           cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }},mode=max
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          # list of repo/image name without tag
-          tags: |
-            ${{ env.REGISTRY_IMAGE }}
-            ghcr.io/${{ env.REGISTRY_IMAGE }}
-            quay.io/${{ env.REGISTRY_IMAGE }}
-            
 
       - name: Check on failures ${{ env.TAG_NAME }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome != 'success'
