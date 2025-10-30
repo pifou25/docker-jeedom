@@ -37,9 +37,6 @@ jobs:
   # clean runner and Lint the Dockerfile
   initStep:
     runs-on: ubuntu-latest
-    # Map a step output to a job output
-    outputs:
-      current-datetime: ${{ steps.init-date.outputs.CURRENT_DATETIME }}
     steps:
       - name: Remove old artifacts
         # https://github.com/marketplace/actions/remove-artifacts
@@ -63,10 +60,6 @@ jobs:
           dockerfile: build/Dockerfile.full
           no-fail: true
           verbose: true
-      - name: Init current datetime (UTC) into env
-        id: init-date
-        run: |
-          echo "CURRENT_DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
 
   jbuild:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
@@ -81,7 +74,7 @@ jobs:
       # do every matrix combination, don't stop on errors
       fail-fast: false
       # limit to avoid error HTTP 409: too many requests
-      max-parallel: 5
+      max-parallel: 3
       matrix:
         target: ["light" , "full"]
         debian: [bullseye, bookworm, trixie]
@@ -91,10 +84,6 @@ jobs:
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
           - target: full
-          - debian: bullseye
-          - debian: trixie
-          - php: 7.4
-          - php: 8.4
           - debian: bookworm
             php: 7.4
           - debian: bookworm
@@ -118,8 +107,6 @@ jobs:
       CACHE_NAME: ${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
       # Référence vers le cache du registre
       REGISTRY_CACHE: ghcr.io/pifou25/jeedom
-      # current date time from init job
-      CURRENT_DATETIME: ${{ needs.initStep.outputs.current-datetime }}
 
     steps:
       -
@@ -131,6 +118,7 @@ jobs:
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
           echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_ENV
           echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_STEP_SUMMARY
+          echo "CURRENT_DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
 
       # prepare image cache for Dockerfile buildx
       # https://github.com/marketplace/actions/cache
@@ -219,7 +207,7 @@ jobs:
             type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
           # label chadburn for the "cron" container
           labels: |
-            org.opencontainers.image.created=${{ env.CURRENT_DATETIME }}
+            org.opencontainers.image.created=${CURRENT_DATETIME}
             org.opencontainers.image.revision=${{ github.sha }}
             chadburn.enabled=true
             chadburn.job-exec.jeedom-cron.schedule=@every 1m
@@ -316,10 +304,6 @@ jobs:
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
           - target: full
-          - debian: bullseye
-          - debian: trixie
-          - php: 7.4
-          - php: 8.4
           - debian: bookworm
             php: 7.4
           - debian: bookworm
@@ -336,8 +320,6 @@ jobs:
     env:
       TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
-       # current date time from init job
-      CURRENT_DATETIME: ${{ needs.initStep.outputs.current-datetime }}
 
     steps:
       -
@@ -364,13 +346,6 @@ jobs:
             type=raw,value=${{ env.TAG_NAME }}
             # set latest tag for default branch
             type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
-          # label chadburn for the "cron" container
-          labels: |
-            org.opencontainers.image.created=${{ env.CURRENT_DATETIME }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            chadburn.enabled=true
-            chadburn.job-exec.jeedom-cron.schedule=@every 1m
-            chadburn.job-exec.jeedom-cron.command=/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1
 
       -
         name: Login to DockerHub
@@ -433,6 +408,6 @@ jobs:
       - name: Check push into quay.io ${{ env.TAG_NAME }}
         if: steps.quay-push.outcome != 'success' || steps.ghcr-push.outcome != 'success'
         run: |
-          ${{ steps.ghcr-push.outcome != 'success' &&  'echo "Fail pushing ${TAG_NAME} to ghcr.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY \ ' }}
-          ${{ steps.quay-push.outcome != 'success' &&  'echo "Fail pushing ${TAG_NAME} to quay.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY \ ' }}
+          ${{ steps.ghcr-push.outcome != 'success' &&  'echo "Fail pushing ${TAG_NAME} to ghcr.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY' }}
+          ${{ steps.quay-push.outcome != 'success' &&  'echo "Fail pushing ${TAG_NAME} to quay.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY' }}
           exit 1
