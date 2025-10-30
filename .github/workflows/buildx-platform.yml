@@ -206,11 +206,11 @@ jobs:
             type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
           # label chadburn for the "cron" container
           labels: |
-            org.opencontainers.image.created=${{ env.CURRENT_DATETIME }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created="${{ env.CURRENT_DATETIME }}"
+            org.opencontainers.image.revision="${{ github.sha }}"
             chadburn.enabled=true
-            chadburn.job-exec.jeedom-cron.schedule=@every 1m
-            chadburn.job-exec.jeedom-cron.command=/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1
+            chadburn.job-exec.jeedom-cron.schedule="@every 1m"
+            chadburn.job-exec.jeedom-cron.command="/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
 
       -
         name: Set up QEMU
