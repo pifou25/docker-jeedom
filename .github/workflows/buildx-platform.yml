@@ -7,7 +7,7 @@ on:
     branches:
       - master
       - develop
-      - feat/service_registry2
+      - feat/improvment
   # this is to manually trigger the worklow
   workflow_dispatch:
     inputs:
