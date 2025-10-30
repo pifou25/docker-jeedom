@@ -206,8 +206,6 @@ jobs:
           # list of Docker images to use as base name for tags
           images: |
             ${{ env.REGISTRY_IMAGE }}
-            ghcr.io/${{ env.REGISTRY_IMAGE }}
-            quay.io/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -352,8 +350,6 @@ jobs:
           # list of Docker images to use as base name for tags
           images: |
             ${{ env.REGISTRY_IMAGE }}
-            ghcr.io/${{ env.REGISTRY_IMAGE }}
-            quay.io/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -402,5 +398,19 @@ jobs:
         # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }} >> $GITHUB_STEP_SUMMARY
-          sleep 1m
+          # sleep 1m
           exit 0
+
+      - name: Push image to GHCR
+        run: |
+          docker buildx imagetools create \
+            ${{ env.TAG_LATEST_ENABLED && '--tag ghcr.io/${REGISTRY_IMAGE}:latest' || '' }} \
+            --tag ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
+            ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+
+      - name: Push image to Quay.io
+        run: |
+          docker buildx imagetools create \
+            ${{ env.TAG_LATEST_ENABLED && '--tag quay.io/${REGISTRY_IMAGE}:latest' || '' }} \
+            --tag quay.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
+            ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
