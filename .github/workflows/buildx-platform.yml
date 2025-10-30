@@ -39,6 +39,9 @@ jobs:
   # clean runner and Lint the Dockerfile
   initStep:
     runs-on: ubuntu-latest
+    # Map a step output to a job output
+    outputs:
+      current-datetime: ${{ steps.init-date.outputs.CURRENT_DATETIME }}
     steps:
       - name: Remove old artifacts
         # https://github.com/marketplace/actions/remove-artifacts
@@ -63,6 +66,7 @@ jobs:
           no-fail: true
           verbose: true
       - name: Init current datetime (UTC) into env
+        id: init-date
         run: |
           echo "CURRENT_DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
 
@@ -118,6 +122,8 @@ jobs:
       CACHE_NAME: ${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
       # Référence vers le cache du registre
       REGISTRY_CACHE: ghcr.io/pifou25/jeedom
+      # current date time from init job
+      CURRENT_DATETIME: ${{ needs.initStep.outputs.current-datetime }}
 
     steps:
       -
@@ -319,6 +325,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - jbuild
+      - initStep
 
     # same matrix as previous step except the platform
     strategy:
@@ -352,6 +359,8 @@ jobs:
     env:
       TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
+       # current date time from init job
+      CURRENT_DATETIME: ${{ needs.initStep.outputs.current-datetime }}
 
     steps:
       -
@@ -403,14 +412,18 @@ jobs:
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+ 
       -
-        name: Login to Quay.io
-        uses: docker/login-action@v3
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USER }}
-          password: ${{ secrets.QUAY_PASSWORD }}
-          
+        name: Create manifest list and push ${{ env.TAG_NAME }}
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+      -
+        name: Inspect image ${{ env.TAG_NAME }}
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }} >> $GITHUB_STEP_SUMMARY
+
       - 
         name: Login to GitHub Container Registry
         # push to multi-registry
@@ -513,15 +526,36 @@ jobs:
           exit 0
 
       - name: Push image to GHCR
+        id: ghcr-push
+        # continue to next step even in case of error
+        continue-on-error: true
         run: |
           docker buildx imagetools create \
             ${{ env.TAG_LATEST_ENABLED && '--tag ghcr.io/${REGISTRY_IMAGE}:latest' || '' }} \
             --tag ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
             ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
 
+      -
+        name: Login to Quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USER }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+         
       - name: Push image to Quay.io
+        id: quay-push
+        # continue to next step even in case of error
+        continue-on-error: true
         run: |
           docker buildx imagetools create \
             ${{ env.TAG_LATEST_ENABLED && '--tag quay.io/${REGISTRY_IMAGE}:latest' || '' }} \
             --tag quay.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
             ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+
+      - name: Check push into quay.io ${{ env.TAG_NAME }}
+        if: steps.quay-push.outcome != 'success' || steps.ghcr-push.outcome != 'success'
+        run: |
+          ${{ steps.ghcr-push.outcome != 'success' &&  'echo "Fail pushing ${TAG_NAME} to ghcr.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY \ ' }}
+          ${{ steps.quay-push.outcome != 'success' &&  'echo "Fail pushing ${TAG_NAME} to quay.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY \ ' }}
+          exit 1
