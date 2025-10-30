@@ -181,6 +181,8 @@ jobs:
           # list of Docker images to use as base name for tags
           images: |
             ${{ env.REGISTRY_IMAGE }}
+            ghcr.io/${{ env.REGISTRY_IMAGE }}
+            quay.io/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -235,7 +237,12 @@ jobs:
           cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }},mode=max
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          # tags: ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          # list of repo/image name without tag
+          tags: |
+            ${{ env.REGISTRY_IMAGE }}
+            ghcr.io/${{ env.REGISTRY_IMAGE }}
+            quay.io/${{ env.REGISTRY_IMAGE }}
+            
 
       - name: Check on failures ${{ env.TAG_NAME }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome != 'success'
@@ -302,7 +309,6 @@ jobs:
             php: 7.4
 
     env:
-      REGISTRY_IMAGE: pifou25/jeedom
       TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
  
@@ -326,6 +332,8 @@ jobs:
           # list of Docker images to use as base name for tags
           images: |
             ${{ env.REGISTRY_IMAGE }}
+            ghcr.io/${{ env.REGISTRY_IMAGE }}
+            quay.io/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -372,10 +380,30 @@ jobs:
         name: push to ghcr.io
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
+            $(printf 'ghcr.io/${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
       -
-        name: Inspect image ${{ env.TAG_NAME }}
+        name: Inspect image ghcr.io/${{ env.TAG_NAME }}
         # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          # sleep 1m
+
+      -
+        name: Login to Quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USER }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
+      -
+        name: push to Quay.io
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf 'quay.io/${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
+      -
+        name: Inspect image quay.io/${{ env.TAG_NAME }}
+        # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
+        run: |
+          docker buildx imagetools inspect quay.io/${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
           # sleep 1m
