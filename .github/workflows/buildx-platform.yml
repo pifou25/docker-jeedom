@@ -178,6 +178,9 @@ jobs:
           docker load -i ~/image-cache/php-extension-installer-${CACHE_NAME}.tar
           docker load -i ~/image-cache/composer-${CACHE_NAME}.tar
 
+      -
+        name: Checkout
+        uses: actions/checkout@v4.1.2
           
       - name: Warm-up build (fills local daemon cache)
         # étape de préchauffage du cache docker
