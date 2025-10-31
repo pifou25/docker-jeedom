@@ -295,11 +295,9 @@ jobs:
         # some debug information in case of error, exit with error
         run: |
           echo "${{ matrix.platform}} ${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ env.JEEDOM_BRANCH }} debug=${{ env.XDEBUG }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
-          {
-            echo 'Labels: <<<EOF
-            ${{ steps.meta.outputs.labels }}
-            EOF
-          } >> $GITHUB_STEP_SUMMARY
+          cat <<EOF >> $GITHUB_STEP_SUMMARY
+          Labels: ${{ steps.meta.outputs.labels }}
+          EOF
           exit 1
 
       -
@@ -310,11 +308,9 @@ jobs:
           mkdir -p /tmp/digests
           digest="${{ steps.buildJeedom.outputs.digest }}"
           echo "DIGEST=${digest#sha256:}" >> $GITHUB_ENV
-          {
-            echo 'Labels: <<<EOF
-            ${{ steps.meta.outputs.labels }}
-            EOF
-          } >> $GITHUB_STEP_SUMMARY
+          cat <<EOF >> $GITHUB_STEP_SUMMARY
+          Labels: ${{ steps.meta.outputs.labels }}
+          EOF
           touch "/tmp/digests/${digest#sha256:}"
       -
         name: Upload digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
