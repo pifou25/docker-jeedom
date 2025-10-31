@@ -336,11 +336,9 @@ jobs:
           mkdir -p /tmp/digests
           digest="${{ steps.buildJeedom.outputs.digest }}"
           echo "DIGEST=${digest#sha256:}" >> $GITHUB_ENV
-          {
-            echo 'Labels: <<<EOF
-            ${{ steps.meta.outputs.labels }}
-            EOF
-          } >> $GITHUB_STEP_SUMMARY
+          cat <<EOF >> $GITHUB_STEP_SUMMARY
+          Labels: ${{ steps.meta.outputs.labels }}
+          EOF
           touch "/tmp/digests/${digest#sha256:}"
       -
         name: Upload digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
