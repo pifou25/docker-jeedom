@@ -5,9 +5,9 @@ name: Docker Multiplatform Build ci
 on:
   push:
     branches:
-      - 'master'
-      - 'develop'
-      - 'feat/arm6_bullseye'
+      - master
+      - develop
+      - feat/improvment
   # this is to manually trigger the worklow
   workflow_dispatch:
     inputs:
@@ -30,6 +30,8 @@ env:
   REGISTRY_IMAGE: pifou25/jeedom
   # XDEBUG enabled by default for develop and beta branches
   XDEBUG: ${{ github.ref_name == 'master' && 'false' || 'true' }}
+  # Active BuildKit
+  DOCKER_BUILDKIT: 1
 
 jobs:
   # clean runner and Lint the Dockerfile
@@ -58,6 +60,57 @@ jobs:
           dockerfile: build/Dockerfile.full
           no-fail: true
           verbose: true
+      -
+        name: Login to DockerHub
+        # https://github.com/marketplace/actions/docker-login
+        # login to DockerHub with login & secrets token - for pull to avoid error HTTP 429 Too many requests
+        uses: docker/login-action@v3
+        with:
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: check Docker.io rate limit
+        run: |
+          #!/usr/bin/env bash
+          # Vérifie la limite et le nombre de pulls restants sur Docker Hub
+
+          # Dépendances : curl + jq
+          if ! command -v jq >/dev/null 2>&1; then
+            echo "❌ jq est requis (sudo apt install jq ou brew install jq)"
+            exit 1
+          fi
+
+          # 1️⃣ Récupère un token d'authentification pour une image publique
+          TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" \
+            | jq -r '.token')
+
+          if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
+            echo "❌ Impossible d'obtenir un token Docker Hub"
+            exit 1
+          fi
+
+          # 2️⃣ Interroge le registre pour obtenir les infos de quota
+          HEADERS=$(curl -s -I -H "Authorization: Bearer $TOKEN" \
+            https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest)
+
+          # Exemple de lignes :
+          # RateLimit-Limit: 100;w=21600
+          # RateLimit-Remaining: 73;w=21600
+
+          # Extraire limite + fenêtre
+          read LIMIT WINDOW < <(echo "$HEADERS" | grep -i "RateLimit-Limit" | sed -E 's/.*: ([0-9]+);w=([0-9]+)/\1 \2/')
+          # Extraire le nombre restant
+          read REMAINING _ < <(echo "$HEADERS" | grep -i "RateLimit-Remaining" | sed -E 's/.*: ([0-9]+);w=([0-9]+)/\1 \2/')
+
+          # 3️⃣ Affiche un résumé propre
+          if [[ -n "$LIMIT" && -n "$REMAINING" && -n "$WINDOW" ]]; then
+            CURRENT_DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            HOURS=$(awk "BEGIN {printf \"%.1f\", $WINDOW/3600}")
+            echo "✅ Pulls restants au ${CURRENT_DATETIME} : $REMAINING / $LIMIT (fenêtre de ${HOURS}h)"
+          else
+            echo "⚠️ Impossible de lire les en-têtes RateLimit"
+            echo "$HEADERS"
+          fi
 
   jbuild:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
@@ -65,13 +118,14 @@ jobs:
     # This step  build the same image on different runners / platforms
     runs-on: ubuntu-latest
     needs: initStep
+
     # continue to next job even if there are some errors in jbuild job
     continue-on-error: true
     strategy:
       # do every matrix combination, don't stop on errors
       fail-fast: false
       # limit to avoid error HTTP 409: too many requests
-      max-parallel: 5
+      max-parallel: 3
       matrix:
         target: ["light" , "full"]
         debian: [bullseye, bookworm, trixie]
@@ -94,6 +148,8 @@ jobs:
             php: 7.4
           - debian: bullseye
             platform: 'arm/v6'
+          - debian: bullseye
+            platform: 'arm/v7'
 
 
     env:
@@ -101,19 +157,22 @@ jobs:
       TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
       CACHE_NAME: ${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
+      # Référence vers le cache du registre
+      REGISTRY_CACHE: ghcr.io/pifou25/docker-jeedom
 
     steps:
       -
         name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
-        # replace /  by - in platform value
+        # replace /  by - in platform value and registry cache name
         run: |
           platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
-          # docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_SECRET }}
+          # echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
+          echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_ENV
+          # echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_STEP_SUMMARY
 
-        # prepare image cache for Dockerfile buildx
-        # https://github.com/marketplace/actions/cache
+      # prepare image cache for Dockerfile buildx
+      # https://github.com/marketplace/actions/cache
       - id: image-cache
         uses: actions/cache@v4.2.2
         with:
@@ -123,13 +182,22 @@ jobs:
           # cache on file changes
           key: image-cache-${{ runner.os }}${{ matrix.php }}${{ matrix.debian }}${{ matrix.platform }}
 
+      -
+        name: Login to DockerHub
+        # https://github.com/marketplace/actions/docker-login
+        # login to DockerHub with secrets login & token - for pull to avoid error HTTP 429 Too many requests
+        uses: docker/login-action@v3
+        with:
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
       - if: steps.image-cache.outputs.cache-hit != 'true'
         name: Pull images for ${{ env.CACHE_NAME }} and save in cache
         # pull from docker hub if not in cache and save in cache
         run: |
           # trim '/' from the cache name
           CACHE_NAME=${CACHE_NAME//'/'/}
-          echo "pull images for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
+          # echo "pull images for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
           mkdir -p ~/image-cache # create cache directory
           docker pull --platform linux/${{ matrix.platform }} php:${{ matrix.php }}-apache-${{ matrix.debian }}
           docker pull --platform linux/${{ matrix.platform }} composer/composer:latest-bin
@@ -146,14 +214,35 @@ jobs:
         run: |
           # trim '/' from the cache name
           CACHE_NAME=${CACHE_NAME//'/'/}
-          echo "load images from cache for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
+          # echo "load images from cache for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
           docker load -i ~/image-cache/php.${CACHE_NAME}.tar
           docker load -i ~/image-cache/php-extension-installer-${CACHE_NAME}.tar
           docker load -i ~/image-cache/composer-${CACHE_NAME}.tar
-        
+
       -
         name: Checkout
         uses: actions/checkout@v4.1.2
+          
+      - name: Warm-up build (fills local daemon cache)
+        # étape de préchauffage du cache docker
+        run: |
+          docker buildx build --load \
+            --platform linux/amd64 \
+            --build-arg DEBIAN=${{ matrix.debian }} \
+            --build-arg PHP=${{ matrix.php }} \
+            --network=host \
+            --file build/Dockerfile \
+            build
+
+      - 
+        name: Login to GitHub Container Registry
+        # 🔹 Service de cache Docker Registry ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_SECRET }}
+        
       -
         name: Docker meta
         id: meta
@@ -168,11 +257,6 @@ jobs:
             type=raw,value=${{ env.TAG_NAME }}
             # set latest tag for default branch
             type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
-          # label chadburn for the "cron" container
-          labels: |
-            chadburn.enabled=true
-            chadburn.job-exec.jeedom-cron.schedule=@every 1m
-            chadburn.job-exec.jeedom-cron.command=/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1
 
       -
         name: Set up QEMU
@@ -185,26 +269,11 @@ jobs:
         # https://github.com/marketplace/actions/docker-setup-buildx
         # set up a multi-platform builder for Docker containers
         uses: docker/setup-buildx-action@v3
-      -
-        name: Login to DockerHub
-        # https://github.com/marketplace/actions/docker-login
-        # login to DockerHub with secrets login & token
-        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Cache Docker layers
-        # https://github.com/marketplace/actions/cache
-        # this action allows caching dependancies and build output
-        uses: actions/cache@v4
-        id: buildx-cache
-        with:
-          path: /tmp/.buildx-cache
-          key: buildx-${{ runner.os }}-${{ matrix.platform }}
-          restore-keys: |
-            buildx-${{ runner.os }}-${{ matrix.platform }}
-            buildx-${{ runner.os }}
+          driver-opts: network=host
+          buildkitd-flags: --debug
+          install: true
+          driver: docker-container
 
       - 
         name: build ${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -226,18 +295,18 @@ jobs:
             XDEBUG=${{ env.XDEBUG }}
             XTRARGS=${{ env.XDEBUG && '-light-dev' || '-light' }}
           platforms: linux/${{ matrix.platform }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+          cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }}
+          cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }},mode=max
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-          tags: ${{ env.REGISTRY_IMAGE }} #:${{ env.TAG_NAME }}
 
       - name: Check on failures ${{ env.TAG_NAME }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome != 'success'
         # some debug information in case of error, exit with error
         run: |
           echo "${{ matrix.platform}} ${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ env.JEEDOM_BRANCH }} debug=${{ env.XDEBUG }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
-          echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.buildx-cache.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
-          # echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
+          cat <<EOF >> $GITHUB_STEP_SUMMARY
+          Labels: ${{ steps.meta.outputs.labels }}
+          EOF
           exit 1
 
       -
@@ -247,9 +316,6 @@ jobs:
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.buildJeedom.outputs.digest }}"
-          echo "DIGEST=${digest#sha256:}" >> $GITHUB_ENV
-          echo "Cache:     buildx-${{ runner.os }}-${{ matrix.platform }}-${{ matrix.debian }} hit? ${{ steps.buildx-cache.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
-          echo "Labels:    ${{ steps.meta.outputs.labels }}" >> $GITHUB_STEP_SUMMARY
           touch "/tmp/digests/${digest#sha256:}"
       -
         name: Upload digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -274,7 +340,7 @@ jobs:
     strategy:
       fail-fast: false
       # limit to avoid error HTTP 409: too many requests
-      max-parallel: 2
+      max-parallel: 1
       matrix:
         target: ["light" , "full"]
         debian: [bullseye, bookworm, trixie]
@@ -295,12 +361,14 @@ jobs:
             php: 7.4
 
     env:
-      REGISTRY_IMAGE: pifou25/jeedom
       TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
-      GHCR_NAME: ghcr.io/${{ secrets.DOCKER_USER }}/jeedom
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && matrix.target == 'full' && github.ref_name == 'master') }}
- 
+
     steps:
+      - name: init datetime value
+        run: |
+          echo "CURRENT_DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+
       -
         name: Download digests
         uses: actions/download-artifact@v4
@@ -315,7 +383,7 @@ jobs:
         # login to DockerHub with secrets login & token
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USER }}
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       -
         name: Set up Docker Buildx
@@ -336,25 +404,31 @@ jobs:
             type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
           # label chadburn for the "cron" container
           labels: |
+            org.opencontainers.image.created=${{ env.CURRENT_DATETIME }}
+            org.opencontainers.image.revision=${{ github.sha }}
             chadburn.enabled=true
             chadburn.job-exec.jeedom-cron.schedule=@every 1m
-            chadburn.job-exec.jeedom-cron.command=/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1
+            chadburn.job-exec.jeedom-cron.command="/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
 
+      -
+        name: Login to DockerHub
+        # https://github.com/marketplace/actions/docker-login
+        # login to DockerHub with secrets login & token
+        uses: docker/login-action@v3
+        with:
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+ 
       -
         name: Create manifest list and push ${{ env.TAG_NAME }}
         working-directory: /tmp/digests
         run: |
           # debug tmp directory
           ls /tmp -alsh
-          ls /tmp/digests -alsh
+          echo jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON"
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
-      -
-        name: Inspect image ${{ env.TAG_NAME }}
-        # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
-        run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }} >> $GITHUB_STEP_SUMMARY
-          # sleep 1m
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+
       - 
         name: Login to GitHub Container Registry
         # push to multi-registry
@@ -364,11 +438,105 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GHCR_SECRET }}
-      
-      -
-        name: push to ghcr.io
+    
+      - name: Push image to GHCR
+        id: ghcr-push
+        # continue to next step even in case of error
+        continue-on-error: true
         run: |
-          # debug list of available images
-          docker image ls
-          docker tag docker.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} ${{ env.GHCR_NAME }}:${{ env.TAG_NAME }}
-          docker push ${{ env.GHCR_NAME }}:${{ env.TAG_NAME }}
+          docker buildx imagetools create \
+            ${{ env.TAG_LATEST_ENABLED && '--tag ghcr.io/${REGISTRY_IMAGE}:latest' || '' }} \
+            --tag ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
+            ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+
+      -
+        name: Login to Quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USER }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+         
+      - name: Push image to Quay.io
+        id: quay-push
+        # continue to next step even in case of error
+        continue-on-error: true
+        run: |
+          docker buildx imagetools create \
+            ${{ env.TAG_LATEST_ENABLED && '--tag quay.io/${REGISTRY_IMAGE}:latest' || '' }} \
+            --tag quay.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
+            ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+
+      - name: Check push into quay.io ${{ env.TAG_NAME }}
+        if: steps.quay-push.outcome != 'success' || steps.ghcr-push.outcome != 'success'
+        run: |
+          if [ "${{ steps.ghcr-push.outcome }}" != "success" ]; then \
+            echo "Fail pushing ${TAG_NAME} to ghcr.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
+          else \
+            echo "Successfull pushing ${TAG_NAME} to ghcr.io 🚀" >> $GITHUB_STEP_SUMMARY; \
+          fi
+          if [ "${{ steps.quay-push.outcome }}" != "success" ]; then \
+            echo "Fail pushing ${TAG_NAME} to quay.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
+          else \
+            echo "Successfull pushing ${TAG_NAME} to quay.io 🚀" >> $GITHUB_STEP_SUMMARY; \
+          fi
+          exit 1
+
+  conclusion:
+    # login to Docker.io and check remaining rate limit
+    needs: [merge]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+
+      -
+        name: Login to DockerHub
+        # https://github.com/marketplace/actions/docker-login
+        # login to DockerHub with secrets login & token - for pull to avoid error HTTP 429 Too many requests
+        uses: docker/login-action@v3
+        with:
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: check Docker.io rate limit
+        run: |
+          #!/usr/bin/env bash
+          # Vérifie la limite et le nombre de pulls restants sur Docker Hub
+
+          # Dépendances : curl + jq
+          if ! command -v jq >/dev/null 2>&1; then
+            echo "❌ jq est requis (sudo apt install jq ou brew install jq)"
+            exit 1
+          fi
+
+          # 1️⃣ Récupère un token d'authentification pour une image publique
+          TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" \
+            | jq -r '.token')
+
+          if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
+            echo "❌ Impossible d'obtenir un token Docker Hub"
+            exit 1
+          fi
+
+          # 2️⃣ Interroge le registre pour obtenir les infos de quota
+          HEADERS=$(curl -s -I -H "Authorization: Bearer $TOKEN" \
+            https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest)
+
+          # Exemple de lignes :
+          # RateLimit-Limit: 100;w=21600
+          # RateLimit-Remaining: 73;w=21600
+
+          # Extraire limite + fenêtre
+          read LIMIT WINDOW < <(echo "$HEADERS" | grep -i "RateLimit-Limit" | sed -E 's/.*: ([0-9]+);w=([0-9]+)/\1 \2/')
+          # Extraire le nombre restant
+          read REMAINING _ < <(echo "$HEADERS" | grep -i "RateLimit-Remaining" | sed -E 's/.*: ([0-9]+);w=([0-9]+)/\1 \2/')
+
+          # 3️⃣ Affiche un résumé propre
+          if [[ -n "$LIMIT" && -n "$REMAINING" && -n "$WINDOW" ]]; then
+            CURRENT_DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            HOURS=$(awk "BEGIN {printf \"%.1f\", $WINDOW/3600}")
+            echo "✅ Pulls restants au ${CURRENT_DATETIME} : $REMAINING / $LIMIT (fenêtre de ${HOURS}h)"
+          else
+            echo "⚠️ Impossible de lire les en-têtes RateLimit"
+            echo "$HEADERS"
+          fi
