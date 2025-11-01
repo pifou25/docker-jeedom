@@ -170,9 +170,14 @@ jobs:
       - name: Docker Push
         run: |
           docker push ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:test
-
-      - name: Run DockerHub rate limit check
+        
+      - name: Run DockerHub rate limit final check
+        id: ratecheckFinal
         run: |
+          chmod +x .github/scripts/rate_limit.sh
           ./.github/scripts/rate_limit.sh
-          echo "### 🐳 DockerHub Pull Limit at the end" >> $GITHUB_STEP_SUMMARY
-          echo "${summary}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Add summary to Job Summary
+        run: |
+          echo "### 🐳 DockerHub Pull Limit" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.ratecheckFinal.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
