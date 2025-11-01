@@ -161,8 +161,8 @@ jobs:
             --build-arg JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }} \
             --build-arg XDEBUG=false \
             --build-arg XTRARGS=-light \
-            --cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_NAME }}
-            --cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_NAME }},mode=max
+            --cache-from type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_NAME }} \
+            --cache-to type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_NAME }},mode=max \
             --file build/Dockerfile \
             --tag ghcr.io/${{ env.REGISTRY_IMAGE }}:test \
             --load build
