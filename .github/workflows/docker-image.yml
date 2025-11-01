@@ -71,8 +71,10 @@ jobs:
       - name: Run DockerHub rate limit check
         id: ratecheck
         run: |
-          chmod +x scripts/rate_limit.sh
-          ./scripts/rate_limit.sh
+          ls -alsh .
+          ls -alsh .github/scripts
+          chmod +x .github/scripts/rate_limit.sh
+          ./.github/scripts/rate_limit.sh
 
       - name: Add summary to Job Summary
         run: |
