@@ -71,8 +71,6 @@ jobs:
       - name: Run DockerHub rate limit check
         id: ratecheck
         run: |
-          ls -alsh .
-          ls -alsh .github/scripts
           chmod +x .github/scripts/rate_limit.sh
           ./.github/scripts/rate_limit.sh
 
@@ -102,6 +100,14 @@ jobs:
       #      --network buildnet -v /tmp/docker-registry:/var/lib/registry \
       #      registry:2
       #    npx wait-on tcp:5000
+
+      # 3️⃣ Configure le cache proxy Docker Hub
+      - name: Configure Docker to use local registry mirror
+        run: |
+          echo '{ "registry-mirrors": ["http://localhost:5000"] }' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+          cat /etc/docker/daemon.json
+          docker info | grep -A5 Mirrors || true
 
       - name: Set up Docker Buildx
         # https://github.com/marketplace/actions/docker-setup-buildx
