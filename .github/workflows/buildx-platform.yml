@@ -7,7 +7,7 @@ on:
     branches:
       - master
       - develop
-      - feat/improvment
+      - feat/script_rate_limit
   # this is to manually trigger the worklow
   workflow_dispatch:
     inputs:
@@ -71,6 +71,22 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Run DockerHub rate limit check
+        id: ratecheck
+        run: |
+          chmod +x .github/scripts/rate_limit.sh
+          ./.github/scripts/rate_limit.sh
+
+      - name: Add summary to Job Summary
+        run: |
+          echo "### 🐳 DockerHub Pull Limit" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.ratecheck.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: check Docker.io rate limit
+        if: ${{ steps.ratecheck.outputs.remaining && (steps.ratecheck.outputs.remaining < 10) }}
+        run: |
+          echo "⚠️ Il reste moins de 10 pulls : ${{ steps.ratecheck.outputs.remaining }} / ${{ steps.ratecheck.outputs.limit }}" >> $GITHUB_STEP_SUMMARY && exit 1
+
   jbuild:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
     # distributebuild across multiple runners
@@ -130,17 +146,6 @@ jobs:
           echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_ENV
           # echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_STEP_SUMMARY
 
-      # prepare image cache for Dockerfile buildx
-      # https://github.com/marketplace/actions/cache
-      - id: image-cache
-        uses: actions/cache@v4.2.2
-        with:
-          path: ~/image-cache
-          # Adjust key to meet your cache time requirements e.g.
-          # ${{ hashFiles(*) }} can be useful here to invalidate
-          # cache on file changes
-          key: image-cache-${{ runner.os }}${{ matrix.php }}${{ matrix.debian }}${{ matrix.platform }}
-
       -
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
@@ -150,49 +155,39 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - if: steps.image-cache.outputs.cache-hit != 'true'
-        name: Pull images for ${{ env.CACHE_NAME }} and save in cache
-        # pull from docker hub if not in cache and save in cache
-        run: |
-          # trim '/' from the cache name
-          CACHE_NAME=${CACHE_NAME//'/'/}
-          # echo "pull images for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
-          mkdir -p ~/image-cache # create cache directory
-          docker pull --platform linux/${{ matrix.platform }} php:${{ matrix.php }}-apache-${{ matrix.debian }}
-          docker pull --platform linux/${{ matrix.platform }} composer/composer:latest-bin
-          docker pull --platform linux/${{ matrix.platform }} mlocati/php-extension-installer
-          docker save -o ~/image-cache/php.${CACHE_NAME}.tar php:${{ matrix.php }}-apache-${{ matrix.debian }}
-          docker save -o ~/image-cache/php-extension-installer-${CACHE_NAME}.tar mlocati/php-extension-installer
-          docker save -o ~/image-cache/composer-${CACHE_NAME}.tar composer/composer:latest-bin
-          # sleep to avoid HTTP 429 error (too many requests...)
-          # sleep 1m
+      # prepare image cache for local registry
+      # https://github.com/marketplace/actions/cache
+      - id: image-cache
+        uses: actions/cache@v4.2.2
+        with:
+          path: /tmp/registry-cache
+          key: registry-cache
 
-      - if: steps.image-cache.outputs.cache-hit == 'true'
-        name: Load images from cache for ${{ env.CACHE_NAME }}
-        # load from cache
+      - name: start registry for mirror
+        env:
+          REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
         run: |
-          # trim '/' from the cache name
-          CACHE_NAME=${CACHE_NAME//'/'/}
-          # echo "load images from cache for ${CACHE_NAME}" >> $GITHUB_STEP_SUMMARY
-          docker load -i ~/image-cache/php.${CACHE_NAME}.tar
-          docker load -i ~/image-cache/php-extension-installer-${CACHE_NAME}.tar
-          docker load -i ~/image-cache/composer-${CACHE_NAME}.tar
+          docker run -d -p 5000:5000 --restart=always --name registry \
+            --health-cmd "wget --spider -q http://localhost:5000/v2/ || exit 1" \
+            --health-interval 5s \
+            --health-retries 10 \
+            --name registry-cache \
+            --volume /tmp/registry-cache:/var/lib/registry \
+            registry:2
+          # npx wait-on tcp:5000
+
+      # 3️⃣ Configure le cache proxy Docker Hub
+      - name: Configure Docker to use local registry mirror
+        run: |
+          echo '{ "registry-mirrors": ["http://localhost:5000"] }' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+          cat /etc/docker/daemon.json
+          docker info | grep -A5 Mirrors || true
 
       -
         name: Checkout
-        uses: actions/checkout@v4.1.2
+        uses: actions/checkout@v4
           
-      - name: Warm-up build (fills local daemon cache)
-        # étape de préchauffage du cache docker
-        run: |
-          docker buildx build --load \
-            --platform linux/amd64 \
-            --build-arg DEBIAN=${{ matrix.debian }} \
-            --build-arg PHP=${{ matrix.php }} \
-            --network=host \
-            --file build/Dockerfile \
-            build
-
       - 
         name: Login to GitHub Container Registry
         # 🔹 Service de cache Docker Registry ghcr.io
@@ -253,7 +248,6 @@ jobs:
         # set up a multi-platform builder for Docker containers
         uses: docker/setup-buildx-action@v3
         with:
-          driver-opts: network=host
           buildkitd-flags: --debug
           install: true
           driver: docker-container
@@ -392,15 +386,6 @@ jobs:
             chadburn.enabled=true
             chadburn.job-exec.jeedom-cron.schedule=@every 1m
             chadburn.job-exec.jeedom-cron.command="/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
-
-      -
-        name: Login to DockerHub
-        # https://github.com/marketplace/actions/docker-login
-        # login to DockerHub with secrets login & token
-        uses: docker/login-action@v3
-        with:
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
  
       -
         name: Create manifest list and push ${{ env.TAG_NAME }}
@@ -569,45 +554,13 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: check Docker.io rate limit
+      - name: Run DockerHub rate limit final check
+        id: ratecheckFinal
         run: |
-          #!/usr/bin/env bash
-          # Vérifie la limite et le nombre de pulls restants sur Docker Hub
+          chmod +x .github/scripts/rate_limit.sh
+          ./.github/scripts/rate_limit.sh
 
-          # Dépendances : curl + jq
-          if ! command -v jq >/dev/null 2>&1; then
-            echo "❌ jq est requis (sudo apt install jq ou brew install jq)"
-            exit 1
-          fi
-
-          # 1️⃣ Récupère un token d'authentification pour une image publique
-          TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" \
-            | jq -r '.token')
-
-          if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
-            echo "❌ Impossible d'obtenir un token Docker Hub"
-            exit 1
-          fi
-
-          # 2️⃣ Interroge le registre pour obtenir les infos de quota
-          HEADERS=$(curl -s -I -H "Authorization: Bearer $TOKEN" \
-            https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest)
-
-          # Exemple de lignes :
-          # RateLimit-Limit: 100;w=21600
-          # RateLimit-Remaining: 73;w=21600
-
-          # Extraire limite + fenêtre
-          read LIMIT WINDOW < <(echo "$HEADERS" | grep -i "RateLimit-Limit" | sed -E 's/.*: ([0-9]+);w=([0-9]+)/\1 \2/')
-          # Extraire le nombre restant
-          read REMAINING _ < <(echo "$HEADERS" | grep -i "RateLimit-Remaining" | sed -E 's/.*: ([0-9]+);w=([0-9]+)/\1 \2/')
-
-          # 3️⃣ Affiche un résumé propre
-          if [[ -n "$LIMIT" && -n "$REMAINING" && -n "$WINDOW" ]]; then
-            CURRENT_DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-            HOURS=$(awk "BEGIN {printf \"%.1f\", $WINDOW/3600}")
-            echo "✅ Pulls restants au ${CURRENT_DATETIME} : $REMAINING / $LIMIT (fenêtre de ${HOURS}h)"
-          else
-            echo "⚠️ Impossible de lire les en-têtes RateLimit"
-            echo "$HEADERS"
-          fi
+      - name: Add summary to Job Summary
+        run: |
+          echo "### 🐳 DockerHub Pull Limit" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.ratecheckFinal.outputs.summary }}" >> $GITHUB_STEP_SUMMARY

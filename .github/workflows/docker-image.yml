@@ -2,7 +2,7 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ feat/script_rate_limit ]
+    branches: [ none ]
   pull_request:
     branches: [ none ]
   # this is to manually trigger the worklow
@@ -36,20 +36,6 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    services:
-      registry:
-        image: registry:2
-        ports:
-          - 5000:5000
-        options: >-
-          --health-cmd "wget --spider -q http://localhost:5000/v2/ || exit 1"
-          --health-interval 5s
-          --health-retries 10
-          --name registry-cache
-          --volume /tmp/registry-cache:/var/lib/registry
-        env:
-          REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
-    
     env:
       DOCKER_BUILDKIT: 1
       BUILDKIT_INSECURE_REGISTRY: registry:5000
@@ -117,14 +103,18 @@ jobs:
           path: /tmp/registry-cache
           key: registry-cache
 
-      # local registry for docker cache
-      #- name: Start local Docker registry (mirror/cache)
-      #  run: |
-      #    docker network create buildnet
-      #    docker run -d -p 5000:5000 --restart=always --name registry \
-      #      --network buildnet -v /tmp/docker-registry:/var/lib/registry \
-      #      registry:2
-      #    npx wait-on tcp:5000
+      - name: start registry for mirror
+        env:
+          REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
+        run: |
+          docker run -d -p 5000:5000 --restart=always --name registry \
+            --health-cmd "wget --spider -q http://localhost:5000/v2/ || exit 1" \
+            --health-interval 5s \
+            --health-retries 10 \
+            --name registry-cache \
+            --volume /tmp/registry-cache:/var/lib/registry \
+            registry:2
+          # npx wait-on tcp:5000
 
       # 3️⃣ Configure le cache proxy Docker Hub
       - name: Configure Docker to use local registry mirror
