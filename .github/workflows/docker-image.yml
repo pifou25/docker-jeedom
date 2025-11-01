@@ -2,7 +2,7 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ none ]
+    branches: [ feat/script_rate_limit ]
   pull_request:
     branches: [ none ]
   # this is to manually trigger the worklow
@@ -65,6 +65,25 @@ jobs:
 
     steps:
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run DockerHub rate limit check
+        id: ratecheck
+        run: |
+          chmod +x scripts/rate_limit.sh
+          ./scripts/rate_limit.sh
+
+      - name: Add summary to Job Summary
+        run: |
+          echo "### 🐳 DockerHub Pull Limit" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.ratecheck.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: check Docker.io rate limit
+        if: ${{ steps.ratecheck.outputs.remaining && (steps.ratecheck.outputs.remaining < 10) }}
+        run: |
+          echo "⚠️ Il reste moins de 10 pulls : ${{ steps.ratecheck.outputs.remaining }} / ${{ steps.ratecheck.outputs.limit }}" >> $GITHUB_STEP_SUMMARY && exit 1
+
       # prepare image cache for local registry
       # https://github.com/marketplace/actions/cache
       - id: image-cache
@@ -93,8 +112,6 @@ jobs:
             [registry."registry:5000"]
               http = true
               insecure = true
-
-      - uses: actions/checkout@v4.1.2
 
       #- name: Enable buildx
       #  run: |
