@@ -66,6 +66,9 @@ jobs:
       XDEBUG: ${{ github.ref_name == 'master' && 'false' || 'true' }}
       DEBIAN: trixie
       PHP: 8.4
+      # Référence vers le cache du registre
+      REGISTRY_CACHE: ghcr.io/pifou25/docker-jeedom
+      CACHE_NAME: trixie-8.4
 
     steps:
 
@@ -158,8 +161,8 @@ jobs:
             --build-arg JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }} \
             --build-arg XDEBUG=false \
             --build-arg XTRARGS=-light \
-            --cache-from type=registry,ref=registry:5000/${{ env.REGISTRY_IMAGE }}:buildcache \
-            --cache-to type=registry,ref=registry:5000/${{ env.REGISTRY_IMAGE }}:buildcache,mode=max \
+            --cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_NAME }}
+            --cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_NAME }},mode=max
             --file build/Dockerfile \
             --tag ghcr.io/${{ env.REGISTRY_IMAGE }}:test \
             --load build
