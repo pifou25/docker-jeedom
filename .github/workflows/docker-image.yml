@@ -45,7 +45,11 @@ jobs:
           --health-cmd "wget --spider -q http://localhost:5000/v2/ || exit 1"
           --health-interval 5s
           --health-retries 10
-          
+          --name registry-cache
+          --volume /tmp/registry-cache:/var/lib/registry
+        env:
+          REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
+    
     env:
       DOCKER_BUILDKIT: 1
       BUILDKIT_INSECURE_REGISTRY: registry:5000
@@ -68,6 +72,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      -
+        name: Login to DockerHub
+        # https://github.com/marketplace/actions/docker-login
+        # login to DockerHub with login & secrets token - for pull to avoid error HTTP 429 Too many requests
+        uses: docker/login-action@v3
+        with:
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - 
+        name: Login to GitHub Container Registry
+        # 🔹 Service de cache Docker Registry ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_SECRET }}
+        
       - name: Run DockerHub rate limit check
         id: ratecheck
         run: |
@@ -139,15 +161,15 @@ jobs:
             --cache-from type=registry,ref=registry:5000/${{ env.REGISTRY_IMAGE }}:buildcache \
             --cache-to type=registry,ref=registry:5000/${{ env.REGISTRY_IMAGE }}:buildcache,mode=max \
             --file build/Dockerfile \
-            --tag registry:5000/${{ env.REGISTRY_IMAGE }}:test \
+            --tag ghcr.io/${{ env.REGISTRY_IMAGE }}:test \
             --load build
 
       - name: Docker Push
         run: |
-          docker push registry:5000/${{ secrets.DOCKER_USER }}/jeedom:test
+          docker push ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:test
 
-      - name: docker push to Docker.io
+      - name: Run DockerHub rate limit check
         run: |
-          docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }} 
-          docker tag registry:5000/${{ secrets.DOCKER_USER }}/jeedom:test ${{ secrets.DOCKER_USER }}/jeedom:test
-          docker push ${{ secrets.DOCKER_USER }}/jeedom:test
+          ./.github/scripts/rate_limit.sh
+          echo "### 🐳 DockerHub Pull Limit at the end" >> $GITHUB_STEP_SUMMARY
+          echo "${summary}" >> $GITHUB_STEP_SUMMARY
