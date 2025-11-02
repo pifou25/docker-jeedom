@@ -102,11 +102,9 @@ jobs:
       # pull image from docker hub and check it is available into the registry-mirror
       - name: Test private repository
         run: |
-         echo ${{ secrets.NICO_PASSWORD }} | docker login -u ${{ github.repository_owner }} reg.nico.si --password-stdin
-         docker pull php:${{ matrix.php }}-apache-${{ matrix.debian }} --platform ${{ matrix.platform }}
-         docker tag php:${{ matrix.php }}-apache-${{ matrix.debian }} reg.nico.si/php:${{ matrix.php }}-apache-${{ matrix.debian }}
-         docker push reg.nico.si/php:${{ matrix.php }}-apache-${{ matrix.debian }}
-         curl -X GET https://reg.nico.si/v2/_catalog
+         docker pull php:${{ matrix.php }}-apache-${{ matrix.debian }} --platform linux/${{ matrix.platform }}
+         docker tag php:${{ matrix.php }}-apache-${{ matrix.debian }} reg.nico.si/php:${{ matrix.php }}-apache-${{ matrix.debian }}-${{ matrix.platform }}
+         docker push reg.nico.si/php:${{ matrix.php }}-apache-${{ matrix.debian }}-${{ matrix.platform }}
          exit 1
 
       -
