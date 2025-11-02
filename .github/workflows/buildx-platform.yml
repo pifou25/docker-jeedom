@@ -31,19 +31,12 @@ env:
   XDEBUG: ${{ github.ref_name == 'master' && 'false' || 'true' }}
   # Active BuildKit
   DOCKER_BUILDKIT: 1
-  # Active BuildKit
-  DOCKER_BUILDKIT: 1
 
 jobs:
   # clean runner and Lint the Dockerfile
   initStep:
     runs-on: ubuntu-latest
     steps:
-      - name: Remove old artifacts
-        # https://github.com/marketplace/actions/remove-artifacts
-        uses: c-hive/gha-remove-artifacts@v1
-        with:
-          age: '10 seconds'
       -
         name: Checkout
         uses: actions/checkout@v4.1.2
@@ -64,7 +57,7 @@ jobs:
       -
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
-        # login to DockerHub with login & secrets token - for pull to avoid error HTTP 429 Too many requests
+        # login to DockerHub with login & secrets token to get our private rate limit
         uses: docker/login-action@v3
         with:
           username: ${{ github.repository_owner }}
@@ -88,7 +81,7 @@ jobs:
 
   jbuild:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
-    # distributebuild across multiple runners
+    # distribute build across multiple runners
     # This step  build the same image on different runners / platforms
     runs-on: ubuntu-latest
     needs: initStep
@@ -165,31 +158,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GHCR_SECRET }}
-        
-      -
-        name: Checkout
-        uses: actions/checkout@v4.1.2
-          
-      - name: Warm-up build (fills local daemon cache)
-        # étape de préchauffage du cache docker
-        run: |
-          docker buildx build --load \
-            --platform linux/amd64 \
-            --build-arg DEBIAN=${{ matrix.debian }} \
-            --build-arg PHP=${{ matrix.php }} \
-            --network=host \
-            --file build/Dockerfile \
-            build
 
-      - 
-        name: Login to GitHub Container Registry
-        # 🔹 Service de cache Docker Registry ghcr.io
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GHCR_SECRET }}
-        
       -
         name: Docker meta
         id: meta
@@ -373,97 +342,6 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GHCR_SECRET }}
     
-      -
-        name: Create manifest list and push ${{ env.TAG_NAME }}
-        working-directory: /tmp/digests
-        run: |
-          # debug tmp directory
-          ls /tmp -alsh
-          echo jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON"
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
-
-      - 
-        name: Login to GitHub Container Registry
-        # push to multi-registry
-        # https://docs.docker.com/build/ci/github-actions/push-multi-registries/
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GHCR_SECRET }}
-    
-      - name: Push image to GHCR
-        id: ghcr-push
-        # continue to next step even in case of error
-        continue-on-error: true
-        run: |
-          docker buildx imagetools create \
-            ${{ env.TAG_LATEST_ENABLED && '--tag ghcr.io/${REGISTRY_IMAGE}:latest' || '' }} \
-            --tag ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
-            ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
-
-      -
-        name: Login to Quay.io
-        uses: docker/login-action@v3
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USER }}
-          password: ${{ secrets.QUAY_PASSWORD }}
-         
-      - name: Push image to Quay.io
-        id: quay-push
-        # continue to next step even in case of error
-        continue-on-error: true
-        run: |
-          docker buildx imagetools create \
-            ${{ env.TAG_LATEST_ENABLED && '--tag quay.io/${REGISTRY_IMAGE}:latest' || '' }} \
-            --tag quay.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
-            ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
-
-      - name: Check push into quay.io ${{ env.TAG_NAME }}
-        if: steps.quay-push.outcome != 'success' || steps.ghcr-push.outcome != 'success'
-        run: |
-          if [ "${{ steps.ghcr-push.outcome }}" != "success" ]; then \
-            echo "Fail pushing ${TAG_NAME} to ghcr.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
-          else \
-            echo "Successfull pushing ${TAG_NAME} to ghcr.io 🚀" >> $GITHUB_STEP_SUMMARY; \
-          fi
-          if [ "${{ steps.quay-push.outcome }}" != "success" ]; then \
-            echo "Fail pushing ${TAG_NAME} to quay.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
-          else \
-            echo "Successfull pushing ${TAG_NAME} to quay.io 🚀" >> $GITHUB_STEP_SUMMARY; \
-          fi
-          exit 1
-
-  conclusion:
-    # login to Docker.io and check remaining rate limit
-    needs: [merge]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-
-      -
-        name: Login to DockerHub
-        # https://github.com/marketplace/actions/docker-login
-        # login to DockerHub with secrets login & token - for pull to avoid error HTTP 429 Too many requests
-        uses: docker/login-action@v3
-        with:
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: check Docker.io rate limit
-        run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf 'ghcr.io/${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
-      -
-        name: Inspect image ghcr.io/${{ env.TAG_NAME }}
-        # inspect and add a minute sleep to avoid HTTP 429 error (too many requests...)
-        run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }} >> $GITHUB_STEP_SUMMARY
-          # sleep 1m
-          exit 0
-
       - name: Push image to GHCR
         id: ghcr-push
         # continue to next step even in case of error
@@ -493,16 +371,15 @@ jobs:
           username: ${{ secrets.QUAY_USER }}
           password: ${{ secrets.QUAY_PASSWORD }}
          
-      - name: Push image to Quay.io
+      - name: Push ${{ env.TAG_NAME }} to Quay.io
         id: quay-push
         # continue to next step even in case of error
         continue-on-error: true
         run: |
           docker buildx imagetools create \
-            ${{ env.TAG_LATEST_ENABLED == true && '--tag quay.io/${REGISTRY_IMAGE}:latest' || '' }} \
+            ${{ env.TAG_LATEST_ENABLED && '--tag quay.io/${REGISTRY_IMAGE}:latest' || '' }} \
             --tag quay.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
             ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
-
       -
         name: Login to nico private repository
         # https://github.com/marketplace/actions/docker-login
@@ -523,7 +400,6 @@ jobs:
             ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
 
       - name: Check push into quay.io ${{ env.TAG_NAME }}
-        # workflow does not stop in case of errors when pushing into ghcr.io or quay.io
         if: steps.quay-push.outcome != 'success' || steps.ghcr-push.outcome != 'success'
         run: |
           if [ "${{ steps.ghcr-push.outcome }}" != "success" ]; then \
@@ -552,7 +428,7 @@ jobs:
       -
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
-        # login to DockerHub with secrets login & token - to get the proper rate limit
+        # login to DockerHub with secrets login & token - for pull to avoid error HTTP 429 Too many requests
         uses: docker/login-action@v3
         with:
           username: ${{ github.repository_owner }}
@@ -568,3 +444,8 @@ jobs:
         run: |
           echo "### 🐳 DockerHub Pull Limit" >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.ratecheckFinal.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
+      - name: Remove useless artifacts
+        # https://github.com/marketplace/actions/remove-artifacts
+        uses: c-hive/gha-remove-artifacts@v1
+        with:
+          age: '5 seconds'
