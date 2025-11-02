@@ -533,6 +533,25 @@ jobs:
             --tag quay.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
             ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
 
+      -
+        name: Login to nico private repository
+        # https://github.com/marketplace/actions/docker-login
+        uses: docker/login-action@v3
+        with:
+          registry: reg.nico.si
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.NICO_PASSWORD }}
+         
+      - name: Push image to nico.si
+        id: nico-push
+        # continue to next step even in case of error
+        continue-on-error: true
+        run: |
+          docker buildx imagetools create \
+            ${{ env.TAG_LATEST_ENABLED == true && '--tag reg.nico.si/${REGISTRY_IMAGE}:latest' || '' }} \
+            --tag reg.nico.si/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
+            ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+
       - name: Check push into quay.io ${{ env.TAG_NAME }}
         # workflow does not stop in case of errors when pushing into ghcr.io or quay.io
         if: steps.quay-push.outcome != 'success' || steps.ghcr-push.outcome != 'success'
@@ -546,6 +565,11 @@ jobs:
             echo "Fail pushing ${TAG_NAME} to quay.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
           else \
             echo "Successfull pushing ${TAG_NAME} to quay.io 🚀" >> $GITHUB_STEP_SUMMARY; \
+          fi
+          if [ "${{ steps.nico-push.outcome }}" != "success" ]; then \
+            echo "Fail pushing ${TAG_NAME} to nico.si ! 🚀 ( ?? )" >> $GITHUB_STEP_SUMMARY; \
+          else \
+            echo "Successfull pushing ${TAG_NAME} to nico.si 🚀" >> $GITHUB_STEP_SUMMARY; \
           fi
 
   conclusion:
