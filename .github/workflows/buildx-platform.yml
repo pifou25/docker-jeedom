@@ -7,7 +7,6 @@ on:
     branches:
       - master
       - develop
-      - feat/script_rate_limit
   # this is to manually trigger the worklow
   workflow_dispatch:
     inputs:
@@ -137,16 +136,6 @@ jobs:
 
     steps:
       -
-        name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
-        # replace /  by - in platform value and registry cache name
-        run: |
-          platform=linux/${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-          # echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_STEP_SUMMARY
-          echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_ENV
-          # echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_STEP_SUMMARY
-
-      -
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
         # login to DockerHub with secrets login & token - for pull to avoid error HTTP 429 Too many requests
@@ -183,6 +172,16 @@ jobs:
           sudo systemctl restart docker
           cat /etc/docker/daemon.json
           docker info | grep -A5 Mirrors || true
+
+      -
+        name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
+        # replace /  by - in platform value and registry cache name
+        # list local registry mirror available images for debug
+        run: |
+          platform=linux/${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+          echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_ENV
+          curl -X GET https://localhost:5000/v2/_catalog
 
       -
         name: Checkout

@@ -2,7 +2,7 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ none ]
+    branches: [ feat/script_rate_limit ]
   pull_request:
     branches: [ none ]
   # this is to manually trigger the worklow
@@ -31,14 +31,45 @@ env:
 
 jobs:
 
+  prepare:
+    runs-on: ubuntu-latest
+    # start a local mirror registry as a service with cached volume
+    steps:
+
+      # prepare image cache for local registry
+      # https://github.com/marketplace/actions/cache
+      - id: image-cache
+        uses: actions/cache@v4.2.2
+        with:
+          path: /tmp/registry-mirror
+          key: registry-mirror
+
+      - name: start registry for mirror
+        run: |
+          docker run -d -p 5000:5000 --restart=always --name registry-mirror \
+            --health-cmd "wget --spider -q http://localhost:5000/v2/ || exit 1" --health-interval 5s --health-retries 10 \
+            -e STANDALONE=false -e MIRROR_SOURCE=https:/registry-1.docker.io -e MIRROR_SOURCE_INDEX=https://index.docker.io \
+            --volume /tmp/registry-mirror:/var/lib/registry \
+            registry:2
+          # npx wait-on tcp:5000
+
+      # 3️⃣ Configure le cache proxy Docker Hub
+      - name: Configure Docker to use local registry mirror
+        run: |
+          echo '{ "registry-mirrors": ["http://registry-mirror:5000"] }' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+          cat /etc/docker/daemon.json
+          docker info | grep -A5 Mirrors || true
+
   build:
   # this step use only simple scripts commands
 
     runs-on: ubuntu-latest
+    needs: prepare
 
     env:
       DOCKER_BUILDKIT: 1
-      BUILDKIT_INSECURE_REGISTRY: registry:5000
+      BUILDKIT_INSECURE_REGISTRY: registry-mirror:5000
       # used to download jeedom source
       # JEEDOM_REPO: ${{ github.ref_name == 'master' && 'jeedom/core' || 'pifou25/jeedom-core' }}
       JEEDOM_REPO: jeedom/core
@@ -95,34 +126,11 @@ jobs:
         run: |
           echo "⚠️ Il reste moins de 10 pulls : ${{ steps.ratecheck.outputs.remaining }} / ${{ steps.ratecheck.outputs.limit }}" >> $GITHUB_STEP_SUMMARY && exit 1
 
-      # prepare image cache for local registry
-      # https://github.com/marketplace/actions/cache
-      - id: image-cache
-        uses: actions/cache@v4.2.2
-        with:
-          path: /tmp/registry-cache
-          key: registry-cache
-
-      - name: start registry for mirror
-        env:
-          REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
+      # pull image from docker hub and check it is available into the registry-mirror
+      - name: Test registry-mirror
         run: |
-          docker run -d -p 5000:5000 --restart=always --name registry \
-            --health-cmd "wget --spider -q http://localhost:5000/v2/ || exit 1" \
-            --health-interval 5s \
-            --health-retries 10 \
-            --name registry-cache \
-            --volume /tmp/registry-cache:/var/lib/registry \
-            registry:2
-          # npx wait-on tcp:5000
-
-      # 3️⃣ Configure le cache proxy Docker Hub
-      - name: Configure Docker to use local registry mirror
-        run: |
-          echo '{ "registry-mirrors": ["http://localhost:5000"] }' | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker
-          cat /etc/docker/daemon.json
-          docker info | grep -A5 Mirrors || true
+         docker pull php:${{ env.PHP }}-apache-${{ env.DEBIAN }}
+         curl -X GET https://registry-mirror:5000/v2/_catalog
 
       - name: Set up Docker Buildx
         # https://github.com/marketplace/actions/docker-setup-buildx
@@ -132,7 +140,7 @@ jobs:
           name: jeedom-builder
           buildkitd-flags: --allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host
           buildkitd-config-inline: |
-            [registry."registry:5000"]
+            [registry."registry-mirror:5000"]
               http = true
               insecure = true
 
@@ -140,7 +148,6 @@ jobs:
       #  run: |
       #    docker buildx create --use --name jeedom-builder --driver docker-container --driver-opt network=buildnet
       #    docker buildx inspect --bootstrap
-
       - name: Build with cache using previous builder
         # docker build --builder [name] --build-arg [arg=value] --file [file] --tag [tag] [directory]
         run: |
