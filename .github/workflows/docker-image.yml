@@ -55,17 +55,36 @@ jobs:
       # Référence vers le cache du registre
       REGISTRY_CACHE: ghcr.io/pifou25/docker-jeedom
       CACHE_NAME: trixie-8.4
+      
+    # continue to next job even if there are some errors in jbuild job
+    continue-on-error: true
+    strategy:
+      # do every matrix combination, don't stop on errors
+      fail-fast: false
+      # limit to avoid error HTTP 409: too many requests
+      max-parallel: 5
+      matrix:
+        # target: ["light" , "full"]
+        debian: [bullseye, bookworm, trixie]
+        php: [7.4, 8.2, 8.4]
+        # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
+        platform: [amd64, arm64, arm/v6, arm/v7]
+        # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
+        exclude:
+          - debian: bookworm
+            php: 7.4
+          - debian: bookworm
+            php: 8.4
+          - debian: bullseye
+            php: 8.2
+          - debian: bullseye
+            php: 8.4
+          - debian: trixie
+            php: 8.2
+          - debian: trixie
+            php: 7.4
 
     steps:
-
-      # 3️⃣ Configure le cache proxy Docker Hub
-      - name: Configure Docker to use local registry mirror
-        run: |
-          echo '{ "registry-mirrors": ["https://mirror.nico.si:5000"] }' | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker
-          # theses 2 commands for debug only:
-          cat /etc/docker/daemon.json
-          docker info | grep -A5 Mirrors || true
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -82,9 +101,9 @@ jobs:
       # pull image from docker hub and check it is available into the registry-mirror
       - name: Test private repository
         run: |
-         docker pull php:${{ env.PHP }}-apache-${{ env.DEBIAN }}
-         docker tag php:${{ env.PHP }}-apache-${{ env.DEBIAN }} reg.nico.si/php:${{ env.PHP }}-apache-${{ env.DEBIAN }}
-         docker push reg.nico.si/php:${{ env.PHP }}-apache-${{ env.DEBIAN }}
+         docker pull php:${{ matrix.php }}-apache-${{ matrix.debian }} --platform ${{ matrix.platform }}
+         docker tag php:${{ matrix.php }}-apache-${{ matrix.debian }} reg.nico.si/php:${{ matrix.php }}-apache-${{ matrix.debian }}
+         docker push reg.nico.si/php:${{ matrix.php }}-apache-${{ matrix.debian }}
          curl -X GET https://reg.nico.si/v2/_catalog
          exit 1
 
