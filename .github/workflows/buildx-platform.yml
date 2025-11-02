@@ -144,35 +144,6 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # prepare image cache for local registry
-      # https://github.com/marketplace/actions/cache
-      - id: image-cache
-        uses: actions/cache@v4.2.2
-        with:
-          path: /tmp/registry-cache
-          key: registry-cache
-
-      - name: start registry for mirror
-        env:
-          REGISTRY_PROXY_REMOTEURL: https://registry-1.docker.io
-        run: |
-          docker run -d -p 5000:5000 --restart=always --name registry \
-            --health-cmd "wget --spider -q http://localhost:5000/v2/ || exit 1" \
-            --health-interval 5s \
-            --health-retries 10 \
-            --name registry-cache \
-            --volume /tmp/registry-cache:/var/lib/registry \
-            registry:2
-          # npx wait-on tcp:5000
-
-      # 3️⃣ Configure le cache proxy Docker Hub
-      - name: Configure Docker to use local registry mirror
-        run: |
-          echo '{ "registry-mirrors": ["http://localhost:5000"] }' | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker
-          cat /etc/docker/daemon.json
-          docker info | grep -A5 Mirrors || true
-
       -
         name: Prepare ${{ env.TAG_NAME }}:${{ matrix.platform }}
         # replace /  by - in platform value and registry cache name
@@ -181,7 +152,6 @@ jobs:
           platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
           echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_ENV
-          curl -X GET https://localhost:5000/v2/_catalog
 
       -
         name: Checkout
@@ -582,7 +552,7 @@ jobs:
       -
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
-        # login to DockerHub with secrets login & token - for pull to avoid error HTTP 429 Too many requests
+        # login to DockerHub with secrets login & token - to get the proper rate limit
         uses: docker/login-action@v3
         with:
           username: ${{ github.repository_owner }}
