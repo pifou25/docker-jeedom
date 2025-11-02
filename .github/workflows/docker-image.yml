@@ -19,16 +19,93 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+        options: >-
+          --health-cmd "wget --spider -q http://localhost:5000/v2/ || exit 1"
+          --health-interval 5s
+          --health-retries 10
+          
+    env:
+      DOCKER_BUILDKIT: 1
+      BUILDKIT_INSECURE_REGISTRY: registry:5000
+      # used to download jeedom source
+      # JEEDOM_REPO: ${{ github.ref_name == 'master' && 'jeedom/core' || 'pifou25/jeedom-core' }}
+      JEEDOM_REPO: jeedom/core
+      # branch to use: master if the current branch is master, develop if not
+      # this is used to set the jeedom version in the Dockerfile
+      # JEEDOM_BRANCH: ${{ github.ref_name == 'master' && 'master' || 'develop' }}
+      JEEDOM_BRANCH: master
+      # destination docker registry image name
+      REGISTRY_IMAGE: pifou25/jeedom
+      # XDEBUG enabled by default for develop and beta branches
+      XDEBUG: ${{ github.ref_name == 'master' && 'false' || 'true' }}
+      DEBIAN: trixie
+      PHP: 8.4
+
     steps:
-    - uses: actions/checkout@v4.1.2
 
-    - name: docker login
-      run: |
-        docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }} 
+      # prepare image cache for local registry
+      # https://github.com/marketplace/actions/cache
+      - id: image-cache
+        uses: actions/cache@v4.2.2
+        with:
+          path: /tmp/registry-cache
+          key: registry-cache
 
-    - name: Build the Docker image
-      # docker build [directory] --file [file] --tag [tag]
-      run: docker build build --file build/Dockerfile --tag ${{ secrets.DOCKER_USER }}/jeedom:test
-      
-    - name: Docker Push
-      run: docker push ${{ secrets.DOCKER_USER }}/jeedom:test
+      # local registry for docker cache
+      #- name: Start local Docker registry (mirror/cache)
+      #  run: |
+      #    docker network create buildnet
+      #    docker run -d -p 5000:5000 --restart=always --name registry \
+      #      --network buildnet -v /tmp/docker-registry:/var/lib/registry \
+      #      registry:2
+      #    npx wait-on tcp:5000
+
+      - name: Set up Docker Buildx
+        # https://github.com/marketplace/actions/docker-setup-buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+          name: jeedom-builder
+          buildkitd-flags: --allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host
+          buildkitd-config-inline: |
+            [registry."registry:5000"]
+              http = true
+              insecure = true
+
+      - uses: actions/checkout@v4.1.2
+
+      #- name: Enable buildx
+      #  run: |
+      #    docker buildx create --use --name jeedom-builder --driver docker-container --driver-opt network=buildnet
+      #    docker buildx inspect --bootstrap
+
+      - name: Build with cache using previous builder
+        # docker build --builder [name] --build-arg [arg=value] --file [file] --tag [tag] [directory]
+        run: |
+          docker buildx build --builder jeedom-builder  \
+            --build-arg DEBIAN=${{ env.DEBIAN }} \
+            --build-arg PHP=${{ env.PHP }} \
+            --build-arg JEEDOM_REPO=${{ env.JEEDOM_REPO }} \
+            --build-arg JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }} \
+            --build-arg XDEBUG=false \
+            --build-arg XTRARGS=-light \
+            --cache-from type=registry,ref=registry:5000/${{ env.REGISTRY_IMAGE }}:buildcache \
+            --cache-to type=registry,ref=registry:5000/${{ env.REGISTRY_IMAGE }}:buildcache,mode=max \
+            --file build/Dockerfile \
+            --tag registry:5000/${{ env.REGISTRY_IMAGE }}:test \
+            --load build
+
+      - name: Docker Push
+        run: |
+          docker push registry:5000/${{ secrets.DOCKER_USER }}/jeedom:test
+
+      - name: docker push to Docker.io
+        run: |
+          docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }} 
+          docker tag registry:5000/${{ secrets.DOCKER_USER }}/jeedom:test ${{ secrets.DOCKER_USER }}/jeedom:test
+          docker push ${{ secrets.DOCKER_USER }}/jeedom:test
