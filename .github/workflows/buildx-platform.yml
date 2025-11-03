@@ -101,6 +101,11 @@ jobs:
         platform: [amd64, arm64, arm/v6, arm/v7]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
+          - target: full
+          - debian: bullseye
+          - debian: trixie
+          - php: 7.4
+          - php: 8.4
           - debian: bookworm
             php: 7.4
           - debian: bookworm
@@ -262,6 +267,11 @@ jobs:
         php: [7.4, 8.2, 8.4]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
+          - target: full
+          - debian: bullseye
+          - debian: trixie
+          - php: 7.4
+          - php: 8.4
           - debian: bookworm
             php: 7.4
           - debian: bookworm
@@ -339,8 +349,44 @@ jobs:
         name: Create manifest list and push ${{ env.TAG_NAME }} to Docker Hub
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+          #!/usr/bin/env bash
+          set -euo pipefail
+          
+          echo "🔍 [DEBUG] DOCKER_METADATA_OUTPUT_JSON:"
+          echo "$DOCKER_METADATA_OUTPUT_JSON" | jq .
+          
+          # Récupère le premier tag complet (ex: ghcr.io/pifou25/jeedom:latest)
+          FIRST_TAG=$(jq -r '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          
+          # Supprime le tag pour ne garder que la partie image (ex: ghcr.io/pifou25/jeedom)
+          # ou juste pifou25/jeedom si pas de registre explicite
+          REGISTRY_REPO="${FIRST_TAG%%:*}"
+          
+          echo "🧩 [INFO] Repository base detected: $REGISTRY_REPO"
+          
+          # Vérifie qu'il y a bien des fichiers digest (produits par docker buildx build --push --output=type=digest)
+          if ! ls | grep -qE '^[a-f0-9]{64}$'; then
+            echo "❌ Aucun digest trouvé dans le répertoire courant !" >> $GITHUB_STEP_SUMMARY
+            echo "   (Tu dois exécuter 'docker buildx build --push --output=type=digest .' avant cette étape)" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          # Affiche les fichiers digest pour info
+          echo "📦 [DEBUG] Digests trouvés :"
+          ls
+          
+          # Crée la commande docker buildx imagetools create complète
+          CMD="docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '%s@sha256:%s ' "$REGISTRY_REPO" *)"
+          
+          echo "🚀 [INFO] Commande exécutée :"
+          echo "$CMD"
+          
+          # Exécution réelle
+          eval "$CMD"
+          
+          echo "✅ [SUCCESS] Manifest multi-arch créé avec succès."
     
       - name: Push image to GHCR
         id: ghcr-push
