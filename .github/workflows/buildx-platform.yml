@@ -165,9 +165,9 @@ jobs:
         # https://github.com/marketplace/actions/docker-metadata-action
         uses: docker/metadata-action@v5
         with:
-          # list of Docker images to use as base name for tags
+          # list of images names to use as base name for tags
           images: |
-            ${{ env.REGISTRY_IMAGE }}
+            ghcr.io/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -212,7 +212,7 @@ jobs:
           platforms: linux/${{ matrix.platform }}
           cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }},mode=max
-          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=ghcr.io/${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Check on failures ${{ env.TAG_NAME }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome != 'success'
@@ -292,6 +292,16 @@ jobs:
           pattern: digests-${{ env.TAG_NAME }}-*
           merge-multiple: true
 
+      - 
+        name: Login to GitHub Container Registry
+        # push to multi-registry
+        # https://docs.docker.com/build/ci/github-actions/push-multi-registries/
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_SECRET }}
+    
       -
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
@@ -309,9 +319,9 @@ jobs:
         # https://github.com/marketplace/actions/docker-metadata-action
         uses: docker/metadata-action@v5
         with:
-          # list of Docker images to use as base name for tags
+          # list of images from ghcr.io repo to use as base name for tags
           images: |
-            ${{ env.REGISTRY_IMAGE }}
+            ghcr.io/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
             type=raw,value=${{ env.TAG_NAME }}
@@ -326,21 +336,11 @@ jobs:
             chadburn.job-exec.jeedom-cron.command="/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
  
       -
-        name: Create manifest list and push ${{ env.TAG_NAME }}
+        name: Create manifest list and push ${{ env.TAG_NAME }} to Docker Hub
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
-
-      - 
-        name: Login to GitHub Container Registry
-        # push to multi-registry
-        # https://docs.docker.com/build/ci/github-actions/push-multi-registries/
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GHCR_SECRET }}
     
       - name: Push image to GHCR
         id: ghcr-push
@@ -433,6 +433,10 @@ jobs:
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      -
+        name: Checkout
+        uses: actions/checkout@v4
 
       - name: Run DockerHub rate limit final check
         id: ratecheckFinal
