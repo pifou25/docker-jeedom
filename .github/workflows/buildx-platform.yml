@@ -361,6 +361,7 @@ jobs:
           # Supprime le tag pour ne garder que la partie image (ex: ghcr.io/pifou25/jeedom)
           # ou juste pifou25/jeedom si pas de registre explicite
           REGISTRY_REPO="${FIRST_TAG%%:*}"
+          echo "REGISTRY_REPO=${REGISTRY_REPO}" >> $GITHUB_ENV
           
           echo "🧩 [INFO] Repository base detected: $REGISTRY_REPO"
           
@@ -375,30 +376,26 @@ jobs:
           echo "📦 [DEBUG] Digests trouvés :"
           ls
           
-          # Crée la commande docker buildx imagetools create complète
-          CMD="docker buildx imagetools create \
+          # exécute la commande docker buildx imagetools create complète
+          docker buildx imagetools create \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '%s@sha256:%s ' "$REGISTRY_REPO" *)"
-          
-          echo "🚀 [INFO] Commande exécutée :"
-          echo "$CMD"
-          
-          # Exécution réelle
-          eval "$CMD"
+            $(printf "${REGISTRY_REPO}@sha256:%s " *)
           
           echo "✅ [SUCCESS] Manifest multi-arch créé avec succès."
     
-      - name: Push image to GHCR
-        id: ghcr-push
+      - name: Push image to docker hub
+        id: docker-push
         # continue to next step even in case of error
         continue-on-error: true
         run: |
+            # install skopeo to copy images digests and tags
+            sudo apt-get -y update
+            sudo apt-get -y install skopeo
+
             attempt=0
             max_attempts=5
-            until docker buildx imagetools create \
-              ${{ env.TAG_LATEST_ENABLED == true && '--tag ghcr.io/${REGISTRY_IMAGE}:latest' || '' }} \
-              --tag ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
-              ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+            until skopeo copy --all docker://${{ env.REGISTRY_REPO }}:${{ env.TAG_NAME }} \
+                docker://${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
             do
               attempt=$((attempt+1))
               if [ "$attempt" -ge "$max_attempts" ]; then
@@ -422,10 +419,9 @@ jobs:
         # continue to next step even in case of error
         continue-on-error: true
         run: |
-          docker buildx imagetools create \
-            ${{ env.TAG_LATEST_ENABLED && '--tag quay.io/${REGISTRY_IMAGE}:latest' || '' }} \
-            --tag quay.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
-            ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          skopeo copy --all docker://${{ env.REGISTRY_REPO }}:${{ env.TAG_NAME }} \
+                docker://quay.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+
       -
         name: Login to nico private repository
         # https://github.com/marketplace/actions/docker-login
@@ -440,13 +436,11 @@ jobs:
         # continue to next step even in case of error
         continue-on-error: true
         run: |
-          docker buildx imagetools create \
-            ${{ env.TAG_LATEST_ENABLED == true && '--tag reg.nico.si/${REGISTRY_IMAGE}:latest' || '' }} \
-            --tag reg.nico.si/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
-            ${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          skopeo copy --all docker://${{ env.REGISTRY_REPO }}:${{ env.TAG_NAME }} \
+                docker://reg.nico.si/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
 
       - name: Check push into quay.io ${{ env.TAG_NAME }}
-        if: steps.quay-push.outcome != 'success' || steps.ghcr-push.outcome != 'success'
+        if: steps.quay-push.outcome != 'success' || steps.docker-push.outcome != 'success' || steps.nico-push.outcome != 'success'
         run: |
           if [ "${{ steps.ghcr-push.outcome }}" != "success" ]; then \
             echo "Fail pushing ${TAG_NAME} to ghcr.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
