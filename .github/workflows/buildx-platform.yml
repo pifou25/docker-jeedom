@@ -101,11 +101,6 @@ jobs:
         platform: [amd64, arm64, arm/v6, arm/v7]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
-          - target: full
-          - debian: bullseye
-          - debian: trixie
-          - php: 7.4
-          - php: 8.4
           - debian: bookworm
             php: 7.4
           - debian: bookworm
@@ -267,11 +262,6 @@ jobs:
         php: [7.4, 8.2, 8.4]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
-          - target: full
-          - debian: bullseye
-          - debian: trixie
-          - php: 7.4
-          - php: 8.4
           - debian: bookworm
             php: 7.4
           - debian: bookworm
