@@ -7,17 +7,18 @@ on:
     branches:
       - master
       - develop
-      - feat/reusable_workflow
+  
   # this is to manually trigger the worklow
   workflow_dispatch:
     inputs:
-      logLevel:
-        description: 'Reason'     
-        default: 'Manual launch'
+      target:
+        description: 'light ou full, cible du build à générer'     
+        default: 'light'
 
 jobs:
   build-light-step:
-    uses: buildx-platform.yml
+    uses: ./.github/workflows/buildx-platform.yml
+
     strategy:
       matrix:
         target: [light, full]
