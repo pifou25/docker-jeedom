@@ -1,0 +1,27 @@
+name: Docker Multiplatform Build ci
+# master branch build image from jeedom/core:master repo
+# develop branch build image from pifou25/jeedom-core:develop repo
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - feat/reusable_workflow
+  # this is to manually trigger the worklow
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Reason'     
+        default: 'Manual launch'
+
+jobs:
+  build-light-step:
+    uses: buildx-platform.yml
+    strategy:
+      matrix:
+        target: [light, full]
+      max-parallel: 1
+    with:
+      target : ${{ matrix.target }}
+    secrets: inherit
