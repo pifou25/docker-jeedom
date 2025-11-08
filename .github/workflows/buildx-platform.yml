@@ -3,16 +3,31 @@ name: Docker Multiplatform Build ci
 # develop branch build image from pifou25/jeedom-core:develop repo
 
 on:
-  push:
-    branches:
-      - master
-      - develop
   # this is to manually trigger the worklow
   workflow_dispatch:
     inputs:
-      logLevel:
-        description: 'Reason'     
-        default: 'Manual launch'
+      target:
+        description: 'light ou full, cible du build à générer'     
+        default: 'light'
+  # reusable workflow
+  workflow_call:
+    inputs:
+      # target is light for the first stage or full  for complete image build
+      target:
+        required: true
+        type: string
+    secrets:
+      GHCR_SECRET:
+        required: true
+      DOCKER_PASSWORD:
+        required: true
+      QUAY_USER:
+        required: true
+      QUAY_PASSWORD:
+        required: true
+      NICO_PASSWORD:
+        required: true
+      
 
 # no concurrency, cancel previous running workflow
 concurrency:
@@ -94,7 +109,6 @@ jobs:
       # limit to avoid error HTTP 409: too many requests
       max-parallel: 3
       matrix:
-        target: ["light" , "full"]
         debian: [bullseye, bookworm, trixie]
         php: [7.4, 8.2, 8.4]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
@@ -121,8 +135,8 @@ jobs:
 
     env:
       # tag name de la forme: debian-php-light-debug-dev e.g. bullseye-8.2-light-debug-dev
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
-      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && github.ref_name == 'master') }}
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ inputs.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && inputs.target == 'full' && github.ref_name == 'master') }}
       CACHE_NAME: ${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
       # Référence vers le cache du registre
       REGISTRY_CACHE: ghcr.io/pifou25/docker-jeedom
@@ -200,7 +214,7 @@ jobs:
         continue-on-error: true
         with:
           context: build
-          file: build/Dockerfile${{ matrix.target != 'light' && '.full' || '' }}
+          file: build/Dockerfile${{ inputs.target != 'light' && '.full' || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             DEBIAN=${{ matrix.debian }}
@@ -218,7 +232,7 @@ jobs:
         if: steps.buildJeedom.outcome != 'success'
         # some debug information in case of error, exit with error
         run: |
-          echo "${{ matrix.platform}} ${{ matrix.debian }} PHP${{ matrix.php }} ${{ matrix.target }} branch ${{ env.JEEDOM_BRANCH }} debug=${{ env.XDEBUG }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "${{ matrix.platform}} ${{ matrix.debian }} PHP${{ matrix.php }} ${{ inputs.target }} branch ${{ env.JEEDOM_BRANCH }} debug=${{ env.XDEBUG }} has Errors! 🚀" >> $GITHUB_STEP_SUMMARY
           cat <<EOF >> $GITHUB_STEP_SUMMARY
           Labels: ${{ steps.meta.outputs.labels }}
           EOF
@@ -257,7 +271,6 @@ jobs:
       # limit to avoid error HTTP 409: too many requests
       max-parallel: 1
       matrix:
-        target: ["light" , "full"]
         debian: [bullseye, bookworm, trixie]
         php: [7.4, 8.2, 8.4]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
@@ -276,8 +289,8 @@ jobs:
             php: 7.4
 
     env:
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ matrix.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
-      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && matrix.target == 'full' && github.ref_name == 'master') }}
+      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ inputs.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && inputs.target == 'full' && github.ref_name == 'master') }}
 
     steps:
       - name: init datetime value
