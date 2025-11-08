@@ -116,7 +116,8 @@ services:
 
   # Scheduler Service: mcuadros/ofelia or premoweb/chadburn
   scheduler:
-    image: premoweb/chadburn
+    # fix version due to this issue: https://github.com/PremoWeb/chadburn/issues/116
+    image: premoweb/chadburn:1.0.7
     environment:
       - TZ=${tz:-Europe/Paris}
     volumes:
