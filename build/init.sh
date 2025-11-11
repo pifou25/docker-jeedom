@@ -54,60 +54,77 @@ mysql_sql() {
 # ==========================================================
 main() {
   log_info "starting jeedom ${JEEDOM_VERSION}"
-  cd /var/www/html
+  cd ${WEBSERVER_HOME}
 
   # ------------------------------------------
   #   Premier démarrage : installation
   # ------------------------------------------
-  if [ ! -f "/var/www/html/index.php" ]; then
-    /root/install.sh -v "${JEEDOM_VERSION}" -w /var/www/html -s 6
+  if [ ! -f "${WEBSERVER_HOME}/index.php" ]; then
+    /root/install.sh -v "${JEEDOM_VERSION}" -w ${WEBSERVER_HOME} -s 6
   fi
 
-  if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
-    if [ ! -f "/var/www/html/core/config/common.config.sample.php" ]; then
+  if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
+    if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.sample.php" ]; then
       log_error "Can not install jeedom (no config.sample file)"
       exit 1
     fi
 
     log_info "first run of jeedom container : configuration"
 
-    cp /var/www/html/core/config/common.config.sample.php /var/www/html/core/config/common.config.php
-    sed -i "s/#PASSWORD#/${MYSQL_JEEDOM_PASSWD}/g" /var/www/html/core/config/common.config.php
-    sed -i "s/#DBNAME#/${MYSQL_JEEDOM_DATABASE}/g" /var/www/html/core/config/common.config.php
-    sed -i "s/#USERNAME#/${MYSQL_JEEDOM_USER}/g" /var/www/html/core/config/common.config.php
-    sed -i "s/#PORT#/3306/g" /var/www/html/core/config/common.config.php
-    sed -i "s/#HOST#/${MYSQL_HOST}/g" /var/www/html/core/config/common.config.php
+    cp ${WEBSERVER_HOME}/core/config/common.config.sample.php ${WEBSERVER_HOME}/core/config/common.config.php
+    sed -i "s/#PASSWORD#/${MYSQL_JEEDOM_PASSWD}/g" ${WEBSERVER_HOME}/core/config/common.config.php
+    sed -i "s/#DBNAME#/${MYSQL_JEEDOM_DATABASE}/g" ${WEBSERVER_HOME}/core/config/common.config.php
+    sed -i "s/#USERNAME#/${MYSQL_JEEDOM_USER}/g" ${WEBSERVER_HOME}/core/config/common.config.php
+    sed -i "s/#PORT#/3306/g" ${WEBSERVER_HOME}/core/config/common.config.php
+    sed -i "s/#HOST#/${MYSQL_HOST}/g" ${WEBSERVER_HOME}/core/config/common.config.php
 
-    chmod 770 -R /var/www/html
-    chown -R www-data:www-data /var/www/html
+    chmod 770 -R ${WEBSERVER_HOME}
+    chown -R www-data:www-data ${WEBSERVER_HOME}
     mkdir -p /tmp/jeedom
     chmod 770 -R /tmp/jeedom
     chown www-data:www-data -R /tmp/jeedom
 
-    # Attente du démarrage de la BDD
+    # wait until db is up and running
+    wait_time=2
+    max_wait=300  # (optionnel) temps max entre deux essais
     while ! mysqladmin ping -h"$MYSQL_HOST" -u"$MYSQL_JEEDOM_USER" -p"$MYSQL_JEEDOM_PASSWD" --silent; do
-      log_warn "Wait 2 seconds for MariaDB to start..."
-      sleep 2
+      log_warn "Wait ${wait_time}s for MariaDB to start..."
+      sleep "$wait_time"
+      # double le temps d’attente, mais limite à max_wait
+      wait_time=$(( wait_time * 2 ))
+      if [ "$wait_time" -gt "$max_wait" ]; then
+        # end script with error
+        log_error "No database available, check your configuration: $MYSQL_HOST"
+        exit 1
+      fi
     done
 
-    log_info "Création de la database SQL ${MYSQL_JEEDOM_DATABASE}..."
+    log_info " ___ Création de la database SQL ${MYSQL_JEEDOM_DATABASE} pour '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}' ... ___"
     mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'%';"
     mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'%' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
     mysql_sql "DROP DATABASE IF EXISTS ${MYSQL_JEEDOM_DATABASE};"
     mysql_sql "CREATE DATABASE ${MYSQL_JEEDOM_DATABASE};"
     mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'%';"
+    # user for @localhost
+    mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'localhost';"
+    mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'localhost' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
+    mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'localhost';"
 
     log_info "jeedom clean install"
-    php /var/www/html/install/install.php mode=force
+    php ${WEBSERVER_HOME}/install/install.php mode=force
     if [ $? -ne 0 ]; then
       log_error "Can not install jeedom (error in install.php, see log)"
       exit 1
     fi
 
-    if [ -d "/var/www/html/backup" ] && [ "$(ls -A /var/www/html/backup)" ]; then
-      filename=$(ls -Art /var/www/html/backup | tail -n 1)
+    log_warn "vérification de jeedom"
+    php ${WEBSERVER_HOME}/sick.php
+
+   # find latest backup and try to restore at the first container launch
+   if [ -d "${WEBSERVER_HOME}/backup" ] && [ "$(ls -A ${WEBSERVER_HOME}/backup)" ]; then
+      filename=$(ls -Art ${WEBSERVER_HOME}/backup | tail -n 1)
       log_info "found a backup, try to restore: ${filename}"
-      php /var/www/html/install/restore.php backup="${filename}"
+      php ${WEBSERVER_HOME}/install/restore.php backup="${filename}"
     fi
     log_info " ___ successful new installation ! ___"
   fi

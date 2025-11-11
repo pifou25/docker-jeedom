@@ -2,7 +2,7 @@ name: Generate Jeedom PHP sources
 
 on:
   push:
-    branches: [ master, develop]
+    branches: [ master, develop, feat/script_refactor ]
   pull_request:
     branches: [ master, develop]
   # this is to manually trigger the worklow
@@ -57,9 +57,10 @@ jobs:
         --file build/Dockerfile.source --tag ${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }} build 
       
     - name: Docker Push Docker Hub
+      if: false
       run: docker push ${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }}
 
     - name: Docker Push ghcr.io
       run: |
         docker tag ${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }} ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }}
-        docker push ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }}
+        docker push ghcr.io/${{ secrets.DOCKER_USER }}/docker-jeedom:source-${{ matrix.php }}-${{ matrix.version }}

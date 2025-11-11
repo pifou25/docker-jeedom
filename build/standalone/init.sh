@@ -116,25 +116,6 @@ if [ ! -f "/var/www/html/core/config/common.config.php" ]; then
   fi
 
   log_warn "vérification de jeedom"
-  echo "* * * * * www-data /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null" > /etc/cron.d/jeedom
-  if [ $? -ne 0 ]; then
-    log_error "Ne peut installer le cron de jeedom - Annulation"
-    exit 1
-  fi
-
-  echo "*/5 * * * * root /usr/bin/php /var/www/html/core/php/watchdog.php >> /dev/null" > /etc/cron.d/jeedom_watchdog
-  if [ $? -ne 0 ]; then
-    log_error "Ne peut installer le cron de jeedom - Annulation"
-    exit 1
-  fi
-
-  echo "www-data ALL=(ALL) NOPASSWD: ALL" | (EDITOR="tee -a" visudo)
-  if [ $? -ne 0 ]; then
-    log_error "Ne peut permettre à jeedom d'utiliser sudo - Annulation"
-    exit 1
-  fi
-
-  log_warn "vérification de jeedom"
   php /var/www/html/sick.php
 
   # find latest backup and try to restore at the first container launch
