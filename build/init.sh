@@ -35,14 +35,29 @@ apt_install() {
     echo "Installing ${pkg}..."
     if apt-get --quiet --option Dpkg::Options::="--force-confdef" --yes install "$pkg" > /dev/null; then
       log_info "${pkg} installed"
+      echo "${pkg} installed" >> /tmp/build.log
     else
       log_error "Cannot install ${pkg} - Continue anyway..."
+      echo "Cannot install ${pkg} - Continue anyway..." >> /tmp/build.log
+    fi
+  done
+}
+
+php_install() {
+  for pkg in "$@"; do
+    echo "Installing ${pkg}..."
+    if install-php-extensions "$pkg" > /dev/null; then
+      log_info "PHP ${pkg} installed"
+      echo "PHP ${pkg} installed" >> /tmp/build.log
+    else
+      log_error "Cannot install PHP ${pkg} - Continue anyway..."
+      echo "Cannot install PHP ${pkg} - Continue anyway..." >> /tmp/build.log
     fi
   done
 }
 
 mysql_sql() {
-  echo "$@" | mysql -uroot "-p${MYSQL_ROOT_PASSWORD}"
+  echo "$@" | mysql -uroot -p"${MYSQL_ROOT_PASSWORD}"
   if [ $? -ne 0 ]; then
     log_error "Ne peut exécuter $@ dans MySQL - Annulation"
     exit 1

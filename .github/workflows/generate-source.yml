@@ -43,9 +43,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4.1.2
 
-    - name: docker login
+    - name: docker login to ghcr.io registry
       run: |
-        docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }} 
         docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_SECRET }}
 
     - name: Build Jeedom ${{ matrix.repo }}:${{ matrix.php }}-${{ matrix.version }}
@@ -54,13 +53,8 @@ jobs:
         docker build --build-arg JEEDOM_REPO=${{ matrix.repo }} \
         --build-arg JEEDOM_VERSION=${{ matrix.version }} \
         --build-arg PHP=${{ matrix.php }} \
-        --file build/Dockerfile.source --tag ${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }} build 
+        --file build/Dockerfile.source --tag ghcr.io/${{ secrets.DOCKER_USER }}/docker-jeedom:source-${{ matrix.php }}-${{ matrix.version }} build 
       
-    - name: Docker Push Docker Hub
-      if: false
-      run: docker push ${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }}
-
     - name: Docker Push ghcr.io
       run: |
-        docker tag ${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }} ghcr.io/${{ secrets.DOCKER_USER }}/jeedom:source-${{ matrix.php }}-${{ matrix.version }}
         docker push ghcr.io/${{ secrets.DOCKER_USER }}/docker-jeedom:source-${{ matrix.php }}-${{ matrix.version }}

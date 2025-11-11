@@ -25,12 +25,9 @@ RUN getent group mysql &>/dev/null || groupadd -r mysql && \
     chmod 774 '/var/run/mysqld' && \
     chown -R mysql:mysql '/var/run/mysqld'
 
-RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
-  cron \
-  fail2ban \
-  mariadb-common mariadb-server \
-  supervisor \
-  && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && bash -c "source /root/init.sh && apt_install " \
+  "cron fail2ban mariadb-common mariadb-server supervisor " \
+   && rm -rf /var/lib/apt/lists/*
 
 # customization from ${JEEDOM_REPO} repo
 COPY  standalone/supervisord.conf /etc/supervisor/supervisord.conf

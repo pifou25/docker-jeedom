@@ -36,7 +36,7 @@ USER root
 # Use bash as the default shell - replace     ln -sf /bin/bash /bin/sh && \
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # script with common functions for installation
-COPY --chmod=0775 init.sh /root/init.sh
+COPY init.sh /root/init.sh
 
 # trixie: software-properties-common is unavaiable
 RUN if [ "${DEBIAN}" != "trixie" ]; then \
@@ -50,8 +50,8 @@ RUN if [ "${DEBIAN}" != "trixie" ]; then \
 # common packages intall
 # alphabetical order for better compare
 RUN apt-get update 
-RUN bash -c "source /root/init.sh && apt_install tzdata apt-transport-https apt-utils at bc ccze curl dos2unix ffmpeg gettext git proute2 " \
-  " librsync-dev libssh2-1-dev libzip-dev locales net-tools nmap mariadb-client smbclient ssl-cert sudo wget zip unzip"
+RUN bash -c "source /root/init.sh && apt_install tzdata apt-transport-https apt-utils at bc ccze curl dos2unix ffmpeg gettext git proute2 \
+  librsync-dev libssh2-1-dev libzip-dev locales net-tools nmap mariadb-client smbclient ssl-cert sudo wget zip unzip"
 
 # trixie: libssh2-1 replaced by libssh2-1t64
 # trixie: ntp ntpdate replaced by ntpsec
@@ -86,14 +86,13 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
 # shellcheck disable=DL3022
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 # RUN install-php-extensions bcmath
-RUN install-php-extensions "$([ ${DEBIAN} ne trixie ] && echo bcmath)" calendar
+RUN bash -c "source /root/init.sh && php_install $([ ${DEBIAN} ne trixie ] && echo bcmath) \
+  intl calendar ldap mbstring mysqli pcntl pdo_mysql soap sockets xmlrpc zip gd opcache ssh2" 
 RUN if [ "${TARGETPLATFORM}" != "linux/arm/v6" ] && [ "${TARGETPLATFORM}" != "linux/arm/v7" ]; then \
       install-php-extensions imap; \
     else \
       echo "Skipping imap extension on ${TARGETPLATFORM}"; \
     fi
-
-RUN install-php-extensions intl ldap mbstring mysqli pcntl pdo_mysql soap sockets xmlrpc zip gd opcache ssh2
 
 WORKDIR ${WEBSERVER_HOME}
 VOLUME ${WEBSERVER_HOME}
@@ -101,13 +100,6 @@ VOLUME ${WEBSERVER_HOME}
 # Download PHP sources from previous stage, and Composer
 COPY --from=source /app /var/www/html
 COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
-
-# Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
-RUN usermod -u 1000 www-data \
-   && groupmod -g 1000 www-data \
-   && mkdir -p /tmp/jeedom \
-   && chmod 777 -R /tmp/jeedom \
-   && chown www-data:www-data -R /tmp/jeedom
 
 # install redis-5.3.4 + xdebug-3.1.6 for php7.4 and 3.3.2 for php8.2
 # install redis-6.2.0 and xdebug-3.4.5 for php8.4/trixie
@@ -119,6 +111,14 @@ RUN if [[ ${XDEBUG} == "true" ]] ; then \
 	&& docker-php-ext-enable redis xdebug \
   && mv /tmp/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini ; \
   fi
+
+# Change uid and gid of apache to docker user uid/gid - create /tmp/jeedom
+RUN usermod -u 1000 www-data \
+   && groupmod -g 1000 www-data \
+   && mkdir -p /tmp/jeedom \
+   && chmod 777 -R /tmp/jeedom \
+   && chown -R www-data:www-data -R /tmp/jeedom /root /var/www/html \
+   && chmod +x /root/init.sh
 
 # First final image: light Jeedom with /without xdebug
 # the mysql hostname is another environment variable
