@@ -247,7 +247,7 @@ jobs:
           digest="${{ steps.buildJeedom.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
           docker image ls
-          docker run -d --rm --name jeedom ghcr.io/${{ env.REGISTRY_IMAGE }}@${{ steps.buildJeedom.outputs.digest }} sleep 10 && docker cp jeedom:/tmp/build.log ./build.log
+          docker run --platform linux/${{ matrix.platform }} -d --rm --name jeedom ghcr.io/${{ env.REGISTRY_IMAGE }}@${{ steps.buildJeedom.outputs.digest }} sleep 10 && docker cp jeedom:/tmp/build.log ./build.log
           cat ./build.log >>> $GITHUB_STEP_SUMMARY
       -
         name: Upload digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
