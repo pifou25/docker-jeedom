@@ -50,7 +50,7 @@ RUN if [ "${DEBIAN}" != "trixie" ]; then \
 # common packages intall
 # alphabetical order for better compare
 RUN apt-get update 
-RUN bash -c "source /root/init.sh && apt_install tzdata apt-transport-https apt-utils at bc ccze curl dos2unix ffmpeg gettext git proute2 \
+RUN bash -c "source /root/init.sh && apt_install tzdata apt-transport-https apt-utils at bc ccze curl dos2unix ffmpeg gettext git iproute2 \
   librsync-dev libssh2-1-dev libzip-dev locales net-tools nmap mariadb-client smbclient ssl-cert sudo wget zip unzip"
 
 # trixie: libssh2-1 replaced by libssh2-1t64
