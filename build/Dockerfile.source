@@ -8,7 +8,6 @@ COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 ARG JEEDOM_REPO=jeedom/core
 ARG JEEDOM_VERSION=master
-ENV JEEDOM_VERSION=${JEEDOM_VERSION}
 
 WORKDIR /app
 # Download and extract PHP sources
