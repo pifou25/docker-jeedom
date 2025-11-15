@@ -1,7 +1,7 @@
 # get php source from another docker image
-ARG PHP=8.4
+ARG PHP=8.2
 ARG JEEDOM_VERSION=develop
-ARG DEBIAN=trixie
+ARG DEBIAN=bookworm
 FROM ghcr.io/pifou25/jeedom:source-${PHP}-${JEEDOM_VERSION} AS source
 
 # Base image for light jeedom: no daemon, only apache+php
@@ -51,7 +51,8 @@ RUN if [ "${DEBIAN}" != "trixie" ]; then \
 # alphabetical order for better compare
 RUN apt-get update 
 RUN bash -c "source /root/init.sh && apt_install tzdata apt-transport-https apt-utils at bc ccze curl dos2unix ffmpeg gettext git iproute2 \
-  librsync-dev libssh2-1-dev libzip-dev locales net-tools nmap mariadb-client smbclient ssl-cert sudo wget zip unzip"
+  librsync-dev libssh2-1-dev libzip-dev locales net-tools nmap mariadb-client smbclient ssl-cert sudo wget zip unzip \
+  python3 python3-dev python3-pip python3-virtualenv "
 
 # trixie: libssh2-1 replaced by libssh2-1t64
 # trixie: ntp ntpdate replaced by ntpsec
