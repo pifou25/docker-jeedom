@@ -57,7 +57,12 @@ php_install() {
 }
 
 mysql_sql() {
-  echo "$@" | mysql -uroot -p"${MYSQL_ROOT_PASSWORD}"
+  if [[ "${MYSQL_HOST}" == 'localhost' ]]; then
+    # pas de password en localhost
+    echo "$@" | mysql -uroot
+  else
+    echo "$@" | mysql -uroot -p"${MYSQL_ROOT_PASSWORD}"
+  fi
   if [ $? -ne 0 ]; then
     log_error "Ne peut exécuter $@ dans MySQL - Annulation"
     exit 1
@@ -85,6 +90,11 @@ main() {
     fi
 
     log_info "first run of jeedom container : configuration"
+
+    if [[ -z "${MYSQL_JEEDOM_PASSWD}" ]]; then
+      MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-$(openssl rand -base64 32 | tr -d /=+ | cut -c -15)}
+      log_info "Mot de passe aléatoire pour Jeedom: ${MYSQL_JEEDOM_PASSWD}"
+    fi
 
     cp ${WEBSERVER_HOME}/core/config/common.config.sample.php ${WEBSERVER_HOME}/core/config/common.config.php
     sed -i "s/#PASSWORD#/${MYSQL_JEEDOM_PASSWD}/g" ${WEBSERVER_HOME}/core/config/common.config.php
@@ -144,9 +154,26 @@ main() {
     log_info " ___ successful new installation ! ___"
   fi
 
-  # Lancer les services
-  atd
-  exec apache2-foreground
+  if [[ "${MYSQL_HOST}" == 'localhost' ]]; then
+    # SI  config 'full' lancer les services via supervisord
+    a2dismod status
+    a2enmod headers
+    a2enmod remoteip
+
+    # required for fail2ban starting
+    touch /var/www/html/log/http.error
+    chown -R www-data:www-data /var/www/html
+
+    # start apache2 cron and fail2ban
+    supervisorctl start apache2
+    supervisorctl start cron
+    supervisorctl start fail2ban
+
+  else
+    # Sinon Lancer les services 'light'
+    atd
+    exec apache2-foreground
+  fi
 }
 
 # ==========================================================
