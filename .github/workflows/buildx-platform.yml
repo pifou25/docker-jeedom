@@ -107,7 +107,7 @@ jobs:
       # do every matrix combination, don't stop on errors
       fail-fast: false
       # limit to avoid error HTTP 409: too many requests
-      max-parallel: 3
+      max-parallel: 4
       matrix:
         debian: [bullseye, bookworm, trixie]
         php: [7.4, 8.2, 8.4]

@@ -40,17 +40,17 @@ COPY init.sh /root/init.sh
 
 # trixie: software-properties-common is unavaiable
 RUN if [ "${DEBIAN}" != "trixie" ]; then \
+      apt-get update; \
       apt-get install --no-install-recommends --no-install-suggests -q -y software-properties-common; \
       add-apt-repository non-free; \
-      apt-get update; \
     else \
       echo "Skipping software-properties-common on ${DEBIAN}"; \
     fi
 
 # common packages intall
 # alphabetical order for better compare
-RUN apt-get update 
-RUN bash -c "source /root/init.sh && apt_install lsb-release build-essential tzdata apt-transport-https apt-utils at bc ccze curl dos2unix ffmpeg gettext git iproute2 \
+RUN apt-get update \
+ && bash -c "source /root/init.sh && apt_install lsb-release build-essential tzdata apt-transport-https apt-utils at bc ccze curl dos2unix ffmpeg gettext git iproute2 \
   librsync-dev libssh2-1-dev libzip-dev locales net-tools nmap mariadb-client smbclient ssl-cert sudo wget zip unzip \
   python3 python3-dev python3-pip python3-virtualenv "
 
@@ -64,7 +64,6 @@ RUN if [ "${DEBIAN}" = "trixie" ]; then \
     else \
       echo "Skipping alternative python on ${DEBIAN}"; \
     fi
-RUN 
 
 # GitHub use this label to connect Git repo and Docker images in ghcr.io
 LABEL org.opencontainers.image.source="https://github.com/pifou25/docker-jeedom"

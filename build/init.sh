@@ -78,20 +78,21 @@ main() {
   log_info "starting jeedom ${JEEDOM_VERSION}"
   cd ${WEBSERVER_HOME}
 
-  # ------------------------------------------
-  #   Premier démarrage : installation
-  # ------------------------------------------
   if [ ! -f "${WEBSERVER_HOME}/index.php" ]; then
     log_error "No Jeedom installation on ${WEBSERVER_HOME} !"
     exit 1
   fi
 
   if [[ "${MYSQL_HOST}" != 'localhost' ]]; then
-    # add en debug & tache de fond:
-    atd -d -f && log_info "Démarrage du démon atd" || log_warn "Erreur démarrage atd"
+    # démarrer at daemon en tache de fond si mode 'light':
+    # le mode 'standalone' démarre atd via supervisor
+    sudo service atd start && log_info "Démarrage du démon atd" || log_warn "Erreur démarrage atd"
   fi
   
   if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
+    # ------------------------------------------
+    #   Premier démarrage : installation
+    # ------------------------------------------
     if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.sample.php" ]; then
       log_error "Can not install jeedom (no config.sample file)"
       exit 1
@@ -155,7 +156,7 @@ main() {
       exit 1
     fi
 
-    log_warn "vérification de jeedom"
+    log_info "vérification de jeedom"
     php ${WEBSERVER_HOME}/sick.php
 
    # find latest backup and try to restore at the first container launch
