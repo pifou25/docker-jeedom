@@ -50,7 +50,7 @@ RUN if [ "${DEBIAN}" != "trixie" ]; then \
 # common packages intall
 # alphabetical order for better compare
 RUN apt-get update 
-RUN bash -c "source /root/init.sh && apt_install tzdata apt-transport-https apt-utils at bc ccze curl dos2unix ffmpeg gettext git iproute2 \
+RUN bash -c "source /root/init.sh && apt_install lsb-release build-essential tzdata apt-transport-https apt-utils at bc ccze curl dos2unix ffmpeg gettext git iproute2 \
   librsync-dev libssh2-1-dev libzip-dev locales net-tools nmap mariadb-client smbclient ssl-cert sudo wget zip unzip \
   python3 python3-dev python3-pip python3-virtualenv "
 

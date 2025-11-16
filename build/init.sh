@@ -146,7 +146,7 @@ main() {
     php ${WEBSERVER_HOME}/sick.php
 
    # find latest backup and try to restore at the first container launch
-   if [ -d "${WEBSERVER_HOME}/backup" ] && [ "$(ls -A ${WEBSERVER_HOME}/backup)" ]; then
+   if [ -d "${WEBSERVER_HOME}/backup" ] && [ "$(ls ${WEBSERVER_HOME}/backup/*.gz)" ]; then
       filename=$(ls -Art ${WEBSERVER_HOME}/backup | tail -n 1)
       log_info "found a backup, try to restore: ${filename}"
       php ${WEBSERVER_HOME}/install/restore.php backup="${filename}"
