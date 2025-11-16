@@ -60,11 +60,13 @@ mysql_sql() {
   if [[ "${MYSQL_HOST}" == 'localhost' ]]; then
     # pas de password en localhost
     echo "$@" | mysql -uroot
+  elif [[ -n "${MYSQL_ROOT_PASSWORD}" ]]; then
+    echo "$@" | mysql -uroot -p"${MYSQL_ROOT_PASSWORD}" --host=${MYSQL_HOST} --port=${MYSQL_PORT:3306} 
   else
-    echo "$@" | mysql -uroot -p"${MYSQL_ROOT_PASSWORD}"
+    echo "$@" | mysql -u"${MYSQL_JEEDOM_USER}" -p"${MYSQL_JEEDOM_PASSWD}" --host=${MYSQL_HOST} --port=${MYSQL_PORT:3306} 
   fi
   if [ $? -ne 0 ]; then
-    log_error "Ne peut exécuter $@ dans MySQL - Annulation"
+    log_error "Ne peut exécuter $@ dans MySQL (${MYSQL_HOST}:${MYSQL_PORT:3306}) - Annulation"
     exit 1
   fi
 }
@@ -80,9 +82,15 @@ main() {
   #   Premier démarrage : installation
   # ------------------------------------------
   if [ ! -f "${WEBSERVER_HOME}/index.php" ]; then
-    /root/install.sh -v "${JEEDOM_VERSION}" -w ${WEBSERVER_HOME} -s 6
+    log_error "No Jeedom installation on ${WEBSERVER_HOME} !"
+    exit 1
   fi
 
+  if [[ "${MYSQL_HOST}" != 'localhost' ]]; then
+    # add en debug & tache de fond:
+    atd -d -f && log_info "Démarrage du démon atd" || log_warn "Erreur démarrage atd"
+  fi
+  
   if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.php" ]; then
     if [ ! -f "${WEBSERVER_HOME}/core/config/common.config.sample.php" ]; then
       log_error "Can not install jeedom (no config.sample file)"
@@ -92,7 +100,7 @@ main() {
     log_info "first run of jeedom container : configuration"
 
     if [[ -z "${MYSQL_JEEDOM_PASSWD}" ]]; then
-      MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-$(openssl rand -base64 32 | tr -d /=+ | cut -c -15)}
+      MYSQL_JEEDOM_PASSWD=$(openssl rand -base64 32 | tr -d /=+ | cut -c -15)
       log_info "Mot de passe aléatoire pour Jeedom: ${MYSQL_JEEDOM_PASSWD}"
     fi
 
@@ -100,7 +108,7 @@ main() {
     sed -i "s/#PASSWORD#/${MYSQL_JEEDOM_PASSWD}/g" ${WEBSERVER_HOME}/core/config/common.config.php
     sed -i "s/#DBNAME#/${MYSQL_JEEDOM_DATABASE}/g" ${WEBSERVER_HOME}/core/config/common.config.php
     sed -i "s/#USERNAME#/${MYSQL_JEEDOM_USER}/g" ${WEBSERVER_HOME}/core/config/common.config.php
-    sed -i "s/#PORT#/3306/g" ${WEBSERVER_HOME}/core/config/common.config.php
+    sed -i "s/#PORT#/${MYSQL_PORT:3306}/g" ${WEBSERVER_HOME}/core/config/common.config.php
     sed -i "s/#HOST#/${MYSQL_HOST}/g" ${WEBSERVER_HOME}/core/config/common.config.php
 
     chmod 770 -R ${WEBSERVER_HOME}
@@ -112,7 +120,7 @@ main() {
     # wait until db is up and running
     wait_time=2
     max_wait=300  # (optionnel) temps max entre deux essais
-    while ! mysqladmin ping -h"$MYSQL_HOST" -u"$MYSQL_JEEDOM_USER" -p"$MYSQL_JEEDOM_PASSWD" --silent; do
+    while ! mysqladmin ping -h"$MYSQL_HOST" -u"$MYSQL_JEEDOM_USER" -p"$MYSQL_JEEDOM_PASSWD" --port=${MYSQL_PORT:3306} --silent; do
       log_warn "Wait ${wait_time}s for MariaDB to start..."
       sleep "$wait_time"
       # double le temps d’attente, mais limite à max_wait
@@ -124,16 +132,21 @@ main() {
       fi
     done
 
-    log_info " ___ Création de la database SQL ${MYSQL_JEEDOM_DATABASE} pour '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}' ... ___"
-    mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'%';"
-    mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'%' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
-    mysql_sql "DROP DATABASE IF EXISTS ${MYSQL_JEEDOM_DATABASE};"
-    mysql_sql "CREATE DATABASE ${MYSQL_JEEDOM_DATABASE};"
-    mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'%';"
-    # user for @localhost
-    mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'localhost';"
-    mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'localhost' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
-    mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'localhost';"
+    if [[ "${MYSQL_HOST}" == 'localhost' ]]; then
+      log_info " ___ Création de la database SQL ${MYSQL_JEEDOM_DATABASE} pour '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}' ... ___"
+      mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'%';"
+      mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'%' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
+      mysql_sql "DROP DATABASE IF EXISTS ${MYSQL_JEEDOM_DATABASE};"
+      mysql_sql "CREATE DATABASE ${MYSQL_JEEDOM_DATABASE};"
+      mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'%';"
+      # user for @localhost
+      mysql_sql "DROP USER IF EXISTS '${MYSQL_JEEDOM_USER}'@'localhost';"
+      mysql_sql "CREATE USER '${MYSQL_JEEDOM_USER}'@'localhost' IDENTIFIED BY '${MYSQL_JEEDOM_PASSWD}';"
+      mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'localhost';"
+    else
+      log_info " ___ La database SQL ${MYSQL_JEEDOM_DATABASE} pour '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}:${MYSQL_PORT:3306}' doit être disponible..."
+
+    fi
 
     log_info "jeedom clean install"
     php ${WEBSERVER_HOME}/install/install.php mode=force
@@ -171,7 +184,6 @@ main() {
 
   else
     # Sinon Lancer les services 'light'
-    atd
     exec apache2-foreground
   fi
 }
