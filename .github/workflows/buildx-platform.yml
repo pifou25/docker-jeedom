@@ -107,7 +107,7 @@ jobs:
       # do every matrix combination, don't stop on errors
       fail-fast: false
       # limit to avoid error HTTP 409: too many requests
-      max-parallel: 3
+      max-parallel: 4
       matrix:
         debian: [bullseye, bookworm, trixie]
         php: [7.4, 8.2, 8.4]
@@ -246,6 +246,10 @@ jobs:
           mkdir -p /tmp/digests
           digest="${{ steps.buildJeedom.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
+          # export the build.log from image into the github summary
+          docker run --platform linux/${{ matrix.platform }} -d --rm --name jeedom ghcr.io/${{ env.REGISTRY_IMAGE }}@${{ steps.buildJeedom.outputs.digest }} sleep 10
+          docker cp jeedom:/tmp/build.log ./build.log
+          cat ./build.log >> $GITHUB_STEP_SUMMARY
       -
         name: Upload digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome == 'success'
@@ -299,6 +303,7 @@ jobs:
 
       -
         name: Download digests
+        # downloade artifacts whose name is the sha256 digest
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
@@ -355,19 +360,6 @@ jobs:
           #!/usr/bin/env bash
           set -euo pipefail
           
-          echo "🔍 [DEBUG] DOCKER_METADATA_OUTPUT_JSON:"
-          echo "$DOCKER_METADATA_OUTPUT_JSON" | jq .
-          
-          # Récupère le premier tag complet (ex: ghcr.io/pifou25/jeedom:latest)
-          FIRST_TAG=$(jq -r '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
-          
-          # Supprime le tag pour ne garder que la partie image (ex: ghcr.io/pifou25/jeedom)
-          # ou juste pifou25/jeedom si pas de registre explicite
-          REGISTRY_REPO="${FIRST_TAG%%:*}"
-          echo "REGISTRY_REPO=${REGISTRY_REPO}" >> $GITHUB_ENV
-          
-          echo "🧩 [INFO] Repository base detected: $REGISTRY_REPO"
-          
           # Vérifie qu'il y a bien des fichiers digest (produits par docker buildx build --push --output=type=digest)
           if ! ls | grep -qE '^[a-f0-9]{64}$'; then
             echo "❌ Aucun digest trouvé dans le répertoire courant !" >> $GITHUB_STEP_SUMMARY
@@ -382,7 +374,7 @@ jobs:
           # exécute la commande docker buildx imagetools create complète
           docker buildx imagetools create \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf "${REGISTRY_REPO}@sha256:%s " *)
+            $(printf "ghcr.io/${REGISTRY_IMAGE}@sha256:%s " *)
           
           echo "✅ [SUCCESS] Manifest multi-arch créé avec succès."
     
@@ -397,7 +389,7 @@ jobs:
 
             attempt=0
             max_attempts=5
-            until skopeo copy --all docker://${{ env.REGISTRY_REPO }}:${{ env.TAG_NAME }} \
+            until skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
                 docker://${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
             do
               attempt=$((attempt+1))
@@ -422,7 +414,7 @@ jobs:
         # continue to next step even in case of error
         continue-on-error: true
         run: |
-          skopeo copy --all docker://${{ env.REGISTRY_REPO }}:${{ env.TAG_NAME }} \
+          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
                 docker://quay.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
 
       -
@@ -439,16 +431,29 @@ jobs:
         # continue to next step even in case of error
         continue-on-error: true
         run: |
-          skopeo copy --all docker://${{ env.REGISTRY_REPO }}:${{ env.TAG_NAME }} \
+          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
                 docker://reg.nico.si/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
 
-      - name: Check push into quay.io ${{ env.TAG_NAME }}
-        if: steps.quay-push.outcome != 'success' || steps.docker-push.outcome != 'success' || steps.nico-push.outcome != 'success'
+      - name: copy also latest tag if required
+        if: ${{ env.TAG_LATEST_ENABLED }}
+        id: latest-push
+        # continue to next step even in case of error
+        continue-on-error: true
         run: |
-          if [ "${{ steps.ghcr-push.outcome }}" != "success" ]; then \
-            echo "Fail pushing ${TAG_NAME} to ghcr.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
+          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
+                docker://quay.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
+                docker://reg.nico.si/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
+                docker://${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+
+      - name: Check push into quay.io ${{ env.TAG_NAME }}
+        if: steps.quay-push.outcome != 'success' || steps.docker-push.outcome != 'success' || steps.nico-push.outcome != 'success' || steps.latest-push.outcome != 'success'
+        run: |
+          if [ "${{ steps.docker-push.outcome }}" != "success" ]; then \
+            echo "Fail pushing ${TAG_NAME} to docker.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
           else \
-            echo "Successfull pushing ${TAG_NAME} to ghcr.io 🚀" >> $GITHUB_STEP_SUMMARY; \
+            echo "Successfull pushing ${TAG_NAME} to docker.io 🚀" >> $GITHUB_STEP_SUMMARY; \
           fi
           if [ "${{ steps.quay-push.outcome }}" != "success" ]; then \
             echo "Fail pushing ${TAG_NAME} to quay.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
@@ -459,6 +464,13 @@ jobs:
             echo "Fail pushing ${TAG_NAME} to nico.si ! 🚀 ( ?? )" >> $GITHUB_STEP_SUMMARY; \
           else \
             echo "Successfull pushing ${TAG_NAME} to nico.si 🚀" >> $GITHUB_STEP_SUMMARY; \
+          fi
+          if [ ${{ env.TAG_LATEST_ENABLED }} != 'false' ]; then \
+            if [ "${{ steps.latest-push.outcome }}" != "success" ]; then \
+              echo "Fail pushing latest tag ! 🚀 ( ?? )" >> $GITHUB_STEP_SUMMARY; \
+            else \
+              echo "Successfull pushing latest tag 🚀" >> $GITHUB_STEP_SUMMARY; \
+            fi \
           fi
 
   conclusion:

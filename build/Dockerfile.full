@@ -1,11 +1,11 @@
 # second final image: full_jeedom standalone with all required daemons
 #
 # Debian version: bullseye / bookworm
-ARG DEBIAN=trixie
+ARG DEBIAN=bookworm
 # PHP version required for bookworm is 8.2
 # bullseye : 7.4
 # base images are copied from ghcr.io/pifou25
-ARG PHP=8.4
+ARG PHP=8.2
 # set XTRARGS=-debug to add xdebug packages and configuration
 ARG XTRARGS=
 FROM pifou25/jeedom:${DEBIAN}-${PHP}${XTRARGS}
@@ -17,6 +17,10 @@ ENV MYSQL_HOST=localhost
 
 USER root
 
+RUN apt-get update && \
+  bash -c "source /root/init.sh && apt_install cron fail2ban mariadb-common mariadb-server supervisor" \
+   && rm -rf /var/lib/apt/lists/*
+
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
 RUN getent group mysql &>/dev/null || groupadd -r mysql && \
     getent passwd mysql &>/dev/null || useradd -r -g mysql mysql && \
@@ -24,13 +28,6 @@ RUN getent group mysql &>/dev/null || groupadd -r mysql && \
     usermod -a -G mysql www-data && \
     chmod 774 '/var/run/mysqld' && \
     chown -R mysql:mysql '/var/run/mysqld'
-
-RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -q -y \
-  cron \
-  fail2ban \
-  mariadb-common mariadb-server \
-  supervisor \
-  && rm -rf /var/lib/apt/lists/*
 
 # customization from ${JEEDOM_REPO} repo
 COPY  standalone/supervisord.conf /etc/supervisor/supervisord.conf
@@ -52,16 +49,15 @@ RUN ln -sf /etc/apache2/conf-available/security.conf /etc/apache2/conf-enabled/ 
     chown -R www-data:www-data /etc/apache2 && \
     rm -f /var/log/apache2/error.log && touch /var/log/apache2/error.log && \
     chown -R www-data:www-data /var/log/apache2/error.log && \
-    chmod 0444 /etc/mysql/conf.d/jeedom_my.cnf
+    chmod 0444 /etc/mysql/conf.d/jeedom_my.cnf && \
+    echo "* * * * * www-data /usr/bin/php /var/www/html/core/php/jeeCron.php >> /dev/null" > /etc/cron.d/jeedom && \
+    echo "*/5 * * * * root /usr/bin/php /var/www/html/core/php/watchdog.php >> /dev/null" > /etc/cron.d/jeedom_watchdog
 
 # Add the supervisord healthcheck script
 COPY standalone/healthcheck.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/healthcheck.sh
 HEALTHCHECK --interval=300s --timeout=5s --retries=3 \
   CMD /usr/local/bin/healthcheck.sh
-
-# Initialisation
-COPY --chmod=0775 standalone/init.sh /root/init.sh
 
 #volume for mariadb data
 VOLUME  /var/lib/mysql
