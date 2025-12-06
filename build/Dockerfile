@@ -30,7 +30,7 @@ ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_ROOT_PASSWORD
 ARG DEBIAN_FRONTEND=noninteractive
 # required env var for init.sh script
-ENV WEBSERVER_HOME=/var/www/html
+ARG WEBSERVER_HOME=/var/www/html
 
 USER root
 # Use bash as the default shell - replace     ln -sf /bin/bash /bin/sh && \
@@ -41,10 +41,10 @@ COPY init.sh /root/init.sh
 # trixie: software-properties-common is unavaiable
 RUN if [ "${DEBIAN}" != "trixie" ]; then \
       apt-get update; \
-      apt-get install --no-install-recommends --no-install-suggests -q -y software-properties-common; \
+      bash -c "source /root/init.sh && apt_install software-properties-common"; \
       add-apt-repository non-free; \
     else \
-      echo "Skipping software-properties-common on ${DEBIAN}"; \
+      echo "Skipping software-properties-common on ${DEBIAN}" >> /tmp/build.log; \
     fi
 
 # common packages intall
