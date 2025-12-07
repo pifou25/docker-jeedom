@@ -112,17 +112,17 @@ main() {
     sed -i "s/#PORT#/${MYSQL_PORT:3306}/g" ${WEBSERVER_HOME}/core/config/common.config.php
     sed -i "s/#HOST#/${MYSQL_HOST}/g" ${WEBSERVER_HOME}/core/config/common.config.php
 
-    chmod 770 -R ${WEBSERVER_HOME}
-    chown -R www-data:www-data ${WEBSERVER_HOME}
-    mkdir -p /tmp/jeedom
-    chmod 770 -R /tmp/jeedom
-    chown www-data:www-data -R /tmp/jeedom
+    chmod 770 -R ${WEBSERVER_HOME} 1> /dev/null 2> /dev/null && log_info "modification des droits 770" || log_warn "Erreur modification des droits 770"
+    chown -R www-data:www-data ${WEBSERVER_HOME} 1> /dev/null 2> /dev/null && log_info "proprio www-data" || log_warn "Erreur proprio www-data"
+    mkdir -p /tmp/jeedom 1> /dev/null 2> /dev/null && log_info "creer /tmp/jeedom" || log_warn "Erreur creation /tmp/jeedom"
+    chmod 770 -R /tmp/jeedom 1> /dev/null 2> /dev/null && log_info "modification des droits 770 /tmp/jeedom" || log_warn "Erreur modification des droits 770 /tmp/jeedom"
+    chown www-data:www-data -R /tmp/jeedom 1> /dev/null 2> /dev/null && log_info "proprio www-data /tmp/jeedom" || log_warn "Erreur proprio www-data /tmp/jeedom"
 
     # wait until db is up and running
     wait_time=2
     max_wait=300  # (optionnel) temps max entre deux essais
     while ! mysqladmin ping -h"$MYSQL_HOST" -u"$MYSQL_JEEDOM_USER" -p"$MYSQL_JEEDOM_PASSWD" --port=${MYSQL_PORT:3306} --silent; do
-      log_warn "Wait ${wait_time}s for MariaDB to start..."
+      log_warn "Wait ${wait_time}s for MariaDB to start on ${MYSQL_HOST}:${MYSQL_PORT:3306}@${MYSQL_JEEDOM_USER}..."
       sleep "$wait_time"
       # double le temps d’attente, mais limite à max_wait
       wait_time=$(( wait_time * 2 ))
