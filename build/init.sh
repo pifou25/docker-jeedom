@@ -121,8 +121,16 @@ main() {
     # wait until db is up and running
     wait_time=2
     max_wait=300  # (optionnel) temps max entre deux essais
-    while ! mysqladmin ping -h"$MYSQL_HOST" -u"$MYSQL_JEEDOM_USER" -p"$MYSQL_JEEDOM_PASSWD" --port=${MYSQL_PORT:3306} --silent; do
-      log_warn "Wait ${wait_time}s for MariaDB to start on ${MYSQL_HOST}:${MYSQL_PORT:3306}@${MYSQL_JEEDOM_USER}..."
+    if [[ "${MYSQL_HOST}" == 'localhost' ]]; then
+      MYSQL_TEST="mysqladmin ping -hlocalhost -uroot --silent"
+      MYSQL_BLABLA="localhost:root"
+    else
+      MYSQL_TEST="mysqladmin ping -h\"${MYSQL_HOST}\" -u\"${MYSQL_JEEDOM_USER}\" -p\"${MYSQL_JEEDOM_PASSWD}\" --port=${MYSQL_PORT:3306} --silent"
+      MYSQL_BLABLA="${MYSQL_HOST}:${MYSQL_PORT:3306}@${MYSQL_JEEDOM_USER}"
+    fi
+
+    while ! eval ${MYSQL_TEST}; do
+      log_warn "Wait ${wait_time}s for MariaDB to start on ${MYSQL_BLABLA}..."
       sleep "$wait_time"
       # double le temps d’attente, mais limite à max_wait
       wait_time=$(( wait_time * 2 ))
@@ -132,6 +140,7 @@ main() {
         exit 1
       fi
     done
+    log_debug "connected to database ${MYSQL_BLABLA}"
 
     if [[ "${MYSQL_HOST}" == 'localhost' ]]; then
       log_info " ___ Création de la database SQL ${MYSQL_JEEDOM_DATABASE} pour '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}' ... ___"

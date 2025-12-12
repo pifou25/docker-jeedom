@@ -30,7 +30,7 @@ ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_ROOT_PASSWORD
 ARG DEBIAN_FRONTEND=noninteractive
 # required env var for init.sh script
-ARG WEBSERVER_HOME=/var/www/html
+ENV WEBSERVER_HOME=/var/www/html
 
 USER root
 # Use bash as the default shell - replace     ln -sf /bin/bash /bin/sh && \
