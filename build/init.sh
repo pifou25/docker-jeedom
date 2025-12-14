@@ -79,6 +79,15 @@ main() {
   cd ${WEBSERVER_HOME}
 
   if [ ! -f "${WEBSERVER_HOME}/index.php" ]; then
+    log_warn "No Jeedom installation on ${WEBSERVER_HOME} ! download and install jeedom:master"
+    # Download and extract PHP sources
+    wget -nv https://github.com/jeedom/core/archive/master.zip -O /tmp/jeedom.zip
+    unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
+      find /tmp/source/ -maxdepth 1 -type d -name '*core*' -exec sh -c "cp -rT {}/. ${WEBSERVER_HOME} && rm -rf {}" {} \; && \
+      rm /tmp/jeedom.zip
+  fi
+
+  if [ ! -f "${WEBSERVER_HOME}/index.php" ]; then
     log_error "No Jeedom installation on ${WEBSERVER_HOME} !"
     exit 1
   fi

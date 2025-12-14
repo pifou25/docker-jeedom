@@ -32,18 +32,18 @@ complete installation.
 
 ### Meaning of any keywords
 
-* `Full` = standalone
-* `Light` = without extra daemon, use with other services
-* bullseye, bookworm, or trixie is the Debian base version. The current default is `bullseye` running with php7.4 ; bookworm=php8.2; trixie=php8.4
-* Jeedom Version `stable` (current = v4.4 = latest) `beta` ( = v4.5) or `dev` (future v4.6 or v5 ?), see jeedom Git branches.
+* tag format: <debian name>-<php version>-<jeedom version>
+* debian name: bullseye, bookworm, or trixie is the Debian base version. The current default is `bullseye` running with php7.4 ; bookworm=php8.2; trixie=php8.4
+* Jeedom Version `stable` (current = v4.5 = latest) `beta` ( = next v4.6 ?? ) or `dev` (custom branch from custom repository), see jeedom Git branches.
 The `dev` is not from official Jeedom `alpha` or `beta` but from my specific repo. This dev version has
 `xdebug` activated.
-* tag format: <debian name>-<php version>-<jeedom version> or <debian name>-<jeedom version> or just <debian name>
 
 ### List of generated Tags
 
-* bookworm
-* bookworm-dev
+* bookworm-8.2
+* bookworm-8.2-light
+* bookworm-8.2-dev
+* bookworm-8.2-light-dev
 * ...
 
 ## Jeedom Plugins
