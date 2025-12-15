@@ -85,6 +85,7 @@ main() {
     unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
       find /tmp/source/ -maxdepth 1 -type d -name '*core*' -exec sh -c "cp -rT {}/. ${WEBSERVER_HOME} && rm -rf {}" {} \; && \
       rm /tmp/jeedom.zip
+    composer install --no-ansi --no-dev --no-interaction --no-plugins --no-progress --no-scripts --optimize-autoloader
   fi
 
   if [ ! -f "${WEBSERVER_HOME}/index.php" ]; then
