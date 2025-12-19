@@ -79,6 +79,16 @@ main() {
   cd ${WEBSERVER_HOME}
 
   if [ ! -f "${WEBSERVER_HOME}/index.php" ]; then
+    log_warn "No Jeedom installation on ${WEBSERVER_HOME} ! download and install jeedom:master"
+    # Download and extract PHP sources
+    wget -nv https://github.com/jeedom/core/archive/master.zip -O /tmp/jeedom.zip
+    unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
+      find /tmp/source/ -maxdepth 1 -type d -name '*core*' -exec sh -c "cp -rT {}/. ${WEBSERVER_HOME} && rm -rf {}" {} \; && \
+      rm /tmp/jeedom.zip
+    composer install --no-ansi --no-dev --no-interaction --no-plugins --no-progress --no-scripts --optimize-autoloader
+  fi
+
+  if [ ! -f "${WEBSERVER_HOME}/index.php" ]; then
     log_error "No Jeedom installation on ${WEBSERVER_HOME} !"
     exit 1
   fi
@@ -112,17 +122,25 @@ main() {
     sed -i "s/#PORT#/${MYSQL_PORT:3306}/g" ${WEBSERVER_HOME}/core/config/common.config.php
     sed -i "s/#HOST#/${MYSQL_HOST}/g" ${WEBSERVER_HOME}/core/config/common.config.php
 
-    chmod 770 -R ${WEBSERVER_HOME}
-    chown -R www-data:www-data ${WEBSERVER_HOME}
-    mkdir -p /tmp/jeedom
-    chmod 770 -R /tmp/jeedom
-    chown www-data:www-data -R /tmp/jeedom
+    chmod 770 -R ${WEBSERVER_HOME} 1> /dev/null 2> /dev/null && log_info "modification des droits 770" || log_warn "Erreur modification des droits 770"
+    chown -R www-data:www-data ${WEBSERVER_HOME} 1> /dev/null 2> /dev/null && log_info "proprio www-data" || log_warn "Erreur proprio www-data"
+    mkdir -p /tmp/jeedom 1> /dev/null 2> /dev/null && log_info "creer /tmp/jeedom" || log_warn "Erreur creation /tmp/jeedom"
+    chmod 770 -R /tmp/jeedom 1> /dev/null 2> /dev/null && log_info "modification des droits 770 /tmp/jeedom" || log_warn "Erreur modification des droits 770 /tmp/jeedom"
+    chown www-data:www-data -R /tmp/jeedom 1> /dev/null 2> /dev/null && log_info "proprio www-data /tmp/jeedom" || log_warn "Erreur proprio www-data /tmp/jeedom"
 
     # wait until db is up and running
     wait_time=2
     max_wait=300  # (optionnel) temps max entre deux essais
-    while ! mysqladmin ping -h"$MYSQL_HOST" -u"$MYSQL_JEEDOM_USER" -p"$MYSQL_JEEDOM_PASSWD" --port=${MYSQL_PORT:3306} --silent; do
-      log_warn "Wait ${wait_time}s for MariaDB to start..."
+    if [[ "${MYSQL_HOST}" == 'localhost' ]]; then
+      MYSQL_TEST="mysqladmin ping -hlocalhost -uroot --silent"
+      MYSQL_BLABLA="localhost:root"
+    else
+      MYSQL_TEST="mysqladmin ping -h\"${MYSQL_HOST}\" -u\"${MYSQL_JEEDOM_USER}\" -p\"${MYSQL_JEEDOM_PASSWD}\" --port=${MYSQL_PORT:3306} --silent"
+      MYSQL_BLABLA="${MYSQL_HOST}:${MYSQL_PORT:3306}@${MYSQL_JEEDOM_USER}"
+    fi
+
+    while ! eval ${MYSQL_TEST}; do
+      log_warn "Wait ${wait_time}s for MariaDB to start on ${MYSQL_BLABLA}..."
       sleep "$wait_time"
       # double le temps d’attente, mais limite à max_wait
       wait_time=$(( wait_time * 2 ))
@@ -132,6 +150,7 @@ main() {
         exit 1
       fi
     done
+    log_debug "connected to database ${MYSQL_BLABLA}"
 
     if [[ "${MYSQL_HOST}" == 'localhost' ]]; then
       log_info " ___ Création de la database SQL ${MYSQL_JEEDOM_DATABASE} pour '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}' ... ___"
