@@ -2,30 +2,23 @@
   default:
     name: jeedom_network
 
+networks:
+  default:
+    name: jeedom_network
+
 services:
 
-  nginx:
-    image: jc21/nginx-proxy-manager:2
+  db:
+    image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb or yobasystems/alpine-mariadb:10
     restart: unless-stopped
-    ports:
-      - '80:80'
-      - '81:81' # admin access
-      - '443:443'
     environment:
-      DB_MYSQL_HOST: "db"
-      DB_MYSQL_PORT: 3306
-      DB_MYSQL_USER: "${MYSQL_NPM_USER}"
-      DB_MYSQL_PASSWORD: "${MYSQL_NPM_PASSWORD}"
-      DB_MYSQL_NAME: "${MYSQL_NPM_USER}"
-    volumes:
-      - ./data/nginx:/data
-      - ./data/letsencrypt:/etc/letsencrypt
-    depends_on:
-      - db
-    logging:
-      options:
-        max-size: "10m"
-        max-file: "1"
+      - PUID=1000
+      - PGID=1000
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
+      - TZ=${TZ:-Europe/Paris}
+      - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
+      - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
+      - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
     healthcheck:
       test: ["CMD", "/bin/check-health"]
       interval: 1m
@@ -61,7 +54,6 @@ services:
       chadburn.enabled: "true"
       chadburn.job-exec.jeedom-backup.schedule: "@every 1d"
       chadburn.job-exec.jeedom-backup.command: "mysqldump -d${MYSQL_JEEDOM_DB:-jeedom} -u${MYSQL_JEEDOM_USER:-jeedom} -p\"${MYSQL_JEEDOM_PASSWD:-jeedom}\"' > /backup/jeedom.sql"
-
 
   jeedom:
     # build your own image first with build-args and target:
@@ -110,8 +102,6 @@ services:
       options:
         max-size: "10m"
         max-file: "1"
-    tmpfs:
-      - /tmp/jeedom
 
 
   # Scheduler Service: mcuadros/ofelia or premoweb/chadburn
