@@ -2,28 +2,7 @@
   default:
     name: jeedom_network
 
-networks:
-  default:
-    name: jeedom_network
-
 services:
-
-  db:
-    image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb or yobasystems/alpine-mariadb:10
-    restart: unless-stopped
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
-      - TZ=${TZ:-Europe/Paris}
-      - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
-      - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
-      - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
-    healthcheck:
-      test: ["CMD", "/bin/check-health"]
-      interval: 1m
-      timeout: 3s
-
 
   db:
     image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
@@ -136,7 +115,6 @@ services:
 
   # On peux ajouter également Node-red. permettant une gestion de mqtt native
   node-red:
-    # profiles: ["nodered"]
     image:  nodered/node-red
     volumes:
     - ./volumes/nodered:/data  # remplacer ./volumes par l'emplacement du volume souhaité
@@ -157,25 +135,99 @@ services:
         max-size: "10m"
         max-file: "1"
     restart: unless-stopped
-    depends_on:
-      - mqtt
-    healthcheck: # check if both mqtt and zwave client are connected
-      test: 'wget --no-verbose --spider --no-check-certificate --header "Accept: text/plain" http://127.0.0.1:8091/health || exit 1'
-      interval: 2m
-      retries: 3
-      start_period: 40s
-      timeout: 20s
+
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - 1883:1883 # only required to expose service on host
+    environment:
+      - TZ=${TIME_ZONE}
+    volumes:
+      - ./mosquitto:/mosquitto/config
+      - ./data/mosquitto/log:/mosquitto/log
+      - ./data/mosquitto/data:/mosquitto/data
     logging:
       options:
         max-size: "10m"
         max-file: "1"
 
 
-  mqtt:
-    image: eclipse-mosquitto:2
-    ports:
-      - 1883:1883 # only required to expose service on host
+  # check and update other services
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
     environment:
-      - TZ=Europe/Paris
+      - TZ=${TIME_ZONE}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+      # - /root/.docker/config.json:/config.json
+    command: --schedule "0 55 3 * * *"
+
+
+  # password manager
+  bitwarden:
+    image: vaultwarden/server
+    restart: unless-stopped
+    volumes:
+      - ./volumes/vaultwarden:/data
+    environment:
+      - DATABASE_URL=mysql://${MYSQL_VAULT_USER}:${MYSQL_VAULT_PASSWORD}@db/${MYSQL_VAULT_USER}
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - EXPERIMENTAL_CLIENT_FEATURE_FLAGS=ssh-key-vault-item,ssh-agent
+      - TZ=${TIME_ZONE}
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+    depends_on:
+      - db
+
+
+  portainer:
+    image: portainer/portainer-ce
+    privileged: true
+    environment:
+      - TZ=${TIME_ZONE}
     ports:
-      - 6379:6379
+        - 8000:8000
+        - 9000:9000
+    restart: unless-stopped
+    volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - ./volumes/portainer:/data
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+
+
+  nginx:
+    image: jc21/nginx-proxy-manager:2
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '81:81' # admin access
+      - '443:443'
+    environment:
+      DB_MYSQL_HOST: "db"
+      DB_MYSQL_PORT: 3306
+      DB_MYSQL_USER: "${MYSQL_NPM_USER}"
+      DB_MYSQL_PASSWORD: "${MYSQL_NPM_PASSWORD}"
+      DB_MYSQL_NAME: "${MYSQL_NPM_USER}"
+    volumes:
+      - ./volumes/nginx:/data
+      - ./volumes/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - db
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+    healthcheck:
+      test: ["CMD", "/bin/check-health"]
+      interval: 1m
+      timeout: 3s
+
