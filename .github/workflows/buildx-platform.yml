@@ -24,7 +24,7 @@ on:
         description: 'version de jeedom à utiliser'
         required: true
         type: string
-        default: 4.5
+        default: "4.5"
 
     secrets:
       GHCR_SECRET:
