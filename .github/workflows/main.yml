@@ -1,4 +1,4 @@
-name: Main Docker Multiplatform Build ci
+name: Main Main Docker Multiplatform Build ci
 # master branch build image from jeedom/core:master repo
 # develop branch build image from pifou25/jeedom-core:develop repo
 
