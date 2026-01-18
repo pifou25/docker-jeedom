@@ -11,7 +11,7 @@ on:
         default: 'light'
       version_tag:
         description: 'version de jeedom à utiliser'     
-        default: 4.5
+        default: "4.5"
 
   # reusable workflow
   workflow_call:
@@ -24,7 +24,7 @@ on:
         description: 'version de jeedom à utiliser'
         required: true
         type: string
-        default: 4.5
+        default: "4.5"
 
     secrets:
       GHCR_SECRET:
