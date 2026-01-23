@@ -293,7 +293,7 @@ jobs:
             php: 7.4
 
     env:
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ inputs.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
+      TAG_NAME: ${{ matrix.debian }}-${{ inputs.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && inputs.target == 'full' && github.ref_name == 'master') }}
 
     steps:
