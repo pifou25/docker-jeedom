@@ -264,7 +264,7 @@ jobs:
       -
         name: Upload digest ${{ inputs.version_tag }}-${{ env.TAG_NAME }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           # env.PLATFORM_PAIR from step 1
           # get DIGEST-${TAG_NAME} env variable from previous step
