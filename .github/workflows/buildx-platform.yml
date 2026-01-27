@@ -11,7 +11,8 @@ on:
         default: 'light'
       version_tag:
         description: 'version de jeedom à utiliser'     
- 
+        default: 4.5
+
   # reusable workflow
   workflow_call:
     inputs:
@@ -36,7 +37,7 @@ on:
         required: true
       NICO_PASSWORD:
         required: true
-      
+
 
 # no concurrency, cancel previous running workflow
 concurrency:
@@ -378,7 +379,9 @@ jobs:
           
           # Affiche les fichiers digest pour info
           echo "📦 [DEBUG] Digests trouvés :"
-          ls
+          ls -alsh
+          echo "📦 [DEBUG] liste de tags :"
+          echo $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
           
           # exécute la commande docker buildx imagetools create complète
           docker buildx imagetools create \

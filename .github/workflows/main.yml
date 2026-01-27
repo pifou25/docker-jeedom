@@ -45,9 +45,8 @@ jobs:
           echo "version to build: $OUTPUT1"
 
   build-light-full-step:
-    needs: testStep
+    needs: init_step
     uses: ./.github/workflows/buildx-platform.yml
-
     strategy:
       matrix:
         target: [light, full]
