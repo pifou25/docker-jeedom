@@ -233,6 +233,7 @@ jobs:
             JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }}
             XDEBUG=${{ env.XDEBUG }}
             XTRARGS=${{ env.XDEBUG && '-http-dev' || '-http' }}
+            VERSION_TAG=${{ inputs.version_tag }}
           platforms: linux/${{ matrix.platform }}
           cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }},mode=max

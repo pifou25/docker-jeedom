@@ -6,9 +6,11 @@ ARG DEBIAN=bookworm
 # bullseye : 7.4
 # base images are copied from ghcr.io/pifou25
 ARG PHP=8.2
+# version number of Jeedom source from core/config/version
+ARG VERSION_TAG
 # set XTRARGS=-debug to add xdebug packages and configuration
 ARG XTRARGS=
-FROM pifou25/jeedom:${DEBIAN}-${PHP}${XTRARGS}
+FROM pifou25/jeedom:${VERSION_TAG}-${DEBIAN}${XTRARGS}
 # repo: jeedom/core or pifou25/jeedom-core
 ARG JEEDOM_REPO=pifou25/jeedom-core
 # branch name: master or beta
