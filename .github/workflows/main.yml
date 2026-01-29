@@ -1,4 +1,4 @@
-name: Docker Multiplatform Build ci
+name: Main Docker Multiplatform Build ci
 # master branch build image from jeedom/core:master repo
 # develop branch build image from pifou25/jeedom-core:develop repo
 
@@ -16,14 +16,42 @@ on:
         description: 'light ou full, cible du build à générer'     
         default: 'light'
 
-jobs:
-  build-light-step:
-    uses: ./.github/workflows/buildx-platform.yml
+env:
+  # used to download jeedom source
+  JEEDOM_REPO: ${{ github.ref_name == 'master' && 'jeedom/core' || 'pifou25/jeedom-core' }}
+  # branch to use: master if the current branch is master, develop if not
+  # this is used to set the jeedom version in the Dockerfile
+  JEEDOM_BRANCH: ${{ github.ref_name == 'master' && 'master' || 'develop' }}
 
+jobs:
+  init_step:
+    runs-on: ubuntu-latest
+    outputs:
+      version_tag: ${{ steps.init_step.outputs.version_tag }}
+    steps:
+      -
+        name: init_step
+        id: init_step
+        run: |
+          echo "version_tag=$(curl -s https://raw.githubusercontent.com/${{ env.JEEDOM_REPO }}/refs/heads/${{ env.JEEDOM_BRANCH }}/core/config/version)" >> "$GITHUB_OUTPUT"
+
+  testStep:
+    runs-on: ubuntu-latest
+    needs: init_step
+    steps:
+      - env:
+          OUTPUT1: ${{ needs.init_step.outputs.version_tag }}
+        run: |
+          echo "version to build: $OUTPUT1"
+
+  build-light-full-step:
+    needs: init_step
+    uses: ./.github/workflows/buildx-platform.yml
     strategy:
       matrix:
         target: [light, full]
       max-parallel: 1
     with:
       target : ${{ matrix.target }}
+      version_tag: ${{ needs.init_step.outputs.version_tag }}
     secrets: inherit

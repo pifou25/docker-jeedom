@@ -9,6 +9,10 @@ on:
       target:
         description: 'light ou full, cible du build à générer'     
         default: 'light'
+      version_tag:
+        description: 'version de jeedom à utiliser'     
+        default: 4.5
+
   # reusable workflow
   workflow_call:
     inputs:
@@ -16,6 +20,12 @@ on:
       target:
         required: true
         type: string
+      version_tag:
+        description: 'version de jeedom à utiliser'
+        required: true
+        type: string
+        default: 4.5
+
     secrets:
       GHCR_SECRET:
         required: true
@@ -27,7 +37,7 @@ on:
         required: true
       NICO_PASSWORD:
         required: true
-      
+
 
 # no concurrency, cancel previous running workflow
 concurrency:
@@ -134,8 +144,8 @@ jobs:
 
 
     env:
-      # tag name de la forme: debian-php-light-debug-dev e.g. bullseye-8.2-light-debug-dev
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ inputs.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
+      # tag name de la forme: version-debian-http-debug e.g. 4.5-bullseye-http-debug
+      TAG_NAME: ${{ matrix.debian }}${{ inputs.target == 'light' && '-http' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && inputs.target == 'full' && github.ref_name == 'master') }}
       CACHE_NAME: ${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
       # Référence vers le cache du registre
@@ -184,7 +194,7 @@ jobs:
             ghcr.io/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
-            type=raw,value=${{ env.TAG_NAME }}
+            type=raw,value=${{ inputs.version_tag }}-${{ env.TAG_NAME }}
             # set latest tag for default branch
             type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
 
@@ -205,7 +215,7 @@ jobs:
           driver: docker-container
 
       - 
-        name: build ${{ env.TAG_NAME }}:${{ matrix.platform }}
+        name: build ${{ inputs.version_tag }}-${{ env.TAG_NAME }}:${{ matrix.platform }}
         # id required for next step that check success
         id: buildJeedom
         # https://github.com/marketplace/actions/build-and-push-docker-images
@@ -222,13 +232,14 @@ jobs:
             JEEDOM_REPO=${{ env.JEEDOM_REPO }}
             JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }}
             XDEBUG=${{ env.XDEBUG }}
-            XTRARGS=${{ env.XDEBUG && '-light-dev' || '-light' }}
+            XTRARGS=${{ env.XDEBUG && '-http-dev' || '-http' }}
+            VERSION_TAG=${{ inputs.version_tag }}
           platforms: linux/${{ matrix.platform }}
           cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }},mode=max
           outputs: type=image,name=ghcr.io/${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
 
-      - name: Check on failures ${{ env.TAG_NAME }}:${{ matrix.platform }}
+      - name: Check on failures ${{ inputs.version_tag }}-${{ env.TAG_NAME }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome != 'success'
         # some debug information in case of error, exit with error
         run: |
@@ -239,8 +250,8 @@ jobs:
           exit 1
 
       -
-        name: Export digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
-        # export the digest file name into env var named DIGEST-${TAG_NAME} for next step
+        name: Export digest ${{ inputs.version_tag }}-${{ env.TAG_NAME }}:${{ matrix.platform }}
+        # export the digest file name into env var named DIGEST-${{ inputs.version_tag }}-${{ env.TAG_NAME }} for next step
         if: steps.buildJeedom.outcome == 'success'
         run: |
           mkdir -p /tmp/digests
@@ -251,13 +262,13 @@ jobs:
           docker cp jeedom:/tmp/build.log ./build.log
           cat ./build.log >> $GITHUB_STEP_SUMMARY
       -
-        name: Upload digest ${{ env.TAG_NAME }}:${{ matrix.platform }}
+        name: Upload digest ${{ inputs.version_tag }}-${{ env.TAG_NAME }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           # env.PLATFORM_PAIR from step 1
           # get DIGEST-${TAG_NAME} env variable from previous step
-          name: digests-${{ env.TAG_NAME }}-${{ env.PLATFORM_PAIR }}
+          name: digests-${{ inputs.version_tag }}-${{ env.TAG_NAME }}-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/${{ env.DIGEST }}
           if-no-files-found: error
           retention-days: 1
@@ -293,7 +304,7 @@ jobs:
             php: 7.4
 
     env:
-      TAG_NAME: ${{ matrix.debian }}-${{ matrix.php }}${{ inputs.target == 'light' && '-light' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
+      TAG_NAME: ${{ matrix.debian }}${{ inputs.target == 'light' && '-http' || '' }}${{ github.ref_name != 'master' && '-dev' || '' }}
       TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bullseye' && inputs.target == 'full' && github.ref_name == 'master') }}
 
     steps:
@@ -307,7 +318,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests-${{ env.TAG_NAME }}-*
+          pattern: digests-${{ inputs.version_tag }}-${{ env.TAG_NAME }}-*
           merge-multiple: true
 
       - 
@@ -342,7 +353,7 @@ jobs:
             ghcr.io/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
-            type=raw,value=${{ env.TAG_NAME }}
+            type=raw,value=${{ inputs.version_tag }}-${{ env.TAG_NAME }}
             # set latest tag for default branch
             type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
           # label chadburn for the "cron" container
@@ -354,7 +365,7 @@ jobs:
             chadburn.job-exec.jeedom-cron.command="/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
  
       -
-        name: Create manifest list and push ${{ env.TAG_NAME }} to Docker Hub
+        name: Create manifest list and push ${{ inputs.version_tag }}-${{ env.TAG_NAME }} to Docker Hub
         working-directory: /tmp/digests
         run: |
           #!/usr/bin/env bash
@@ -369,7 +380,9 @@ jobs:
           
           # Affiche les fichiers digest pour info
           echo "📦 [DEBUG] Digests trouvés :"
-          ls
+          ls -alsh
+          echo "📦 [DEBUG] liste de tags :"
+          echo $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
           
           # exécute la commande docker buildx imagetools create complète
           docker buildx imagetools create \
@@ -389,8 +402,8 @@ jobs:
 
             attempt=0
             max_attempts=5
-            until skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
-                docker://${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+            until skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }} \
+                docker://${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
             do
               attempt=$((attempt+1))
               if [ "$attempt" -ge "$max_attempts" ]; then
@@ -409,13 +422,13 @@ jobs:
           username: ${{ secrets.QUAY_USER }}
           password: ${{ secrets.QUAY_PASSWORD }}
          
-      - name: Push ${{ env.TAG_NAME }} to Quay.io
+      - name: Push ${{ inputs.version_tag }}-${{ env.TAG_NAME }} to Quay.io
         id: quay-push
         # continue to next step even in case of error
         continue-on-error: true
         run: |
-          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
-                docker://quay.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }} \
+                docker://quay.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
 
       -
         name: Login to nico private repository
@@ -431,8 +444,8 @@ jobs:
         # continue to next step even in case of error
         continue-on-error: true
         run: |
-          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
-                docker://reg.nico.si/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }} \
+                docker://reg.nico.si/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
 
       - name: copy also latest tag if required
         if: ${{ env.TAG_LATEST_ENABLED }}
@@ -440,30 +453,30 @@ jobs:
         # continue to next step even in case of error
         continue-on-error: true
         run: |
-          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
-                docker://quay.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
-          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
-                docker://reg.nico.si/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
-          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }} \
-                docker://${{ env.REGISTRY_IMAGE }}:${{ env.TAG_NAME }}
+          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }} \
+                docker://quay.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
+          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }} \
+                docker://reg.nico.si/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
+          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }} \
+                docker://${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
 
-      - name: Check push into quay.io ${{ env.TAG_NAME }}
+      - name: Check push into quay.io ${{ inputs.version_tag }}-${{ env.TAG_NAME }}
         if: steps.quay-push.outcome != 'success' || steps.docker-push.outcome != 'success' || steps.nico-push.outcome != 'success' || steps.latest-push.outcome != 'success'
         run: |
           if [ "${{ steps.docker-push.outcome }}" != "success" ]; then \
-            echo "Fail pushing ${TAG_NAME} to docker.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
+            echo "Fail pushing ${{ inputs.version_tag }}-${{ env.TAG_NAME }} to docker.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
           else \
-            echo "Successfull pushing ${TAG_NAME} to docker.io 🚀" >> $GITHUB_STEP_SUMMARY; \
+            echo "Successfull pushing ${{ inputs.version_tag }}-${{ env.TAG_NAME }} to docker.io 🚀" >> $GITHUB_STEP_SUMMARY; \
           fi
           if [ "${{ steps.quay-push.outcome }}" != "success" ]; then \
-            echo "Fail pushing ${TAG_NAME} to quay.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
+            echo "Fail pushing ${{ inputs.version_tag }}-${{ env.TAG_NAME }} to quay.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
           else \
-            echo "Successfull pushing ${TAG_NAME} to quay.io 🚀" >> $GITHUB_STEP_SUMMARY; \
+            echo "Successfull pushing ${{ inputs.version_tag }}-${{ env.TAG_NAME }} to quay.io 🚀" >> $GITHUB_STEP_SUMMARY; \
           fi
           if [ "${{ steps.nico-push.outcome }}" != "success" ]; then \
-            echo "Fail pushing ${TAG_NAME} to nico.si ! 🚀 ( ?? )" >> $GITHUB_STEP_SUMMARY; \
+            echo "Fail pushing ${{ inputs.version_tag }}-${{ env.TAG_NAME }} to nico.si ! 🚀 ( ?? )" >> $GITHUB_STEP_SUMMARY; \
           else \
-            echo "Successfull pushing ${TAG_NAME} to nico.si 🚀" >> $GITHUB_STEP_SUMMARY; \
+            echo "Successfull pushing ${{ inputs.version_tag }}-${{ env.TAG_NAME }} to nico.si 🚀" >> $GITHUB_STEP_SUMMARY; \
           fi
           if [ ${{ env.TAG_LATEST_ENABLED }} != 'false' ]; then \
             if [ "${{ steps.latest-push.outcome }}" != "success" ]; then \
