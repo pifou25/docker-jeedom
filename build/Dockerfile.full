@@ -10,7 +10,7 @@ ARG PHP=8.2
 ARG VERSION_TAG
 # set XTRARGS=-debug to add xdebug packages and configuration
 ARG XTRARGS=
-FROM pifou25/jeedom:${VERSION_TAG}-${DEBIAN}${XTRARGS}
+FROM pifou25/jeedom:${VERSION_TAG}-${DEBIAN}-http${XTRARGS}
 # repo: jeedom/core or pifou25/jeedom-core
 ARG JEEDOM_REPO=pifou25/jeedom-core
 # branch name: master or beta
