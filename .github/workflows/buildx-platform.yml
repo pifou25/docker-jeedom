@@ -232,7 +232,7 @@ jobs:
             JEEDOM_REPO=${{ env.JEEDOM_REPO }}
             JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }}
             XDEBUG=${{ env.XDEBUG }}
-            XTRARGS=${{ env.XDEBUG && '-http-dev' || '-http' }}
+            XTRARGS=${{ github.ref_name != 'master' && '-dev' || '' }}
             VERSION_TAG=${{ inputs.version_tag }}
           platforms: linux/${{ matrix.platform }}
           cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }}
