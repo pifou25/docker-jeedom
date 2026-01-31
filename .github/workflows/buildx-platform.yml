@@ -64,7 +64,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v4.1.2
+        uses: actions/checkout@v6
       - name: Docker Lint
         # https://github.com/marketplace/actions/hadolint-action
         uses: hadolint/hadolint-action@v3.3.0
@@ -172,7 +172,7 @@ jobs:
 
       -
         name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
           
       - 
         name: Login to GitHub Container Registry
@@ -504,7 +504,7 @@ jobs:
 
       -
         name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run DockerHub rate limit final check
         id: ratecheckFinal
