@@ -1,0 +1,56 @@
+# this nextcloud service use /media/ssd1/nextcloud path, check it first
+services:
+  nextcloud:
+    image: nextcloud
+    container_name: nextcloud
+    restart: unless-stopped
+    networks: 
+      - cloud
+    depends_on:
+      - redis
+    ports:
+      - 8081:80
+    volumes:
+      - /media/ssd1/nextcloud/html:/var/www/html
+      - /media/ssd1/nextcloud/custom_apps:/var/www/html/custom_apps
+      - /media/ssd1/nextcloud/config:/var/www/html/config
+      - /media/ssd1/nextcloud/data:/var/www/html/data
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TIME_ZONE}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_HOST=${MYSQL_HOST}
+      - REDIS_HOST=redis
+
+  collabora:
+    image: collabora/code
+    container_name: collabora
+    restart: unless-stopped
+    networks: 
+      - cloud
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Los_Angeles
+      - password=password
+      - username=nextcloud
+      - domain=${DOMAIN_NAME}
+      - extra_params=--o:ssl.enable=true
+    ports:
+      - 9980:9980
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    volumes:
+      - /media/ssd1/nextcloud/redis:/data  
+    networks: 
+      - cloud
+  
+networks:
+  cloud:
+    name: cloud
+    driver: bridge
