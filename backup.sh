@@ -33,7 +33,7 @@ echo compress /data to $FILE
 # z – filter archive through gzip.
 
 # run with sudo if required
-tar czf $FILE --exclude={"data/mosquitto/log","data/nginx/hivemq.si","data/nginx/logs","zwavetst","docker-compose","*.log","*.log.gz","ib_logfile0","data/mysql"} data
+tar czf $FILE --exclude={"data/mosquitto/log","data/nginx/hivemq.si","data/nginx/logs","zwavetst","docker-compose","*.log","*.log.gz","ib_logfile0","data/mysql","data/vaultwarden/icon_cache"} data
 
 # untar / restore backup:
 # tar -xvf file
