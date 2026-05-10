@@ -31,7 +31,7 @@ docker pull pifou25/jeedom:latest
 
 Run the container with required environment variables:
 * MYSQL_JEEDOM_PASSWD
-* MYSQL_ROOT_PASSWORD
+* MARIADB_ROOT_PASSWORD
 And optional with these default values:
 * MYSQL_JEEDOM_DATABASE=jeedom
 * MYSQL_JEEDOM_USER=jeedom
@@ -39,7 +39,7 @@ And optional with these default values:
 
 ```
 docker run -p 80:80 -v $PWD/jeedom:/var/www/html -v $PWD/mysql:/var/lib/mysql \
-  -e MYSQL_ROOT_PASSWORD=admin \
+  -e MARIADB_ROOT_PASSWORD=admin \
   -e MYSQL_JEEDOM_PASSWD=jeedom \
   --hostname jeedom \
   --name jeedom jeedom:full

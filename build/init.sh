@@ -14,7 +14,7 @@ log_error() {
 }
 
 mysql_sql() {
-  echo "$@" | mysql -uroot "-p${MYSQL_ROOT_PASSWORD}"
+  echo "$@" | mysql -uroot "-p${MARIADB_ROOT_PASSWORD}"
   if [ $? -ne 0 ]; then
     log_error "Ne peut exécuter $@ dans MySQL - Annulation"
     exit 1

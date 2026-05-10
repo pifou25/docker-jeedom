@@ -16,14 +16,14 @@ FILE="data_$NOW.tar.gz"
 # https://github.com/NginxProxyManager/nginx-proxy-manager/discussions/1529#discussioncomment-1921806
 echo backup databases: nginx-proxy-manager jeedom vaultwarden yourls
 
-docker exec nginx-db-1 sh -c 'exec mysqldump --databases npm -uroot -p"${MYSQL_ROOT_PASSWORD}"' | gzip -c > data/npm_$NOW.sql.gz
-docker exec nginx-db-1 sh -c 'exec mysqldump --databases jeedom -uroot -p"${MYSQL_ROOT_PASSWORD}"' | gzip -c > data/jeedom_$NOW.sql.gz
-docker exec nginx-db-1 sh -c 'exec mysqldump --databases yourls -uroot -p"${MYSQL_ROOT_PASSWORD}"' | gzip -c > data/yourls_$NOW.sql.gz
-# docker exec nginx-db-1 sh -c 'exec mysqldump --databases nextcloud -uroot -p"${MYSQL_ROOT_PASSWORD}"' | gzip -c > data/nextcloud_$NOW.sql.gz
-docker exec nginx-db-1 sh -c 'exec mysqldump --databases vaultwarden -uroot -p"${MYSQL_ROOT_PASSWORD}"' | gzip -c > data/vaultwarden_$NOW.sql.gz
+docker exec nginx-db-1 sh -c 'exec mysqldump --databases npm -uroot -p"${MARIADB_ROOT_PASSWORD}"' | gzip -c > data/npm_$NOW.sql.gz
+docker exec nginx-db-1 sh -c 'exec mysqldump --databases jeedom -uroot -p"${MARIADB_ROOT_PASSWORD}"' | gzip -c > data/jeedom_$NOW.sql.gz
+docker exec nginx-db-1 sh -c 'exec mysqldump --databases yourls -uroot -p"${MARIADB_ROOT_PASSWORD}"' | gzip -c > data/yourls_$NOW.sql.gz
+# docker exec nginx-db-1 sh -c 'exec mysqldump --databases nextcloud -uroot -p"${MARIADB_ROOT_PASSWORD}"' | gzip -c > data/nextcloud_$NOW.sql.gz
+docker exec nginx-db-1 sh -c 'exec mysqldump --databases vaultwarden -uroot -p"${MARIADB_ROOT_PASSWORD}"' | gzip -c > data/vaultwarden_$NOW.sql.gz
 
 # restore database:
-# docker exec -i some-mariadb sh -c 'exec mysql -uroot -p"${MYSQL_ROOT_PASSWORD}"' < /some/path/on/your/host/all-databases.sql
+# docker exec -i some-mariadb sh -c 'exec mysql -uroot -p"${MARIADB_ROOT_PASSWORD}"' < /some/path/on/your/host/all-databases.sql
 
 echo compress /data to $FILE
 # c – create an archive file.

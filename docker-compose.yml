@@ -5,27 +5,35 @@
 services:
 
   db:
-    image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
+    # image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
+    # hdi.io image require login to hdi.io
+    image: hdi.io/mariadb
     restart: unless-stopped
     environment:
       - PUID=1000
       - PGID=1000
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-password}
+      - MARIADB_MYSQL_LOCALHOST_USER=1
+      - MARIADB_MYSQL_LOCALHOST_GRANTS=USAGE
       - TZ=${TZ:-Europe/Paris}
       - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
       - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
       - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
+      - MYSQL_NPM_USER=${MYSQL_NPM_USER:-npm}
+      - MYSQL_NPM_PASSWORD=${MYSQL_NPM_PASSWORD:-npm}
+      - MYSQL_VAULT_USER=${MYSQL_VAULT_USER:-vault}
+      - MYSQL_VAULT_PASSWORD=${MYSQL_VAULT_PASSWORD:-vault}
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-password}"]
+      test: ["CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized"]
+      start_period: 60s
       interval: 1m30s
-      retries: 3
-      start_period: 40s
       timeout: 20s
+      retries: 3
     volumes:
       # database filesystem
       - ./volumes/db:/var/lib/mysql
       # directory for init sql and scripts
-      - ./volumes/sql:/docker-entrypoint-initdb.d
+      - ./init.db/script:/docker-entrypoint-initdb.d
     ports:
       - 3306:3306
     labels:
@@ -46,7 +54,7 @@ services:
     image: pifou25/jeedom:light
     hostname: jeedom
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-password}
       - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
       - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
       - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
