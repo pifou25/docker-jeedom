@@ -1,4 +1,5 @@
 name: Docker Multiplatform Build ci
+# this workflow is triggered by main.yml with parameters
 # master branch build image from jeedom/core:master repo
 # develop branch build image from pifou25/jeedom-core:develop repo
 
@@ -52,7 +53,7 @@ env:
   JEEDOM_BRANCH: ${{ github.ref_name == 'master' && 'master' || 'develop' }}
   # destination docker registry image name
   REGISTRY_IMAGE: pifou25/jeedom
-  # XDEBUG enabled by default for develop and beta branches
+  # XDEBUG enabled by default for develop and release branches
   XDEBUG: ${{ github.ref_name == 'master' && 'false' || 'true' }}
   # Active BuildKit
   DOCKER_BUILDKIT: 1

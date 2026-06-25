@@ -1,8 +1,10 @@
+# prepare Jeedom PHP source with dependencies
+# tag ghcr.io/pifou25/docker-jeedom:source-${PHP}-${branch}
 name: Generate Jeedom PHP sources
 
 on:
   push:
-    branches: [ master, develop, feat/script_refactor ]
+    branches: [ master, develop ]
   pull_request:
     branches: [ master, develop]
   # this is to manually trigger the worklow
@@ -20,18 +22,18 @@ jobs:
       # do every matrix combination, don't stop on errors
       fail-fast: false
       # limit to avoid error HTTP 409: too many requests
-      max-parallel: 5
+      max-parallel: 3
       matrix:
         php: [7.4, 8.2, 8.4]
         version:
-          - beta
+          - release
           - develop
           - master
         repo:
           - jeedom/core
           - pifou25/jeedom-core
         exclude:
-          - version: beta
+          - version: release
             repo: pifou25/jeedom-core
           - version: develop
             repo: jeedom/core
