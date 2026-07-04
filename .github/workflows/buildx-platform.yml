@@ -215,6 +215,10 @@ jobs:
           install: true
           driver: docker-container
 
+      - name: debug previous step annotations
+        run: |
+          echo """${{ steps.meta.outputs.annotations }}"""
+
       - 
         name: build ${{ inputs.version_tag }}-${{ env.TAG_NAME }}:${{ matrix.platform }}
         # id required for next step that check success
@@ -238,6 +242,7 @@ jobs:
           platforms: linux/${{ matrix.platform }}
           cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }},mode=max
+          annotations: ${{ steps.meta.outputs.annotations }}
           outputs: type=image,name=ghcr.io/${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Check on failures ${{ inputs.version_tag }}-${{ env.TAG_NAME }}:${{ matrix.platform }}
