@@ -224,7 +224,7 @@ jobs:
         # id required for next step that check success
         id: buildJeedom
         # https://github.com/marketplace/actions/build-and-push-docker-images
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         # continue to next step even in case of error
         continue-on-error: true
         with:
