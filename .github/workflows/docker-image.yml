@@ -93,7 +93,7 @@ jobs:
       -
         name: Login to nico private repository
         # https://github.com/marketplace/actions/docker-login
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: reg.nico.si
           username: ${{ github.repository_owner }}
