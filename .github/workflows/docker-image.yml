@@ -111,7 +111,7 @@ jobs:
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
         # login to DockerHub with login & secrets token - for pull to avoid error HTTP 429 Too many requests
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
@@ -119,7 +119,7 @@ jobs:
       - 
         name: Login to GitHub Container Registry
         # 🔹 Service de cache Docker Registry ghcr.io
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
