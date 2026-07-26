@@ -203,7 +203,7 @@ jobs:
         name: Set up QEMU
         # https://github.com/marketplace/actions/docker-setup-qemu
         # set up more platforms (default = all)
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
       -
         name: Set up Docker Buildx
         id: buildx
