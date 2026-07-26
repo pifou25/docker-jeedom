@@ -348,7 +348,7 @@ jobs:
         name: Docker meta
         id: meta
         # https://github.com/marketplace/actions/docker-metadata-action
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           # list of images from ghcr.io repo to use as base name for tags
           images: |
