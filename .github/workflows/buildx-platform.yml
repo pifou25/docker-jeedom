@@ -317,7 +317,7 @@ jobs:
       -
         name: Download digests
         # downloade artifacts whose name is the sha256 digest
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-${{ inputs.version_tag }}-${{ env.TAG_NAME }}-*
