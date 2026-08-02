@@ -367,54 +367,31 @@ jobs:
             chadburn.job-exec.jeedom-cron.command="/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
  
       -
+        name: Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github/scripts/
+
+      -
         name: Create manifest list and push ${{ inputs.version_tag }}-${{ env.TAG_NAME }} to Docker Hub
-        working-directory: /tmp/digests
         run: |
-          #!/usr/bin/env bash
-          set -euo pipefail
-          
-          # Vérifie qu'il y a bien des fichiers digest (produits par docker buildx build --push --output=type=digest)
-          if ! ls | grep -qE '^[a-f0-9]{64}$'; then
-            echo "❌ Aucun digest trouvé dans le répertoire courant !" >> $GITHUB_STEP_SUMMARY
-            echo "   (Tu dois exécuter 'docker buildx build --push --output=type=digest .' avant cette étape)" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-          
-          # Affiche les fichiers digest pour info
-          echo "📦 [DEBUG] Digests trouvés :"
           ls -alsh
-          echo "📦 [DEBUG] liste de tags :"
-          echo $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
-          
-          # exécute la commande docker buildx imagetools create complète
-          docker buildx imagetools create \
-            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf "ghcr.io/${REGISTRY_IMAGE}@sha256:%s " *)
-          
-          echo "✅ [SUCCESS] Manifest multi-arch créé avec succès."
-    
+          ls .github -alsh
+          ls .github/scripts -alsh
+          chmod +x .github/scripts/create_manifests.sh
+          ./.github/scripts/create_manifests.sh
+
       - name: Push image to docker hub
         id: docker-push
         # continue to next step even in case of error
         continue-on-error: true
+        env:
+          REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
+          DEST_REGISTRY:
         run: |
-            # install skopeo to copy images digests and tags
-            sudo apt-get -y update
-            sudo apt-get -y install skopeo
-
-            attempt=0
-            max_attempts=5
-            until skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }} \
-                docker://${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
-            do
-              attempt=$((attempt+1))
-              if [ "$attempt" -ge "$max_attempts" ]; then
-                echo "❌ Trop de tentatives, abandon. (${attempt})" >> $GITHUB_STEP_SUMMARY
-                exit 1
-              fi
-              echo "⚠️ Erreur 429, attente avant retry (${attempt})..." >> $GITHUB_STEP_SUMMARY
-              sleep $((attempt * 10))  # pause progressive : 10s, 20s, 30s…
-            done
+          chmox +x .\.github\scripts\skopeo_copy.sh
+          .\.github\scripts\skopeo_copy.sh
 
       -
         name: Login to Quay.io
@@ -428,9 +405,12 @@ jobs:
         id: quay-push
         # continue to next step even in case of error
         continue-on-error: true
+        env:
+          REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
+          DEST_REGISTRY: quay.io/
         run: |
-          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }} \
-                docker://quay.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
+          chmox +x .\.github\scripts\skopeo_copy.sh
+          .\.github\scripts\skopeo_copy.sh
 
       -
         name: Login to nico private repository
@@ -445,9 +425,12 @@ jobs:
         id: nico-push
         # continue to next step even in case of error
         continue-on-error: true
+        env:
+          REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
+          DEST_REGISTRY: reg.nico.si/
         run: |
-          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }} \
-                docker://reg.nico.si/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
+          chmox +x .\.github\scripts\skopeo_copy.sh
+          .\.github\scripts\skopeo_copy.sh
 
       - name: copy also latest tag if required
         if: ${{ env.TAG_LATEST_ENABLED }}
