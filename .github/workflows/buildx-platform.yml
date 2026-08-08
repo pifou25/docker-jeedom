@@ -123,7 +123,7 @@ jobs:
         debian: [bullseye, bookworm, trixie]
         php: [7.4, 8.2, 8.4]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
-        platform: [amd64, arm64, arm/v6, arm/v7]
+        platform: [amd64, arm64, arm/v7]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
           - debian: bookworm
@@ -138,8 +138,6 @@ jobs:
             php: 8.2
           - debian: trixie
             php: 7.4
-          - debian: bullseye
-            platform: 'arm/v6'
           - debian: bullseye
             platform: 'arm/v7'
 
@@ -376,9 +374,6 @@ jobs:
       -
         name: Create manifest list and push ${{ inputs.version_tag }}-${{ env.TAG_NAME }} to Docker Hub
         run: |
-          ls -alsh
-          ls .github -alsh
-          ls .github/scripts -alsh
           chmod +x .github/scripts/create_manifests.sh
           ./.github/scripts/create_manifests.sh
 
@@ -390,8 +385,8 @@ jobs:
           REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
           DEST_REGISTRY:
         run: |
-          chmox +x .\.github\scripts\skopeo_copy.sh
-          .\.github\scripts\skopeo_copy.sh
+          chmod +x ./.github/scripts/skopeo_copy.sh
+          ./.github/scripts/skopeo_copy.sh
 
       -
         name: Login to Quay.io
@@ -409,8 +404,8 @@ jobs:
           REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
           DEST_REGISTRY: quay.io/
         run: |
-          chmox +x .\.github\scripts\skopeo_copy.sh
-          .\.github\scripts\skopeo_copy.sh
+          chmod +x ./.github/scripts/skopeo_copy.sh
+          ./.github/scripts/skopeo_copy.sh
 
       -
         name: Login to nico private repository
@@ -429,8 +424,8 @@ jobs:
           REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
           DEST_REGISTRY: reg.nico.si/
         run: |
-          chmox +x .\.github\scripts\skopeo_copy.sh
-          .\.github\scripts\skopeo_copy.sh
+          chmod +x ./.github/scripts/skopeo_copy.sh
+          ./.github/scripts/skopeo_copy.sh
 
       - name: copy also latest tag if required
         if: ${{ env.TAG_LATEST_ENABLED }}
@@ -490,6 +485,9 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github/scripts/
 
       - name: Run DockerHub rate limit final check
         id: ratecheckFinal
