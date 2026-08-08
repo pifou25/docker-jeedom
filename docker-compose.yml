@@ -7,7 +7,7 @@ services:
   db:
     # image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
     # hdi.io image require login to hdi.io
-    image: hdi.io/mariadb
+    image: dhi.io/mariadb:12-debian13-dev
     restart: unless-stopped
     environment:
       - PUID=1000
