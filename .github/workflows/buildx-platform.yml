@@ -1,4 +1,5 @@
 name: Docker Multiplatform Build ci
+# this workflow is triggered by main.yml with parameters
 # master branch build image from jeedom/core:master repo
 # develop branch build image from pifou25/jeedom-core:develop repo
 
@@ -52,7 +53,7 @@ env:
   JEEDOM_BRANCH: ${{ github.ref_name == 'master' && 'master' || 'develop' }}
   # destination docker registry image name
   REGISTRY_IMAGE: pifou25/jeedom
-  # XDEBUG enabled by default for develop and beta branches
+  # XDEBUG enabled by default for develop and release branches
   XDEBUG: ${{ github.ref_name == 'master' && 'false' || 'true' }}
   # Active BuildKit
   DOCKER_BUILDKIT: 1
@@ -64,17 +65,17 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Docker Lint
         # https://github.com/marketplace/actions/hadolint-action
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: build/Dockerfile
           no-fail: true
           verbose: true
       - name: Docker Lint
         # https://github.com/marketplace/actions/hadolint-action
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: build/Dockerfile.full
           no-fail: true
@@ -83,7 +84,7 @@ jobs:
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
         # login to DockerHub with login & secrets token to get our private rate limit
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
@@ -122,7 +123,7 @@ jobs:
         debian: [bullseye, bookworm, trixie]
         php: [7.4, 8.2, 8.4]
         # linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/arm64,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/mips64le,linux/mips64,linux/arm/v7,linux/arm/v6
-        platform: [amd64, arm64, arm/v6, arm/v7]
+        platform: [amd64, arm64, arm/v7]
         # only build bullseye with php7.4, bookworm with php8.2 and trixie with php8.4
         exclude:
           - debian: bookworm
@@ -137,8 +138,6 @@ jobs:
             php: 8.2
           - debian: trixie
             php: 7.4
-          - debian: bullseye
-            platform: 'arm/v6'
           - debian: bullseye
             platform: 'arm/v7'
 
@@ -156,7 +155,7 @@ jobs:
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
         # login to DockerHub with secrets login & token - for pull to avoid error HTTP 429 Too many requests
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
@@ -172,12 +171,12 @@ jobs:
 
       -
         name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
           
       - 
         name: Login to GitHub Container Registry
         # 🔹 Service de cache Docker Registry ghcr.io
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -187,7 +186,7 @@ jobs:
         name: Docker meta
         id: meta
         # https://github.com/marketplace/actions/docker-metadata-action
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           # list of images names to use as base name for tags
           images: |
@@ -202,24 +201,24 @@ jobs:
         name: Set up QEMU
         # https://github.com/marketplace/actions/docker-setup-qemu
         # set up more platforms (default = all)
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
       -
         name: Set up Docker Buildx
         id: buildx
         # https://github.com/marketplace/actions/docker-setup-buildx
         # set up a multi-platform builder for Docker containers
-        uses: docker/setup-buildx-action@v3
-        with:
-          buildkitd-flags: --debug
-          install: true
-          driver: docker-container
+        uses: docker/setup-buildx-action@v4
+
+      - name: debug previous step annotations
+        run: |
+          echo """${{ steps.meta.outputs.annotations }}"""
 
       - 
         name: build ${{ inputs.version_tag }}-${{ env.TAG_NAME }}:${{ matrix.platform }}
         # id required for next step that check success
         id: buildJeedom
         # https://github.com/marketplace/actions/build-and-push-docker-images
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         # continue to next step even in case of error
         continue-on-error: true
         with:
@@ -237,6 +236,7 @@ jobs:
           platforms: linux/${{ matrix.platform }}
           cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }},mode=max
+          annotations: ${{ steps.meta.outputs.annotations }}
           outputs: type=image,name=ghcr.io/${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Check on failures ${{ inputs.version_tag }}-${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -264,7 +264,7 @@ jobs:
       -
         name: Upload digest ${{ inputs.version_tag }}-${{ env.TAG_NAME }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome == 'success'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           # env.PLATFORM_PAIR from step 1
           # get DIGEST-${TAG_NAME} env variable from previous step
@@ -315,7 +315,7 @@ jobs:
       -
         name: Download digests
         # downloade artifacts whose name is the sha256 digest
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-${{ inputs.version_tag }}-${{ env.TAG_NAME }}-*
@@ -325,7 +325,7 @@ jobs:
         name: Login to GitHub Container Registry
         # push to multi-registry
         # https://docs.docker.com/build/ci/github-actions/push-multi-registries/
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -335,18 +335,18 @@ jobs:
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
         # login to DockerHub with secrets login & token
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       -
         name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       -
         name: Docker meta
         id: meta
         # https://github.com/marketplace/actions/docker-metadata-action
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           # list of images from ghcr.io repo to use as base name for tags
           images: |
@@ -365,58 +365,32 @@ jobs:
             chadburn.job-exec.jeedom-cron.command="/usr/local/bin/php /var/www/html/core/php/jeeCron.php >> /var/www/html/log/cron.log 2>&1"
  
       -
+        name: Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github/scripts/
+
+      -
         name: Create manifest list and push ${{ inputs.version_tag }}-${{ env.TAG_NAME }} to Docker Hub
-        working-directory: /tmp/digests
         run: |
-          #!/usr/bin/env bash
-          set -euo pipefail
-          
-          # Vérifie qu'il y a bien des fichiers digest (produits par docker buildx build --push --output=type=digest)
-          if ! ls | grep -qE '^[a-f0-9]{64}$'; then
-            echo "❌ Aucun digest trouvé dans le répertoire courant !" >> $GITHUB_STEP_SUMMARY
-            echo "   (Tu dois exécuter 'docker buildx build --push --output=type=digest .' avant cette étape)" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-          
-          # Affiche les fichiers digest pour info
-          echo "📦 [DEBUG] Digests trouvés :"
-          ls -alsh
-          echo "📦 [DEBUG] liste de tags :"
-          echo $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
-          
-          # exécute la commande docker buildx imagetools create complète
-          docker buildx imagetools create \
-            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf "ghcr.io/${REGISTRY_IMAGE}@sha256:%s " *)
-          
-          echo "✅ [SUCCESS] Manifest multi-arch créé avec succès."
-    
+          chmod +x .github/scripts/create_manifests.sh
+          ./.github/scripts/create_manifests.sh
+
       - name: Push image to docker hub
         id: docker-push
         # continue to next step even in case of error
         continue-on-error: true
+        env:
+          REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
+          DEST_REGISTRY:
         run: |
-            # install skopeo to copy images digests and tags
-            sudo apt-get -y update
-            sudo apt-get -y install skopeo
-
-            attempt=0
-            max_attempts=5
-            until skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }} \
-                docker://${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
-            do
-              attempt=$((attempt+1))
-              if [ "$attempt" -ge "$max_attempts" ]; then
-                echo "❌ Trop de tentatives, abandon. (${attempt})" >> $GITHUB_STEP_SUMMARY
-                exit 1
-              fi
-              echo "⚠️ Erreur 429, attente avant retry (${attempt})..." >> $GITHUB_STEP_SUMMARY
-              sleep $((attempt * 10))  # pause progressive : 10s, 20s, 30s…
-            done
+          chmod +x ./.github/scripts/skopeo_copy.sh
+          ./.github/scripts/skopeo_copy.sh
 
       -
         name: Login to Quay.io
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USER }}
@@ -426,14 +400,17 @@ jobs:
         id: quay-push
         # continue to next step even in case of error
         continue-on-error: true
+        env:
+          REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
+          DEST_REGISTRY: quay.io/
         run: |
-          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }} \
-                docker://quay.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
+          chmod +x ./.github/scripts/skopeo_copy.sh
+          ./.github/scripts/skopeo_copy.sh
 
       -
         name: Login to nico private repository
         # https://github.com/marketplace/actions/docker-login
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: reg.nico.si
           username: ${{ github.repository_owner }}
@@ -443,9 +420,12 @@ jobs:
         id: nico-push
         # continue to next step even in case of error
         continue-on-error: true
+        env:
+          REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
+          DEST_REGISTRY: reg.nico.si/
         run: |
-          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }} \
-                docker://reg.nico.si/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ env.TAG_NAME }}
+          chmod +x ./.github/scripts/skopeo_copy.sh
+          ./.github/scripts/skopeo_copy.sh
 
       - name: copy also latest tag if required
         if: ${{ env.TAG_LATEST_ENABLED }}
@@ -497,14 +477,17 @@ jobs:
         name: Login to DockerHub
         # https://github.com/marketplace/actions/docker-login
         # login to DockerHub with secrets login & token - for pull to avoid error HTTP 429 Too many requests
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       -
         name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github/scripts/
 
       - name: Run DockerHub rate limit final check
         id: ratecheckFinal

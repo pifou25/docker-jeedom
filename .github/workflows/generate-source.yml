@@ -1,8 +1,10 @@
+# prepare Jeedom PHP source with dependencies
+# tag ghcr.io/pifou25/docker-jeedom:source-${PHP}-${branch}
 name: Generate Jeedom PHP sources
 
 on:
   push:
-    branches: [ master, develop, feat/script_refactor ]
+    branches: [ master, develop ]
   pull_request:
     branches: [ master, develop]
   # this is to manually trigger the worklow
@@ -20,18 +22,18 @@ jobs:
       # do every matrix combination, don't stop on errors
       fail-fast: false
       # limit to avoid error HTTP 409: too many requests
-      max-parallel: 5
+      max-parallel: 3
       matrix:
         php: [7.4, 8.2, 8.4]
         version:
-          - beta
+          - release
           - develop
           - master
         repo:
           - jeedom/core
           - pifou25/jeedom-core
         exclude:
-          - version: beta
+          - version: release
             repo: pifou25/jeedom-core
           - version: develop
             repo: jeedom/core
@@ -41,11 +43,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
     - name: docker login to ghcr.io registry
-      run: |
-        docker login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GHCR_SECRET }}
+      # https://github.com/marketplace/actions/docker-login
+      uses: docker/login-action@v4
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GHCR_SECRET }}
 
     - name: Build Jeedom ${{ matrix.repo }}:${{ matrix.php }}-${{ matrix.version }}
       # docker build [directory] --file [file] --tag [tag]
