@@ -68,14 +68,14 @@ jobs:
         uses: actions/checkout@v7
       - name: Docker Lint
         # https://github.com/marketplace/actions/hadolint-action
-        uses: hadolint/hadolint-action@v3.4.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: build/Dockerfile
           no-fail: true
           verbose: true
       - name: Docker Lint
         # https://github.com/marketplace/actions/hadolint-action
-        uses: hadolint/hadolint-action@v3.4.0
+        uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: build/Dockerfile.full
           no-fail: true
