@@ -7,14 +7,14 @@ cd build
 docker build --target full_xdebug --build-arg JEEDOM_VERSION=master --tag jeedom:debug .
 ```
 
-* $DEBIAN is bullseye or bookworm
-* for bookworm:$PHP=8.2 ; for bullseye:$PHP=7.4
+* $DEBIAN is bookworm or trixie
+* for bookworm:$PHP=8.2 ; for trixie:$PHP=8.4
 * $XDEBUG = true / false
 * $JEEDOM_VERSION is beta or master (default)
 
 ## Github Workflow
 
-The current workflow build several images, each of them for bookworm & PHP8.2 and bullseye & PHP7.4:
+The current workflow build several images, each of them for bookworm & PHP8.2 and trixie & PHP8.4:
 - master light
 - master full with supervisor and all daemons
 - beta light with xdebug enabled

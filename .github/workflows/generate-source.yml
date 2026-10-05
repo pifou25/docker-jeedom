@@ -24,7 +24,7 @@ jobs:
       # limit to avoid error HTTP 409: too many requests
       max-parallel: 3
       matrix:
-        php: [7.4, 8.2, 8.4]
+        php: [8.2, 8.4]
         version:
           - release
           - develop
