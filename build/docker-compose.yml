@@ -13,7 +13,7 @@ services:
         XDEBUG: true
     hostname: jeedom
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-password}
       - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
       - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
       - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}

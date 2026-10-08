@@ -1,9 +1,8 @@
 ﻿.env
+certbot
 certbot/.ovhapi
-db
-backup
-jeedom
-certbot/log
-certbot/letsencrypt
-volumes/
 data/
+jeedom/
+password
+*.gz
+volumes/

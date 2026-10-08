@@ -3,28 +3,37 @@
     name: jeedom_network
 
 services:
+
   db:
-    image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
+    # image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
+    # hdi.io image require login to hdi.io
+    image: dhi.io/mariadb:12-debian13-dev
     restart: unless-stopped
     environment:
       - PUID=1000
       - PGID=1000
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-password}
+      - MARIADB_MYSQL_LOCALHOST_USER=1
+      - MARIADB_MYSQL_LOCALHOST_GRANTS=USAGE
       - TZ=${TZ:-Europe/Paris}
       - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
       - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
       - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
+      - MYSQL_NPM_USER=${MYSQL_NPM_USER:-npm}
+      - MYSQL_NPM_PASSWORD=${MYSQL_NPM_PASSWORD:-npm}
+      - MYSQL_VAULT_USER=${MYSQL_VAULT_USER:-vault}
+      - MYSQL_VAULT_PASSWORD=${MYSQL_VAULT_PASSWORD:-vault}
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-password}"]
+      test: ["CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized"]
+      start_period: 60s
       interval: 1m30s
-      retries: 3
-      start_period: 40s
       timeout: 20s
+      retries: 3
     volumes:
       # database filesystem
       - ./volumes/db:/var/lib/mysql
       # directory for init sql and scripts
-      - ./volumes/sql:/docker-entrypoint-initdb.d
+      - ./init.db/script:/docker-entrypoint-initdb.d
     ports:
       - 3306:3306
     labels:
@@ -32,7 +41,6 @@ services:
       chadburn.enabled: "true"
       chadburn.job-exec.jeedom-backup.schedule: "@every 1d"
       chadburn.job-exec.jeedom-backup.command: "mysqldump -d${MYSQL_JEEDOM_DB:-jeedom} -u${MYSQL_JEEDOM_USER:-jeedom} -p\"${MYSQL_JEEDOM_PASSWD:-jeedom}\"' > /backup/jeedom.sql"
-
 
   jeedom:
     # build your own image first with build-args and target:
@@ -46,7 +54,7 @@ services:
     image: pifou25/jeedom:light
     hostname: jeedom
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-password}
       - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
       - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
       - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
@@ -57,6 +65,10 @@ services:
     volumes:
       - ./volumes/jeedom:/var/www/html
       - ./volumes/backup:/tmp/backup
+      # share docker.sock for plugin docker2
+      - /var/run/docker.sock:/var/run/docker.sock
+      # share temp sensors for rpi3+
+      - /sys/devices:/sys/devices:ro
     tmpfs:
       - /tmp/jeedom
     healthcheck:
@@ -85,7 +97,8 @@ services:
 
   # Scheduler Service: mcuadros/ofelia or premoweb/chadburn
   scheduler:
-    image: premoweb/chadburn
+    # fix version due to this issue: https://github.com/PremoWeb/chadburn/issues/116
+    image: premoweb/chadburn:1.0.7
     environment:
       - TZ=${tz:-Europe/Paris}
     volumes:
@@ -107,14 +120,13 @@ services:
         max-file: "1"
     restart: unless-stopped
     environment:
-      - TZ=Europe/Paris
+      - TZ=${TIME_ZONE}
     ports:
       - 8080:8080
 
 
   # On peux ajouter également Node-red. permettant une gestion de mqtt native
   node-red:
-    # profiles: ["nodered"]
     image:  nodered/node-red
     volumes:
     - ./volumes/nodered:/data  # remplacer ./volumes par l'emplacement du volume souhaité
@@ -135,7 +147,99 @@ services:
         max-size: "10m"
         max-file: "1"
     restart: unless-stopped
-    environment:
-      - TZ=Europe/Paris
+
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
     ports:
-      - 6379:6379
+      - 1883:1883 # only required to expose service on host
+    environment:
+      - TZ=${TIME_ZONE}
+    volumes:
+      - ./mosquitto:/mosquitto/config
+      - ./data/mosquitto/log:/mosquitto/log
+      - ./data/mosquitto/data:/mosquitto/data
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+
+
+  # check and update other services
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
+    environment:
+      - TZ=${TIME_ZONE}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+      # - /root/.docker/config.json:/config.json
+    command: --schedule "0 55 3 * * *"
+
+
+  # password manager
+  bitwarden:
+    image: vaultwarden/server
+    restart: unless-stopped
+    volumes:
+      - ./volumes/vaultwarden:/data
+    environment:
+      - DATABASE_URL=mysql://${MYSQL_VAULT_USER}:${MYSQL_VAULT_PASSWORD}@db/${MYSQL_VAULT_USER}
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - EXPERIMENTAL_CLIENT_FEATURE_FLAGS=ssh-key-vault-item,ssh-agent
+      - TZ=${TIME_ZONE}
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+    depends_on:
+      - db
+
+
+  portainer:
+    image: portainer/portainer-ce
+    privileged: true
+    environment:
+      - TZ=${TIME_ZONE}
+    ports:
+        - 8000:8000
+        - 9000:9000
+    restart: unless-stopped
+    volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - ./volumes/portainer:/data
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+
+
+  nginx:
+    image: jc21/nginx-proxy-manager:2
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '81:81' # admin access
+      - '443:443'
+    environment:
+      DB_MYSQL_HOST: "db"
+      DB_MYSQL_PORT: 3306
+      DB_MYSQL_USER: "${MYSQL_NPM_USER}"
+      DB_MYSQL_PASSWORD: "${MYSQL_NPM_PASSWORD}"
+      DB_MYSQL_NAME: "${MYSQL_NPM_USER}"
+    volumes:
+      - ./volumes/nginx:/data
+      - ./volumes/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - db
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
+    healthcheck:
+      test: ["CMD", "/bin/check-health"]
+      interval: 1m
+      timeout: 3s
+
