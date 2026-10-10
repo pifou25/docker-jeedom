@@ -1,9 +1,9 @@
 # second final image: full_jeedom standalone with all required daemons
 #
-# Debian version: bullseye / bookworm
+# Debian version: bookworm / trixie
 ARG DEBIAN=bookworm
 # PHP version required for bookworm is 8.2
-# bullseye : 7.4
+# trixie : 8.4
 # base images are copied from ghcr.io/pifou25
 ARG PHP=8.2
 # version number of Jeedom source from core/config/version

@@ -28,3 +28,5 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
         repository: pifou25/jeedom
         short-description: ${{ github.event.repository.description }}
+        readme-filepath: ./README.md
+        enable-url-completion: true

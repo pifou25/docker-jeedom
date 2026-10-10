@@ -9,7 +9,7 @@
 		"dockerfile": "Dockerfile",
 		"context": "./build",
 		"args": { 
-			// buster bullseye or bookworm
+			// bookworm or trixie
 			"DEBIAN": "bookworm",
 			// 7.3 or 8.2
 			"PHP": "8.2",

@@ -6,9 +6,9 @@ FROM ghcr.io/pifou25/jeedom:source-${PHP}-${JEEDOM_VERSION} AS source
 
 # Base image for light jeedom: no daemon, only apache+php
 #
-# Debian version: bullseye / bookworm / trixie
+# Debian version: bookworm / trixie
 ARG DEBIAN
-# PHP version for trixie:8.4, bookworm:8.2, bullseye:7.4, buster:7.3
+# PHP version for trixie:8.4, bookworm:8.2
 # base images are copied from ghcr.io/pifou25
 ARG PHP
 FROM php:${PHP}-apache-${DEBIAN}
