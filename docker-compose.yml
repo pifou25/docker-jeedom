@@ -4,18 +4,21 @@
 
 services:
   db:
-    image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
+    # image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
+    # hdi.io image require login to hdi.io
+    image: dhi.io/mariadb:13
+    # image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
     restart: unless-stopped
     environment:
       - PUID=1000
       - PGID=1000
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-password}
       - TZ=${TZ:-Europe/Paris}
       - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
       - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
       - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-password}"]
+      test: ["CMD", "mariadb-admin" ,"ping", "-h", "localhost", "-u", "root", "-p$${MARIADB_ROOT_PASSWORD:-password}"]
       interval: 1m30s
       retries: 3
       start_period: 40s
@@ -23,8 +26,6 @@ services:
     volumes:
       # database filesystem
       - ./volumes/db:/var/lib/mysql
-      # directory for init sql and scripts
-      - ./volumes/sql:/docker-entrypoint-initdb.d
     ports:
       - 3306:3306
     labels:
@@ -32,6 +33,45 @@ services:
       chadburn.enabled: "true"
       chadburn.job-exec.jeedom-backup.schedule: "@every 1d"
       chadburn.job-exec.jeedom-backup.command: "mysqldump -d${MYSQL_JEEDOM_DB:-jeedom} -u${MYSQL_JEEDOM_USER:-jeedom} -p\"${MYSQL_JEEDOM_PASSWD:-jeedom}\"' > /backup/jeedom.sql"
+
+
+  db-init:
+    # dhi.io/mariadb has no shell, using -dev variant to init database with scripts
+    image: dhi.io/mariadb:13-dev
+    restart: no
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # directory for init sql and scripts
+      - ./init.db/script:/scripts
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-password}
+      - MARIADB_HOST=db
+      - MARIADB_MYSQL_LOCALHOST_USER=1
+      - MARIADB_MYSQL_LOCALHOST_GRANTS=USAGE
+      - TZ=${TZ:-Europe/Paris}
+      - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
+      - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
+      - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
+      - MYSQL_NPM_USER=${MYSQL_NPM_USER:-npm}
+      - MYSQL_NPM_PASSWORD=${MYSQL_NPM_PASSWORD:-npm}
+      - MYSQL_VAULT_USER=${MYSQL_VAULT_USER:-vault}
+      - MYSQL_VAULT_PASSWORD=${MYSQL_VAULT_PASSWORD:-vault}
+    command: >
+      sh -c 'sleep 5 &&
+             for f in /scripts/*; do
+               case "$$f" in
+                 *.sh) sh "$$f";;
+                 *.sql.gz) zcat "$$f" | mariadb -u root -p"$$MARIADB_ROOT_PASSWORD";;
+                 *.sql) mariadb -u root -p"$$MARIADB_ROOT_PASSWORD" < "$$f";;
+               esac; done'
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "1"
 
 
   jeedom:
@@ -46,7 +86,7 @@ services:
     image: pifou25/jeedom:light
     hostname: jeedom
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-password}
       - MYSQL_JEEDOM_DB=${MYSQL_JEEDOM_DB:-jeedom}
       - MYSQL_JEEDOM_USER=${MYSQL_JEEDOM_USER:-jeedom}
       - MYSQL_JEEDOM_PASSWD=${MYSQL_JEEDOM_PASSWD:-jeedom}
@@ -75,8 +115,10 @@ services:
       # label for watchtower: don't check
       com.centurylinklabs.watchtower.enable: "false"
     depends_on:
-      - db
-      - scheduler
+      db:
+        condition: service_healthy
+      scheduler:
+        condition: service_healthy
     logging:
       options:
         max-size: "10m"
@@ -100,7 +142,8 @@ services:
   adminer:
     image: adminer
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     logging:
       options:
         max-size: "10m"
