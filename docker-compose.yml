@@ -7,7 +7,6 @@ services:
     # image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
     # hdi.io image require login to hdi.io
     image: dhi.io/mariadb:13
-    # image: mariadb # for pi3/4: ghcr.io/linuxserver/mariadb
     restart: unless-stopped
     environment:
       - PUID=1000
@@ -97,6 +96,8 @@ services:
     volumes:
       - ./volumes/jeedom:/var/www/html
       - ./volumes/backup:/tmp/backup
+      # shared docker socket for Jeedom Docker plugin to manage containers
+      - /var/run/docker.sock:/var/run/docker.sock
     tmpfs:
       - /tmp/jeedom
     healthcheck:
