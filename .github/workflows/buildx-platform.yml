@@ -249,7 +249,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
           # export the build.log from image into the github summary
           docker run --platform linux/${{ matrix.platform }} -d --rm --name jeedom ghcr.io/${{ env.REGISTRY_IMAGE }}@${{ steps.buildJeedom.outputs.digest }} sleep 10
-          docker cp jeedom:/tmp/build.log ./build.log
+          docker cp jeedom:/tmp/build.log ./build.log || echo "No error during build" > ./build.log
           cat ./build.log >> $GITHUB_STEP_SUMMARY
       -
         name: Upload digest ${{ inputs.version_tag }}-${{ env.TAG_NAME }}:${{ matrix.platform }}
