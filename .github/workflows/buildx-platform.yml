@@ -124,7 +124,7 @@ jobs:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
     # distribute build across multiple runners
     # This step  build the same image on different runners / platforms
-    runs-on: ${{ matrix.platform == 'arm64' && 'pi-arm64' || 'ubuntu-latest' }}
+    runs-on: 'ubuntu-latest' # ${{ matrix.platform == 'arm64' && 'pi-arm64' || 'ubuntu-latest' }}
     needs: initStep
 
     # continue to next job even if there are some errors in jbuild job

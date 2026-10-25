@@ -21,9 +21,10 @@ RUN unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
 RUN composer install --no-progress --no-interaction --no-dev
 
 # next step:
-# COPY --from=ghcr.io/pifou25/jeedom:source-8.2-dev /app /var/www/html
+# COPY --from=ghcr.io/pifou25/docker-jeedom:source-8.2-dev /app /var/www/html
+# FROM --platform=linux/amd64 ghcr.io/pifou25/docker-jeedom:source-${PHP}-${JEEDOM_VERSION} AS source
 # or with variables:
 # ARG PHP=8.2
 # ARG branch=beta
-# FROM ghcr.io/pifou25/jeedom:source-${PHP}-${branch} AS source
+# FROM ghcr.io/pifou25/docker-jeedom:source-${PHP}-${branch} AS source
 # COPY --from=source /app /var/www/html
