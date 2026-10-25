@@ -2,7 +2,7 @@
 ARG PHP=8.2
 ARG JEEDOM_VERSION=develop
 ARG DEBIAN=bookworm
-FROM ghcr.io/pifou25/docker-jeedom:source-${PHP}-${JEEDOM_VERSION} AS source
+FROM --platform=linux/amd64 ghcr.io/pifou25/docker-jeedom:source-${PHP}-${JEEDOM_VERSION} AS source
 
 # Base image for light jeedom: no daemon, only apache+php
 #

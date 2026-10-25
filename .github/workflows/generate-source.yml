@@ -9,10 +9,7 @@ on:
     branches: [ master, develop, integration]
   # this is to manually trigger the worklow
   workflow_dispatch:
-    inputs:
-      logLevel:
-        description: 'Reason'     
-        default: 'Manual launch'
+  workflow_call:
 
 jobs:
 
