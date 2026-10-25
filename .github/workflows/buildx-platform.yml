@@ -12,7 +12,7 @@ on:
         default: 'light'
       version_tag:
         description: 'version de jeedom à utiliser'     
-        default: "4.5"
+        default: "4.6"
 
   # reusable workflow
   workflow_call:
@@ -25,7 +25,7 @@ on:
         description: 'version de jeedom à utiliser'
         required: true
         type: string
-        default: "4.5"
+        default: "4.6"
 
     secrets:
       GHCR_SECRET:
@@ -92,9 +92,12 @@ jobs:
       - name: Run DockerHub rate limit check
         id: ratecheck
         run: |
+          VERSION_TAG=$(curl -s https://raw.githubusercontent.com/${{ env.JEEDOM_REPO }}/refs/heads/${{ env.JEEDOM_BRANCH }}/core/config/version)
+          echo "version_tag: $VERSION_TAG" >> "$GITHUB_STEP_SUMMARY"
+          echo "version_tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
+
           chmod +x .github/scripts/rate_limit.sh
           ./.github/scripts/rate_limit.sh
-
       - name: Add summary to Job Summary
         run: |
           echo "### 🐳 DockerHub Pull Limit" >> $GITHUB_STEP_SUMMARY
