@@ -20,7 +20,7 @@ env:
 
 jobs:
   init_step:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       version_tag: ${{ steps.init_step.outputs.version_tag }}
     steps:

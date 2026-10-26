@@ -73,7 +73,7 @@ env:
 jobs:
   # clean runner and Lint the Dockerfile
   initStep:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       -
         name: Checkout
@@ -110,10 +110,6 @@ jobs:
 
           chmod +x .github/scripts/rate_limit.sh
           ./.github/scripts/rate_limit.sh
-      - name: Add summary to Job Summary
-        run: |
-          echo "### 🐳 DockerHub Pull Limit" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.ratecheck.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
 
       - name: check Docker.io rate limit
         if: ${{ steps.ratecheck.outputs.remaining && (steps.ratecheck.outputs.remaining < 10) }}
@@ -124,7 +120,7 @@ jobs:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
     # distribute build across multiple runners
     # This step  build the same image on different runners / platforms
-    runs-on: 'ubuntu-latest' # ${{ matrix.platform == 'arm64' && 'pi-arm64' || 'ubuntu-latest' }}
+    runs-on: 'ubuntu-26.04'
     needs: initStep
 
     # continue to next job even if there are some errors in jbuild job
@@ -281,7 +277,7 @@ jobs:
   merge:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
     # merge previous builds from different runners & platforms into one common docker image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs:
       - jbuild
 
@@ -467,7 +463,7 @@ jobs:
     # login to Docker.io and check remaining rate limit
     needs: [merge]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
 
       -

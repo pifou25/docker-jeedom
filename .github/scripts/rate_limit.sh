@@ -45,4 +45,5 @@ else
   SUMMARY="⚠️ Impossible de lire les en-têtes RateLimit:\n$HEADERS"
 fi
 
+echo "### 🐳 DockerHub Pull Limit" >> $GITHUB_STEP_SUMMARY
 echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
