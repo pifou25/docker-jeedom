@@ -16,7 +16,7 @@
 
 # Docker Jeedom : choose your style
 
-## Jeedom As A Service (full)
+## Jeedom AIO All-In-One (full)
 
 A complete standalone `full` Docker container including every PHP packages, Apache server,
  Python, and also many daemons: MariaDB, Cron scheduler, atd, (fail2ban), (supervisor)....
@@ -34,8 +34,10 @@ complete installation.
 
 * tag format: <debian name>-<php version>-<jeedom version>
 * debian name: bookworm, or trixie is the Debian base version. The current default is `bookworm` running with php8.2 ; trixie=php8.4
-* Jeedom Version `master` (current = v4.6 = latest) `beta` ( = next v4.7 ?? ) or `develop` (custom branch from custom repository with xdebug), see jeedom Git branches.
-
+* Jeedom Version:
+* * `master`: (current = v4.6 = latest stable)
+* * `develop` (next 4.x, see jeedom develop branches with xdebug)
+* * `integration`  (custom branch from custom repository with xdebug) 
 
 ### List of generated Tags
 

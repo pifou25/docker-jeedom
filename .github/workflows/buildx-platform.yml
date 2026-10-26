@@ -12,7 +12,7 @@ on:
         default: 'light'
       version_tag:
         description: 'version de jeedom à utiliser'     
-        default: "4.5"
+        default: "4.6"
 
   # reusable workflow
   workflow_call:
@@ -25,7 +25,19 @@ on:
         description: 'version de jeedom à utiliser'
         required: true
         type: string
-        default: "4.5"
+        default: "4.6"
+      # jeedom_repo source du core
+      jeedom_repo:
+        description: 'repo source du core jeedom'
+        required: false
+        type: string
+        default: ${{ github.ref_name == 'master' && 'jeedom/core' || 'pifou25/jeedom-core' }}
+      # branche à utiliser: master si la branche courante est master, develop sinon
+      jeedom_branch:
+        description: 'branche à utiliser: master si la branche courante est master, develop sinon'
+        required: false
+        type: string
+        default: ${{ github.ref_name == 'master' && 'master' || github.ref_name == 'integration' && 'integration' || 'develop' }}
 
     secrets:
       GHCR_SECRET:
@@ -40,17 +52,17 @@ on:
         required: true
 
 
-# no concurrency, cancel previous running workflow
+# no concurrency, cancel previous running workflow on the same branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   # used to download jeedom source
-  JEEDOM_REPO: ${{ github.ref_name == 'master' && 'jeedom/core' || 'pifou25/jeedom-core' }}
+  JEEDOM_REPO: ${{ inputs.jeedom_repo }}
   # branch to use: master if the current branch is master, develop if not
   # this is used to set the jeedom version in the Dockerfile
-  JEEDOM_BRANCH: ${{ github.ref_name == 'master' && 'master' || 'develop' }}
+  JEEDOM_BRANCH: ${{ inputs.jeedom_branch }}
   # destination docker registry image name
   REGISTRY_IMAGE: pifou25/jeedom
   # XDEBUG enabled by default for develop and release branches
@@ -61,7 +73,7 @@ env:
 jobs:
   # clean runner and Lint the Dockerfile
   initStep:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       -
         name: Checkout
@@ -92,13 +104,12 @@ jobs:
       - name: Run DockerHub rate limit check
         id: ratecheck
         run: |
+          VERSION_TAG=$(curl -s https://raw.githubusercontent.com/${{ env.JEEDOM_REPO }}/refs/heads/${{ env.JEEDOM_BRANCH }}/core/config/version)
+          echo "version_tag: $VERSION_TAG" >> "$GITHUB_STEP_SUMMARY"
+          echo "version_tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
+
           chmod +x .github/scripts/rate_limit.sh
           ./.github/scripts/rate_limit.sh
-
-      - name: Add summary to Job Summary
-        run: |
-          echo "### 🐳 DockerHub Pull Limit" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.ratecheck.outputs.summary }}" >> $GITHUB_STEP_SUMMARY
 
       - name: check Docker.io rate limit
         if: ${{ steps.ratecheck.outputs.remaining && (steps.ratecheck.outputs.remaining < 10) }}
@@ -109,7 +120,7 @@ jobs:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
     # distribute build across multiple runners
     # This step  build the same image on different runners / platforms
-    runs-on: ubuntu-latest
+    runs-on: 'ubuntu-26.04'
     needs: initStep
 
     # continue to next job even if there are some errors in jbuild job
@@ -249,7 +260,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
           # export the build.log from image into the github summary
           docker run --platform linux/${{ matrix.platform }} -d --rm --name jeedom ghcr.io/${{ env.REGISTRY_IMAGE }}@${{ steps.buildJeedom.outputs.digest }} sleep 10
-          docker cp jeedom:/tmp/build.log ./build.log
+          docker cp jeedom:/tmp/build.log ./build.log || echo "No error during build" > ./build.log
           cat ./build.log >> $GITHUB_STEP_SUMMARY
       -
         name: Upload digest ${{ inputs.version_tag }}-${{ env.TAG_NAME }}:${{ matrix.platform }}
@@ -266,7 +277,7 @@ jobs:
   merge:
     # https://docs.docker.com/build/ci/github-actions/multi-platform/
     # merge previous builds from different runners & platforms into one common docker image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs:
       - jbuild
 
@@ -452,7 +463,7 @@ jobs:
     # login to Docker.io and check remaining rate limit
     needs: [merge]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
 
       -

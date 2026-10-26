@@ -41,8 +41,9 @@ if [[ -n "$LIMIT" && -n "$REMAINING" && -n "$WINDOW" ]]; then
   echo "remaining=$REMAINING" >> "$GITHUB_OUTPUT"
   echo "limit=$LIMIT" >> "$GITHUB_OUTPUT"
 else
+  # 👇 Export pour GitHub Actions
   SUMMARY="⚠️ Impossible de lire les en-têtes RateLimit:\n$HEADERS"
 fi
 
-# 👇 Export pour GitHub Actions
-echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
+echo "### 🐳 DockerHub Pull Limit" >> $GITHUB_STEP_SUMMARY
+echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY

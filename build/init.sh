@@ -32,24 +32,18 @@ log_debug() { echo "${BLEU}$@${NORMAL}"; }
 # ==========================================================
 apt_install() {
   for pkg in "$@"; do
-    echo "Installing ${pkg}..."
-    if apt-get --quiet --option Dpkg::Options::="--force-confdef" --yes install "$pkg" > /dev/null; then
-      log_info "${pkg} installed"
-      echo "${pkg} installed" >> /tmp/build.log
-    else
+    log_info "install ${pkg}"
+    if ! apt-get --quiet --option Dpkg::Options::="--force-confdef" --yes install "$pkg" > /dev/null; then
       log_error "Cannot install ${pkg} - Continue anyway..."
-      echo "Cannot install ${pkg} - Continue anyway..." >> /tmp/build.log
+      echo "Cannot install ${pkg}" >> /tmp/build.log
     fi
   done
 }
 
 php_install() {
   for pkg in "$@"; do
-    echo "Installing ${pkg}..."
-    if install-php-extensions "$pkg" > /dev/null; then
-      log_info "PHP ${pkg} installed"
-      echo "PHP ${pkg} installed" >> /tmp/build.log
-    else
+    log_info "Install PHP extension ${pkg}"
+    if ! install-php-extensions "$pkg" > /dev/null; then
       log_error "Cannot install PHP ${pkg} - Continue anyway..."
       echo "Cannot install PHP ${pkg} - Continue anyway..." >> /tmp/build.log
     fi
@@ -85,12 +79,17 @@ main() {
     unzip -q /tmp/jeedom.zip -d /tmp/source/ && \
       find /tmp/source/ -maxdepth 1 -type d -name '*core*' -exec sh -c "cp -rT {}/. ${WEBSERVER_HOME} && rm -rf {}" {} \; && \
       rm /tmp/jeedom.zip
-    composer install --no-ansi --no-dev --no-interaction --no-plugins --no-progress --no-scripts --optimize-autoloader
   fi
 
   if [ ! -f "${WEBSERVER_HOME}/index.php" ]; then
     log_error "No Jeedom installation on ${WEBSERVER_HOME} !"
     exit 1
+  fi
+
+  # si le répertoire /vendor n'existe pas, on lance composer install
+  if [ ! -d "${WEBSERVER_HOME}/vendor" ]; then
+    log_info "vendor directory not found, run composer install"
+    composer install --no-ansi --no-dev --no-interaction --no-plugins --no-progress --no-scripts --optimize-autoloader
   fi
 
   if [[ "${MYSQL_HOST}" != 'localhost' ]]; then
@@ -165,7 +164,6 @@ main() {
       mysql_sql "GRANT ALL PRIVILEGES ON ${MYSQL_JEEDOM_DATABASE}.* TO '${MYSQL_JEEDOM_USER}'@'localhost';"
     else
       log_info " ___ La database SQL ${MYSQL_JEEDOM_DATABASE} pour '${MYSQL_JEEDOM_USER}'@'${MYSQL_HOST}:${MYSQL_PORT:3306}' doit être disponible..."
-
     fi
 
     log_info "jeedom clean install"

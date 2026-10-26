@@ -4,15 +4,12 @@ name: Generate Jeedom PHP sources
 
 on:
   push:
-    branches: [ master, develop ]
+    branches: [ master, develop, integration]
   pull_request:
-    branches: [ master, develop]
+    branches: [ master, develop, integration]
   # this is to manually trigger the worklow
   workflow_dispatch:
-    inputs:
-      logLevel:
-        description: 'Reason'     
-        default: 'Manual launch'
+  workflow_call:
 
 jobs:
 
@@ -26,21 +23,21 @@ jobs:
       matrix:
         php: [8.2, 8.4]
         version:
-          - release
+          - integration
           - develop
           - master
         repo:
           - jeedom/core
           - pifou25/jeedom-core
         exclude:
-          - version: release
-            repo: pifou25/jeedom-core
+          - version: integration
+            repo: jeedom/core
           - version: develop
             repo: jeedom/core
           - version: master
             repo: pifou25/jeedom-core
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
     - uses: actions/checkout@v7
