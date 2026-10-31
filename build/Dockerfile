@@ -107,7 +107,7 @@ COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
 COPY xdebug.ini /tmp/xdebug.ini
 RUN if [[ ${XDEBUG} == "true" ]] ; then \
   pecl install $([ ${DEBIAN} = trixie ] && echo redis-6.2.0 || echo redis-5.3.4 ) \
-	&& pecl install $([ $(echo "${PHP} >= 8.0" | bc) == 1 ] && echo xdebug-3.4.5 || echo xdebug-3.1.6 ) \
+	&& pecl install $([ $(echo "${PHP} >= 8.4" | bc) == 1 ] && echo xdebug-3.4.5 || echo xdebug-3.3.2 ) \
 	&& docker-php-ext-enable redis xdebug \
   && mv /tmp/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini ; \
   fi
