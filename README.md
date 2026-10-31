@@ -21,7 +21,7 @@
 A complete standalone `full` Docker container including every PHP packages, Apache server,
  Python, and also many daemons: MariaDB, Cron scheduler, atd, (fail2ban), (supervisor)....
 
-## Jeedom as a Service Jaas (light)
+## Jeedom as a Service Jaas (http)
 
 A very `light` container with the minimal PHP extensions over the PHP-Apache base.
 No other daemon nor database, this single container should work with others services.
@@ -32,19 +32,19 @@ complete installation.
 
 ### Meaning of any keywords
 
-* tag format: <debian name>-<php version>-<jeedom version>
-* debian name: bookworm, or trixie is the Debian base version. The current default is `bookworm` running with php8.2 ; trixie=php8.4
-* Jeedom Version:
+* tag format: <jeedom version>-<debian name>-<?http>-<branch name>
+* debian name: **bookworm**, or **trixie** is the **Debian** base version. The current default is `bookworm` running with php8.2 ; trixie=php8.4
+* Jeedom Version / branch:
 * * `master`: (current = v4.6 = latest stable)
-* * `develop` (next 4.x, see jeedom develop branches with xdebug)
-* * `integration`  (custom branch from custom repository with xdebug) 
+* * `develop` (next v4.x, see jeedom develop branches with xdebug)
+* * `integration`  (v5.0.0 custom branch from custom repository with xdebug) 
 
 ### List of generated Tags
 
-* bookworm-8.2
-* bookworm-8.2-light
-* bookworm-8.2-dev
-* bookworm-8.2-light-dev
+* 4.6-bookworm 4.6
+* 4.6-bookworm-http
+* 4.6-bookworm-http-int
+* 4.6-trixie-http-dev
 * ...
 
 ## Jeedom Plugins

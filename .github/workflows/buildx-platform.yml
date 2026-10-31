@@ -80,6 +80,8 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v7
+        with:
+          repository: pifou25/docker-jeedom
       - name: Docker Lint
         # https://github.com/marketplace/actions/hadolint-action
         uses: hadolint/hadolint-action@v3.5.0
@@ -173,6 +175,8 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v7
+        with:
+          repository: pifou25/docker-jeedom
           
       - 
         name: Login to GitHub Container Registry
@@ -361,6 +365,7 @@ jobs:
         name: Checkout
         uses: actions/checkout@v7
         with:
+          repository: pifou25/docker-jeedom
           sparse-checkout: |
             .github/scripts/
 
@@ -479,6 +484,7 @@ jobs:
         name: Checkout
         uses: actions/checkout@v7
         with:
+          repository: pifou25/docker-jeedom
           sparse-checkout: |
             .github/scripts/
 
