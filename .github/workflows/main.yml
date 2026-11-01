@@ -19,22 +19,8 @@ env:
   JEEDOM_BRANCH: ${{ github.ref_name == 'master' && 'master' || github.ref_name == 'integration' && 'integration' || 'develop' }}
 
 jobs:
-  init_step:
-    runs-on: ubuntu-26.04
-    outputs:
-      version_tag: ${{ steps.init_step.outputs.version_tag }}
-    steps:
-      -
-        name: init_step
-        id: init_step
-        run: |
-          VERSION_TAG=$(curl -s https://raw.githubusercontent.com/${{ env.JEEDOM_REPO }}/refs/heads/${{ env.JEEDOM_BRANCH }}/core/config/version)
-          echo "version_tag=$VERSION_TAG" >> "$GITHUB_STEP_SUMMARY"
-          echo "version_tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
-
   build-light-full-step:
     # générer les 2 étapes séquentiellement: light puis full qui se base sur light
-    needs: init_step
     uses: ./.github/workflows/buildx-platform.yml
     strategy:
       matrix:
@@ -42,7 +28,6 @@ jobs:
       max-parallel: 1
     with:
       target : ${{ matrix.target }}
-      version_tag: ${{ needs.init_step.outputs.version_tag }}
       jeedom_repo: ${{ github.ref_name == 'master' && 'jeedom/core' || 'pifou25/jeedom-core' }}
       jeedom_branch: ${{ github.ref_name == 'master' && 'master' || github.ref_name == 'integration' && 'integration' || 'develop' }}
     secrets: inherit
