@@ -47,19 +47,52 @@ complete installation.
 * 4.6-trixie-http-dev
 * ...
 
+### Supported architectures:
+
+* linux/amd64
+* linux/arm64
+* linux/arm/v7
+
 ## Jeedom Plugins
 
 No plugin is installed by default, because no Jeedom market account is set after the install.
 You may have your own backup to initialize the installation, including all your plugins, history
 and, thus, you will have to trigger any plugin dependency during the first container run.
 
-# Pull and Run Jeedom As A Service
+# Build and Run
+
+## Build images in this order
+
+* light http image
+`docker build -t pifou25/jeedom:6.4-trixie-http-int --build-arg DEBIAN=trixie --build-arg PHP=8.4 --build-arg JEEDOM_REPO=pifou25/jeedom-core --build-arg JEEDOM_VERSION=master --build-arg XDEBUG=true  -f build/Dockerfile  build`
+* full Jeedom AIO based on the previous one
+`docker build -t pifou25/jeedom:6.4-trixie-int --build-arg BASENAME=6.4-trixie-http-int -f build/Dockerfile.full build`
+
+## Pull and Run Jeedom As A Service
 
 You can run the standalone `latest` container as-it :
 ```
-docker run --name jeedom -d -v "$PWD/jeedom/":/var/www/html pifou25/jeedom
+docker run --name jeedom -d -v "$PWD/jeedom/":/var/www/html -v $PWD/mysql:/var/lib/mysql pifou25/jeedom
 ```
 ( --name = the container name, -d = detached mode, -v = mount the volume source:destination)
+
+Run the container with required environment variables:
+* MYSQL_JEEDOM_PASSWD
+* MYSQL_ROOT_PASSWORD
+And optional with these default values:
+* MYSQL_JEEDOM_DATABASE=jeedom
+* MYSQL_JEEDOM_USER=jeedom
+* JEEDOM_VERSION=beta
+
+```
+docker run -p 80:80 -v $PWD/jeedom:/var/www/html -v $PWD/mysql:/var/lib/mysql \
+  -e MYSQL_ROOT_PASSWORD=admin \
+  -e MYSQL_JEEDOM_PASSWD=jeedom \
+  --hostname jeedom \
+  --name jeedom pifou25/jeedom:6.4-bookworm
+```
+
+Now you may join your new jeedom server at http://localhost:80
 
 ## run a new container with an existing backup
 
