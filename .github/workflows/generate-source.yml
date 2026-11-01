@@ -4,9 +4,7 @@ name: Generate Jeedom PHP sources
 
 on:
   push:
-    branches: [ master, develop, integration]
-  pull_request:
-    branches: [ master, develop, integration]
+    branches: [ none]
   # this is to manually trigger the worklow
   workflow_dispatch:
   workflow_call:

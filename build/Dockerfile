@@ -1,29 +1,26 @@
-# get php source from another docker image
-ARG PHP=8.2
-ARG JEEDOM_VERSION=develop
-ARG DEBIAN=bookworm
-FROM --platform=linux/amd64 ghcr.io/pifou25/docker-jeedom:source-${PHP}-${JEEDOM_VERSION} AS source
-
 # Base image for light jeedom: no daemon, only apache+php
+# Do NOT download Jeedom source here, it is done at runtime if missing, to allow for a volume mount of the source code from the host machine.
 #
 # Debian version: bookworm / trixie
-ARG DEBIAN
+ARG DEBIAN=bookworm
 # PHP version for trixie:8.4, bookworm:8.2
 # base images are copied from ghcr.io/pifou25
-ARG PHP
+ARG PHP=8.2
 FROM php:${PHP}-apache-${DEBIAN}
 
 ARG DEBIAN
 ARG PHP
 ARG TARGETPLATFORM
 # optional XDEBUG arg to add xdebug packages and configuration
-ARG XDEBUG=true
+ARG XDEBUG=false
 
 # repo: jeedom/core or pifou25/jeedom-core
 ARG JEEDOM_REPO=pifou25/jeedom-core
+ENV JEEDOM_REPO=${JEEDOM_REPO}
 # branch name: master or beta
 ARG JEEDOM_VERSION
 ENV JEEDOM_VERSION=${JEEDOM_VERSION}
+
 ENV MYSQL_JEEDOM_DATABASE=jeedom
 ENV MYSQL_JEEDOM_USER=jeedom
 # ENV MYSQL_JEEDOM_PASSWD
@@ -97,15 +94,14 @@ RUN if [ "${TARGETPLATFORM}" != "linux/arm/v6" ] && [ "${TARGETPLATFORM}" != "li
 WORKDIR ${WEBSERVER_HOME}
 VOLUME ${WEBSERVER_HOME}
 
-# Download PHP sources from previous stage, and Composer
-COPY --from=source /app /var/www/html
+# Download Composer
 COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
 
 # install redis-5.3.4 + xdebug-3.1.6 for php7.4 and 3.3.2 for php8.2
 # install redis-6.2.0 and xdebug-3.4.5 for php8.4/trixie
 # check https://xdebug.org/docs/compat
 COPY xdebug.ini /tmp/xdebug.ini
-RUN if [[ ${XDEBUG} == "true" ]] ; then \
+RUN if [[ "${XDEBUG}" == "true" ]] ; then \
   pecl install $([ ${DEBIAN} = trixie ] && echo redis-6.2.0 || echo redis-5.3.4 ) \
 	&& pecl install $([ $(echo "${PHP} >= 8.4" | bc) == 1 ] && echo xdebug-3.4.5 || echo xdebug-3.3.2 ) \
 	&& docker-php-ext-enable redis xdebug \

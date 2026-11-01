@@ -1,16 +1,15 @@
 # second final image: full_jeedom standalone with all required daemons
 #
 # Debian version: bookworm / trixie
-ARG DEBIAN=bookworm
+# ARG DEBIAN=bookworm
 # PHP version required for bookworm is 8.2
 # trixie : 8.4
 # base images are copied from ghcr.io/pifou25
-ARG PHP=8.2
-# version number of Jeedom source from core/config/version
-ARG VERSION_TAG
-# set XTRARGS=-debug to add xdebug packages and configuration
-ARG XTRARGS=
-FROM pifou25/jeedom:${VERSION_TAG}-${DEBIAN}-http${XTRARGS}
+# ARG PHP=8.2
+
+# BASENAME = base image
+ARG BASENAME=8.2-bookworm-http
+FROM pifou25/jeedom:${BASENAME}
 # repo: jeedom/core or pifou25/jeedom-core
 ARG JEEDOM_REPO=pifou25/jeedom-core
 # branch name: master or beta

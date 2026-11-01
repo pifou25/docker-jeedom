@@ -2,8 +2,7 @@
 set -euo pipefail
 
 # install skopeo to copy images digests and tags
-sudo apt-get -y update
-sudo apt-get -y install skopeo
+# sudo apt-get -y update && sudo apt-get -y install skopeo
 
 attempt=0
 max_attempts=5

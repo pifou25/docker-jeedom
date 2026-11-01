@@ -69,7 +69,7 @@ env:
   XDEBUG: ${{ github.ref_name == 'master' && 'false' || 'true' }}
   # Active BuildKit
   DOCKER_BUILDKIT: 1
-  # suffixe tag
+  # suffixe tag = [http|][int|dev|] selon la branche et le target
   TAG_SUFFIX: ${{ inputs.target == 'light' && '-http' || '' }}${{ github.ref_name != 'master' && (github.ref_name == 'integration' && '-int' || '-dev') || '' }}
 
 jobs:
@@ -148,7 +148,7 @@ jobs:
 
 
     env:
-      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bookworm' && inputs.target == 'full' && github.ref_name == 'master') }}
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bookworm' && inputs.target == 'full' && github.ref_name == 'master') && 'true' || 'false' }}
       CACHE_NAME: ${{ matrix.debian }}-${{ matrix.platform }}-${{ matrix.php }}
       # Référence vers le cache du registre
       REGISTRY_CACHE: ghcr.io/pifou25/docker-jeedom
@@ -237,8 +237,7 @@ jobs:
             JEEDOM_REPO=${{ env.JEEDOM_REPO }}
             JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }}
             XDEBUG=${{ env.XDEBUG }}
-            XTRARGS=${{ github.ref_name != 'master' && '-dev' || '' }}
-            VERSION_TAG=${{ inputs.version_tag }}
+            BASENAME=${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
           platforms: linux/${{ matrix.platform }}
           cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }},mode=max
@@ -290,7 +289,7 @@ jobs:
     strategy:
       fail-fast: false
       # limit to avoid error HTTP 409: too many requests
-      max-parallel: 1
+      max-parallel: 2
       matrix:
         debian: [bookworm, trixie]
         php: [8.2, 8.4]
@@ -302,7 +301,7 @@ jobs:
             php: 8.2
 
     env:
-      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bookworm' && inputs.target == 'full' && github.ref_name == 'master') }}
+      TAG_LATEST_ENABLED: ${{ (matrix.debian == 'bookworm' && inputs.target == 'full' && github.ref_name == 'master') && 'true' || 'false' }}
 
     steps:
       - name: init datetime value
@@ -431,14 +430,11 @@ jobs:
         # continue to next step even in case of error
         continue-on-error: true
         run: |
-          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} \
-                docker://quay.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
-          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} \
-                docker://reg.nico.si/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
-          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} \
-                docker://${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
+          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:latest docker://quay.io/${{ env.REGISTRY_IMAGE }}:latest
+          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:latest docker://reg.nico.si/${{ env.REGISTRY_IMAGE }}:latest
+          skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:latest docker://${{ env.REGISTRY_IMAGE }}:latest
 
-      - name: Check push into quay.io ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
+      - name: Check push into ALL registries ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
         if: steps.quay-push.outcome != 'success' || steps.docker-push.outcome != 'success' || steps.nico-push.outcome != 'success' || steps.latest-push.outcome != 'success'
         run: |
           if [ "${{ steps.docker-push.outcome }}" != "success" ]; then \
