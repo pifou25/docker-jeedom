@@ -235,7 +235,7 @@ jobs:
             JEEDOM_REPO=${{ env.JEEDOM_REPO }}
             JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }}
             XDEBUG=${{ env.XDEBUG }}
-            BASENAME=${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
+            BASENAME=${{ env.version_tag }}-${{ matrix.debian }}
           platforms: linux/${{ matrix.platform }}
           cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }},mode=max

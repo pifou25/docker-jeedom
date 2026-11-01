@@ -1,15 +1,8 @@
-# second final image: full_jeedom standalone with all required daemons
+# second final image: full_jeedom standalone with all required daemons and supervisord
 #
-# Debian version: bookworm / trixie
-# ARG DEBIAN=bookworm
-# PHP version required for bookworm is 8.2
-# trixie : 8.4
-# base images are copied from ghcr.io/pifou25
-# ARG PHP=8.2
-
 # BASENAME = base image
-ARG BASENAME=8.2-bookworm-http
-FROM pifou25/jeedom:${BASENAME}
+ARG BASENAME=4.6.3-bookworm
+FROM ghcr.io/pifou25/jeedom:${BASENAME}-http
 # repo: jeedom/core or pifou25/jeedom-core
 ARG JEEDOM_REPO=pifou25/jeedom-core
 # branch name: master or beta
@@ -56,7 +49,7 @@ RUN ln -sf /etc/apache2/conf-available/security.conf /etc/apache2/conf-enabled/ 
 COPY standalone/healthcheck.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/healthcheck.sh
 HEALTHCHECK --interval=300s --timeout=5s --retries=3 \
-  CMD /usr/local/bin/healthcheck.sh
+  CMD ["/usr/local/bin/healthcheck.sh"]
 
 #volume for mariadb data
 VOLUME  /var/lib/mysql

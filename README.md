@@ -32,7 +32,7 @@ complete installation.
 
 ### Meaning of any keywords
 
-* tag format: <jeedom version>-<debian name>-<?http>-<branch name>
+* tag format: <jeedom version>-<debian name>-<?http>
 * debian name: **bookworm**, or **trixie** is the **Debian** base version. The current default is `bookworm` running with php8.2 ; trixie=php8.4
 * Jeedom Version / branch:
 * * `master`: (current = v4.6.2 = latest stable)
@@ -43,9 +43,9 @@ complete installation.
 
 * 4.6.2-bookworm 4.6
 * 4.6.2-bookworm-http
-* 5.0.0-bookworm-int
-* 4.6.2-trixie-http-dev
-* 5.0.0-trixie-http-int
+* 5.0.0-bookworm
+* 4.6.2-trixie-http
+* 5.0.0-trixie-http
 * ...
 
 ### Supported architectures:
