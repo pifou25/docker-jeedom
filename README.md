@@ -32,19 +32,20 @@ complete installation.
 
 ### Meaning of any keywords
 
-* tag format: <jeedom version>-<debian name>-<?http>-<branch name>
+* tag format: <jeedom version>-<debian name>-<?http>
 * debian name: **bookworm**, or **trixie** is the **Debian** base version. The current default is `bookworm` running with php8.2 ; trixie=php8.4
 * Jeedom Version / branch:
-* * `master`: (current = v4.6 = latest stable)
-* * `develop` (next v4.x, see jeedom develop branches with xdebug)
+* * `master`: (current = v4.6.2 = latest stable)
+* * `develop` (next v4.6.3, see develop branch with xdebug)
 * * `integration`  (v5.0.0 custom branch from custom repository with xdebug) 
 
 ### List of generated Tags
 
-* 4.6-bookworm 4.6
-* 4.6-bookworm-http
-* 4.6-bookworm-http-int
-* 4.6-trixie-http-dev
+* 4.6.2-bookworm 4.6
+* 4.6.2-bookworm-http
+* 5.0.0-bookworm
+* 4.6.2-trixie-http
+* 5.0.0-trixie-http
 * ...
 
 ### Supported architectures:
@@ -55,7 +56,7 @@ complete installation.
 
 ## Jeedom Plugins
 
-No plugin is installed by default, because no Jeedom market account is set after the install.
+No plugins are installed by default, because no Jeedom market account is set after the install.
 You may have your own backup to initialize the installation, including all your plugins, history
 and, thus, you will have to trigger any plugin dependency during the first container run.
 
@@ -72,7 +73,7 @@ and, thus, you will have to trigger any plugin dependency during the first conta
 
 You can run the standalone `latest` container as-it :
 ```
-docker run --name jeedom -d -v "$PWD/jeedom/":/var/www/html -v $PWD/mysql:/var/lib/mysql pifou25/jeedom
+docker run --name jeedom -d -v "$PWD/jeedom":/var/www/html -v "$PWD/mysql":/var/lib/mysql pifou25/jeedom
 ```
 ( --name = the container name, -d = detached mode, -v = mount the volume source:destination)
 

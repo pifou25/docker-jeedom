@@ -10,9 +10,12 @@ on:
       target:
         description: 'light ou full, cible du build à générer'     
         default: 'light'
-      version_tag:
-        description: 'version de jeedom à utiliser'     
-        default: "4.6"
+      jeedom_repo:
+        description: 'repo source du core jeedom'
+        default: 'pifou25/jeedom-core'
+      jeedom_branch:
+        description: 'branche à utiliser: master, develop ou integration'
+        default: 'master'
 
   # reusable workflow
   workflow_call:
@@ -21,11 +24,6 @@ on:
       target:
         required: true
         type: string
-      version_tag:
-        description: 'version de jeedom à utiliser'
-        required: true
-        type: string
-        default: "4.6"
       # jeedom_repo source du core
       jeedom_repo:
         description: 'repo source du core jeedom'
@@ -70,7 +68,8 @@ env:
   # Active BuildKit
   DOCKER_BUILDKIT: 1
   # suffixe tag = [http|][int|dev|] selon la branche et le target
-  TAG_SUFFIX: ${{ inputs.target == 'light' && '-http' || '' }}${{ github.ref_name != 'master' && (github.ref_name == 'integration' && '-int' || '-dev') || '' }}
+  TAG_SUFFIX: ${{ inputs.target == 'light' && '-http' || '' }} 
+  # pas de suffixe de branche! ${{ github.ref_name != 'master' && (github.ref_name == 'integration' && '-int' || '-dev') || '' }}
 
 jobs:
   # clean runner and Lint the Dockerfile
@@ -108,10 +107,6 @@ jobs:
       - name: Run DockerHub rate limit check
         id: ratecheck
         run: |
-          VERSION_TAG=$(curl -s https://raw.githubusercontent.com/${{ env.JEEDOM_REPO }}/refs/heads/${{ env.JEEDOM_BRANCH }}/core/config/version)
-          echo "version_tag: $VERSION_TAG" >> "$GITHUB_STEP_SUMMARY"
-          echo "version_tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
-
           chmod +x .github/scripts/rate_limit.sh
           ./.github/scripts/rate_limit.sh
 
@@ -168,9 +163,12 @@ jobs:
         # replace /  by - in platform value and registry cache name
         # list local registry mirror available images for debug
         run: |
+          VERSION_TAG=$(curl -s https://raw.githubusercontent.com/${{ env.JEEDOM_REPO }}/refs/heads/${{ env.JEEDOM_BRANCH }}/core/config/version)
+          echo "version_tag=$VERSION_TAG" >> "$GITHUB_ENV"
           platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
           echo "CACHE_TAG=buildcache-${CACHE_NAME//\//-}" >> $GITHUB_ENV
+          echo "version_tag: $VERSION_TAG - platform: $PLATFORM_PAIR - cache: $CACHE_TAG" >> "$GITHUB_STEP_SUMMARY"
 
       -
         name: Checkout
@@ -199,7 +197,7 @@ jobs:
           # generate Docker tags based on the following events/attributes
           # tag name de la forme: version-debian-http-int e.g. 4.5-trixie-http-int
           tags: |
-            type=raw,value=${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
+            type=raw,value=${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
             # set latest tag for default branch
             type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
 
@@ -220,7 +218,7 @@ jobs:
           echo """${{ steps.meta.outputs.annotations }}"""
 
       - 
-        name: build ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}:${{ matrix.platform }}
+        name: build ${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}:${{ matrix.platform }}
         # id required for next step that check success
         id: buildJeedom
         # https://github.com/marketplace/actions/build-and-push-docker-images
@@ -237,14 +235,14 @@ jobs:
             JEEDOM_REPO=${{ env.JEEDOM_REPO }}
             JEEDOM_VERSION=${{ env.JEEDOM_BRANCH }}
             XDEBUG=${{ env.XDEBUG }}
-            BASENAME=${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
+            BASENAME=${{ env.version_tag }}-${{ matrix.debian }}
           platforms: linux/${{ matrix.platform }}
           cache-from: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=${{ env.REGISTRY_CACHE }}:${{ env.CACHE_TAG }},mode=max
           annotations: ${{ steps.meta.outputs.annotations }}
           outputs: type=image,name=ghcr.io/${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
 
-      - name: Check on failures ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}:${{ matrix.platform }}
+      - name: Check on failures ${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome != 'success'
         # some debug information in case of error, exit with error
         run: |
@@ -255,8 +253,8 @@ jobs:
           exit 1
 
       -
-        name: Export digest ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}:${{ matrix.platform }}
-        # export the digest file name into env var named DIGEST-${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} for next step
+        name: Export digest ${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}:${{ matrix.platform }}
+        # export the digest file name into env var named DIGEST-${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} for next step
         if: steps.buildJeedom.outcome == 'success'
         run: |
           mkdir -p /tmp/digests
@@ -267,13 +265,13 @@ jobs:
           docker cp jeedom:/tmp/build.log ./build.log || echo "No error during build" > ./build.log
           cat ./build.log >> $GITHUB_STEP_SUMMARY
       -
-        name: Upload digest ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}:${{ matrix.platform }}
+        name: Upload digest ${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}:${{ matrix.platform }}
         if: steps.buildJeedom.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
           # env.PLATFORM_PAIR from step 1
           # get DIGEST-${TAG_NAME} env variable from previous step
-          name: digests-${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}-${{ env.PLATFORM_PAIR }}
+          name: digests-${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/${{ env.DIGEST }}
           if-no-files-found: error
           retention-days: 1
@@ -306,15 +304,18 @@ jobs:
     steps:
       - name: init datetime value
         run: |
+          VERSION_TAG=$(curl -s https://raw.githubusercontent.com/${{ env.JEEDOM_REPO }}/refs/heads/${{ env.JEEDOM_BRANCH }}/core/config/version)
+          echo "version_tag=$VERSION_TAG" >> "$GITHUB_ENV"
           echo "CURRENT_DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+          echo "version_tag: $VERSION_TAG - datetime: $CURRENT_DATETIME" >> "$GITHUB_STEP_SUMMARY"
 
       -
         name: Download digests
-        # downloade artifacts whose name is the sha256 digest
+        # download artifacts whose name is the sha256 digest
         uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
-          pattern: digests-${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}-*
+          pattern: digests-${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}-*
           merge-multiple: true
 
       - 
@@ -349,7 +350,7 @@ jobs:
             ghcr.io/${{ env.REGISTRY_IMAGE }}
           # generate Docker tags based on the following events/attributes
           tags: |
-            type=raw,value=${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
+            type=raw,value=${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
             # set latest tag for default branch
             type=raw,value=latest,enable=${{ env.TAG_LATEST_ENABLED }}
           # label chadburn for the "cron" container
@@ -369,7 +370,7 @@ jobs:
             .github/scripts/
 
       -
-        name: Create manifest list and push ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to Docker Hub
+        name: Create manifest list and push ${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to Docker Hub
         run: |
           chmod +x .github/scripts/create_manifests.sh
           ./.github/scripts/create_manifests.sh
@@ -379,7 +380,7 @@ jobs:
         # continue to next step even in case of error
         continue-on-error: true
         env:
-          REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
+          REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
           DEST_REGISTRY:
         run: |
           chmod +x ./.github/scripts/skopeo_copy.sh
@@ -393,12 +394,12 @@ jobs:
           username: ${{ secrets.QUAY_USER }}
           password: ${{ secrets.QUAY_PASSWORD }}
          
-      - name: Push ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to Quay.io
+      - name: Push ${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to Quay.io
         id: quay-push
         # continue to next step even in case of error
         continue-on-error: true
         env:
-          REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
+          REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
           DEST_REGISTRY: quay.io/
         run: |
           chmod +x ./.github/scripts/skopeo_copy.sh
@@ -418,14 +419,14 @@ jobs:
         # continue to next step even in case of error
         continue-on-error: true
         env:
-          REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
+          REG_IMAGE_TAG: ${{ env.REGISTRY_IMAGE }}:${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
           DEST_REGISTRY: reg.nico.si/
         run: |
           chmod +x ./.github/scripts/skopeo_copy.sh
           ./.github/scripts/skopeo_copy.sh
 
       - name: copy also latest tag if required
-        if: ${{ env.TAG_LATEST_ENABLED }}
+        if: env.TAG_LATEST_ENABLED == 'true'
         id: latest-push
         # continue to next step even in case of error
         continue-on-error: true
@@ -434,23 +435,23 @@ jobs:
           skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:latest docker://reg.nico.si/${{ env.REGISTRY_IMAGE }}:latest
           skopeo copy --all docker://ghcr.io/${{ env.REGISTRY_IMAGE }}:latest docker://${{ env.REGISTRY_IMAGE }}:latest
 
-      - name: Check push into ALL registries ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
+      - name: Check push into ALL registries ${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }}
         if: steps.quay-push.outcome != 'success' || steps.docker-push.outcome != 'success' || steps.nico-push.outcome != 'success' || steps.latest-push.outcome != 'success'
         run: |
           if [ "${{ steps.docker-push.outcome }}" != "success" ]; then \
-            echo "Fail pushing ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to docker.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
+            echo "Fail pushing ${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to docker.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
           else \
-            echo "Successfull pushing ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to docker.io 🚀" >> $GITHUB_STEP_SUMMARY; \
+            echo "Successfull pushing ${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to docker.io 🚀" >> $GITHUB_STEP_SUMMARY; \
           fi
           if [ "${{ steps.quay-push.outcome }}" != "success" ]; then \
-            echo "Fail pushing ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to quay.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
+            echo "Fail pushing ${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to quay.io ! 🚀 (probably error HTTP 429 Too many requests)" >> $GITHUB_STEP_SUMMARY; \
           else \
-            echo "Successfull pushing ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to quay.io 🚀" >> $GITHUB_STEP_SUMMARY; \
+            echo "Successfull pushing ${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to quay.io 🚀" >> $GITHUB_STEP_SUMMARY; \
           fi
           if [ "${{ steps.nico-push.outcome }}" != "success" ]; then \
-            echo "Fail pushing ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to nico.si ! 🚀 ( ?? )" >> $GITHUB_STEP_SUMMARY; \
+            echo "Fail pushing ${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to nico.si ! 🚀 ( ?? )" >> $GITHUB_STEP_SUMMARY; \
           else \
-            echo "Successfull pushing ${{ inputs.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to nico.si 🚀" >> $GITHUB_STEP_SUMMARY; \
+            echo "Successfull pushing ${{ env.version_tag }}-${{ matrix.debian }}${{ env.TAG_SUFFIX }} to nico.si 🚀" >> $GITHUB_STEP_SUMMARY; \
           fi
           if [ ${{ env.TAG_LATEST_ENABLED }} != 'false' ]; then \
             if [ "${{ steps.latest-push.outcome }}" != "success" ]; then \

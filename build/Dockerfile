@@ -83,8 +83,13 @@ RUN echo '[ ! -z "$TERM" -a -r /etc/motd ] && cat /etc/issue && cat /etc/motd &&
 # shellcheck disable=DL3022
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 # RUN install-php-extensions bcmath
-RUN bash -c "source /root/init.sh && php_install $([ ${DEBIAN} ne trixie ] && echo bcmath) \
-  intl calendar ldap mbstring mysqli pcntl pdo_mysql soap sockets xmlrpc zip gd opcache ssh2" 
+RUN bash -c '\
+    source /root/init.sh && \
+    PACKAGES="" && \
+    if [ "$DEBIAN" != "trixie" ]; then PACKAGES="bcmath"; fi && \
+    php_install $PACKAGES \
+        intl calendar ldap mbstring mysqli pcntl pdo_mysql \
+        soap sockets xmlrpc zip gd opcache ssh2'
 RUN if [ "${TARGETPLATFORM}" != "linux/arm/v6" ] && [ "${TARGETPLATFORM}" != "linux/arm/v7" ]; then \
       install-php-extensions imap; \
     else \
@@ -122,6 +127,6 @@ ENV MYSQL_HOST=db
 
 # Healthcheck for the 'light' image, just check if apache is running
 HEALTHCHECK --interval=90s --timeout=3s --retries=3 --start-period=120s \
-  CMD curl -s --fail http://localhost/here.html || exit 1
+  CMD ["curl", "-s", "--fail", "http://localhost/here.html"]
 USER www-data
 CMD ["/root/init.sh"]
