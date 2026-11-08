@@ -26,3 +26,8 @@ updates:
       - pifou25
     # Branch to create pull requests against
     target-branch: "develop"
+    ignore:
+      - dependency-name: "php"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"

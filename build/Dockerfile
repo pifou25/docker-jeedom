@@ -3,13 +3,18 @@
 #
 # Debian version: bookworm / trixie
 ARG DEBIAN=bookworm
-# PHP version for trixie:8.4, bookworm:8.2
-# base images are copied from ghcr.io/pifou25
-ARG PHP=8.2
-FROM php:${PHP}-apache-${DEBIAN}
+# 
+# pin both debian docker images with these commands for Depandabot automatic update
+# docker buildx imagetools inspect php:8.4-apache-trixie --format '{{json .Manifest}}' | jq -r '.digest'
+# docker buildx imagetools inspect php:8.2-apache-bookworm --format '{{json .Manifest}}' | jq -r '.digest'
+FROM php:8.2-apache-bookworm@sha256:46804ea2b61eaf25ca47fa8aafc917015b8dad6b7a64c4364bb051a9dff275d5 AS base-bookworm
+FROM php:8.4-apache-trixie@sha256:884f64b47174de2c0e813270fe7b24a18605729fcebe201302d98c38805530d0 AS base-trixie
+
+FROM base-${DEBIAN}
 
 ARG DEBIAN
-ARG PHP
+# PHP version for trixie:8.4, bookworm:8.2
+ARG PHP=8.2
 ARG TARGETPLATFORM
 # optional XDEBUG arg to add xdebug packages and configuration
 ARG XDEBUG=false
